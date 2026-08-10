@@ -21,23 +21,35 @@ export class RedisService extends Redis implements OnModuleDestroy {
       ...(password ? { password } : {}),
       maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
-        const delay = Math.min(times * 100, 3000);
+        if (times > 10) {
+          this.logger.error(
+            `Redis connection failed after 10 attempts to ${host}:${port}. Ceasing auto-reconnect loop.`,
+          );
+          return null;
+        }
+        const delay = Math.min(times * 300, 3000);
         this.logger.warn(
-          `Retrying Redis connection (attempt ${times}) in ${delay}ms...`,
+          `Retrying Redis connection to ${host}:${port} [attempt ${times}/10] in ${delay}ms...`,
         );
         return delay;
       },
     });
 
     this.on('connect', () =>
-      this.logger.log(`Redis connecting to ${host}:${port}...`),
+      this.logger.log(`Connecting to Redis instance at ${host}:${port}`),
     );
     this.on('ready', () =>
-      this.logger.log(`Redis connected and ready at ${host}:${port}`),
+      this.logger.log(`Redis connected successfully and ready at ${host}:${port}`),
     );
-    this.on('error', (err: Error) =>
-      this.logger.error(`Redis connection error: ${err.message}`),
-    );
+    this.on('error', (err: Error) => {
+      if (err.message.includes('ECONNREFUSED')) {
+        this.logger.error(
+          `Redis connection refused at ${host}:${port}. Please ensure Redis server is running.`,
+        );
+      } else {
+        this.logger.error(`Redis connection error: ${err.message}`);
+      }
+    });
     this.on('close', () => this.logger.warn('Redis connection closed'));
   }
 
