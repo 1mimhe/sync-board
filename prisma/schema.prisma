@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  email           String         @unique @db.VarChar(255)
+  passwordHash    String?        @map("password_hash") @db.VarChar(255)
+  displayName     String         @map("display_name") @db.VarChar(100)
+  avatarUrl       String?        @map("avatar_url") @db.Text
+  googleId        String?        @unique @map("google_id") @db.VarChar(255)
+  isEmailVerified Boolean        @default(false) @map("is_email_verified")
+  lastLoginAt     DateTime?      @map("last_login_at") @db.Timestamptz
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  refreshTokens   RefreshToken[]
+
+  @@index([googleId], map: "idx_users_google_id")
+  @@map("users")
+}
+
+model RefreshToken {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String         @map("user_id") @db.Uuid
+  tokenHash        String         @unique @map("token_hash") @db.VarChar(255)
+  familyId         String         @map("family_id") @db.Uuid
+  ipAddress        String?        @map("ip_address") @db.VarChar(45)
+  userAgent        String?        @map("user_agent") @db.Text
+  expiresAt        DateTime       @map("expires_at") @db.Timestamptz
+  revokedAt        DateTime?      @map("revoked_at") @db.Timestamptz
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  replacedBy       String?        @map("replaced_by") @db.Uuid
+  
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedToken    RefreshToken?  @relation("TokenRotation", fields: [replacedBy], references: [id])
+  replacedByTokens RefreshToken[] @relation("TokenRotation")
+
+  @@index([expiresAt], map: "idx_refresh_tokens_expires")
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@map("refresh_tokens")
+}
