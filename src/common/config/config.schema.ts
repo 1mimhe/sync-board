@@ -17,6 +17,7 @@ export const configValidationSchema = Joi.object({
   JWT_PUBLIC_KEY_PATH: Joi.string().optional(),
   REDIS_HOST: Joi.string().default('localhost'),
   REDIS_PORT: Joi.number().default(6379),
+  REDIS_PASSWORD: Joi.string().optional().allow(''),
   RABBITMQ_URL: Joi.string()
     .optional()
     .default('amqp://guest:guest@localhost:5672'),
