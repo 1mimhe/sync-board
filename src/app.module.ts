@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppConfigModule } from './common/config/config.module';
 import { PrismaModule } from './common/database/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
@@ -19,6 +20,7 @@ import { FileModule } from './modules/file/file.module';
     AppConfigModule,
     PrismaModule,
     RedisModule,
+    EventEmitterModule.forRoot(),
 
     // Centralized Structured Logging (Pino)
     LoggerModule.forRootAsync({

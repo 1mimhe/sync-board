@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -22,6 +23,9 @@ async function bootstrap() {
 
   // Set global API route prefix
   app.setGlobalPrefix('api');
+
+  // Register cookie parser middleware
+  app.use(cookieParser());
 
   // Configure OpenAPI / Swagger documentation
   const swaggerConfig = new DocumentBuilder()

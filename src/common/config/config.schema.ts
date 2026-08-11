@@ -21,10 +21,10 @@ export const configValidationSchema = Joi.object({
   RABBITMQ_URL: Joi.string()
     .optional()
     .default('amqp://guest:guest@localhost:5672'),
-  GOOGLE_CLIENT_ID: Joi.string().optional().default(''),
-  GOOGLE_CLIENT_SECRET: Joi.string().optional().default(''),
+  GOOGLE_CLIENT_ID: Joi.string().required(),
+  GOOGLE_CLIENT_SECRET: Joi.string().required(),
   GOOGLE_CALLBACK_URL: Joi.string()
     .optional()
-    .default('http://localhost:3000/api/v1/auth/google/callback'),
+    .default('http://localhost:3000/api/auth/google/callback'),
   CLIENT_URL: Joi.string().optional().default('http://localhost:3001'),
 });
