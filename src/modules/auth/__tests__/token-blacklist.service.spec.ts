@@ -49,7 +49,9 @@ describe('TokenBlacklistService', () => {
 
     const isBlacklisted = await service.isBlacklisted('uuid-token-id-123');
     expect(isBlacklisted).toBe(true);
-    expect(redisService.exists).toHaveBeenCalledWith('blacklist:uuid-token-id-123');
+    expect(redisService.exists).toHaveBeenCalledWith(
+      'blacklist:uuid-token-id-123',
+    );
   });
 
   it('should return false if jti is not blacklisted', async () => {
