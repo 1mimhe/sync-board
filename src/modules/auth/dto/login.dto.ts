@@ -6,7 +6,10 @@ import { Transform } from 'class-transformer';
  * DTO for email/password authentication.
  */
 export class LoginDto {
-  @ApiProperty({ description: 'User email address', example: 'user@example.com' })
+  @ApiProperty({
+    description: 'User email address',
+    example: 'user@example.com',
+  })
   @IsEmail()
   @MaxLength(255)
   @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())

@@ -6,7 +6,10 @@ import { IsOptional, IsString } from 'class-validator';
  * Optional if token is sent via httpOnly cookie.
  */
 export class RefreshTokenDto {
-  @ApiPropertyOptional({ description: 'Current refresh token (optional if provided via httpOnly cookie)' })
+  @ApiPropertyOptional({
+    description:
+      'Current refresh token (optional if provided via httpOnly cookie)',
+  })
   @IsOptional()
   @IsString()
   refreshToken?: string;
