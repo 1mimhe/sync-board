@@ -14,6 +14,16 @@ describe('AnonymousGuard', () => {
   let blacklistServiceMock: MockProxy<TokenBlacklistService>;
   let refreshTokenRepositoryMock: MockProxy<RefreshTokenRepository>;
 
+  const mockJwtPayload = {
+    sub: 'user-uuid-1',
+    email: 'user@example.com',
+    displayName: 'Test User',
+    iat: 1000,
+    exp: 1000,
+    iss: 'syncboard',
+    jti: 'jti-1',
+  };
+
   const mockRefreshToken: RefreshToken = {
     id: 'token-uuid-1',
     userId: 'user-uuid-1',
@@ -68,12 +78,7 @@ describe('AnonymousGuard', () => {
       headers: { authorization: 'Bearer valid-access-token' },
     });
 
-    jwtTokenServiceMock.verifyAccessToken.mockReturnValue({
-      sub: 'user-uuid-1',
-      email: 'user@example.com',
-      jti: 'jti-1',
-      exp: 1000,
-    });
+    jwtTokenServiceMock.verifyAccessToken.mockReturnValue(mockJwtPayload);
     blacklistServiceMock.isBlacklisted.mockResolvedValue(false);
 
     await expect(guard.canActivate(context)).rejects.toThrow(
@@ -87,12 +92,7 @@ describe('AnonymousGuard', () => {
       cookies: {},
     });
 
-    jwtTokenServiceMock.verifyAccessToken.mockReturnValue({
-      sub: 'user-uuid-1',
-      email: 'user@example.com',
-      jti: 'jti-1',
-      exp: 1000,
-    });
+    jwtTokenServiceMock.verifyAccessToken.mockReturnValue(mockJwtPayload);
     blacklistServiceMock.isBlacklisted.mockResolvedValue(true);
 
     const result = await guard.canActivate(context);
