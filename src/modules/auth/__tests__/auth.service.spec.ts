@@ -108,7 +108,7 @@ describe('AuthService', () => {
   describe('register', () => {
     it('should register a new user successfully', async () => {
       userRepositoryMock.createUser.mockResolvedValue(mockUser);
-      tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken as any);
+      tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken);
 
       const result = await service.register({
         email: 'user@example.com',
@@ -128,7 +128,11 @@ describe('AuthService', () => {
 
     it('should throw AppException EMAIL_ALREADY_EXISTS on duplicate email', async () => {
       userRepositoryMock.createUser.mockRejectedValue(
-        new AppException('EMAIL_ALREADY_EXISTS', 'This email is already registered', 409),
+        new AppException(
+          'EMAIL_ALREADY_EXISTS',
+          'This email is already registered',
+          409,
+        ),
       );
 
       await expect(
@@ -146,7 +150,7 @@ describe('AuthService', () => {
       userRepositoryMock.findByEmail.mockResolvedValue(mockUser);
       jest.spyOn(passwordService, 'verify').mockResolvedValue(true);
       userRepositoryMock.updateLastLogin.mockResolvedValue();
-      tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken as any);
+      tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken);
 
       const result = await service.login({
         email: 'user@example.com',
@@ -188,9 +192,9 @@ describe('AuthService', () => {
   describe('refreshTokens', () => {
     it('should refresh tokens when given valid refresh token', async () => {
       tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
-        mockRefreshToken as any,
+        mockRefreshToken,
       );
-      tokenRepositoryMock.rotateToken.mockResolvedValue(mockRefreshToken as any);
+      tokenRepositoryMock.rotateToken.mockResolvedValue(mockRefreshToken);
 
       const result = await service.refreshTokens('valid-refresh-token');
 
@@ -205,7 +209,7 @@ describe('AuthService', () => {
         expiresAt: new Date(Date.now() - 1000),
       };
       tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
-        expiredToken as any,
+        expiredToken,
       );
 
       await expect(
@@ -218,7 +222,9 @@ describe('AuthService', () => {
         ...mockRefreshToken,
         revokedAt: new Date(),
       };
-      tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(reusedToken as any);
+      tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
+        reusedToken,
+      );
 
       await expect(
         service.refreshTokens('reused-refresh-token'),
@@ -238,7 +244,10 @@ describe('AuthService', () => {
       await service.logout('refresh-token-string', 'jwt-jti-1', expDate);
 
       expect(tokenRepositoryMock.revokeByTokenHash).toHaveBeenCalled();
-      expect(blacklistService.blacklist).toHaveBeenCalledWith('jwt-jti-1', expDate);
+      expect(blacklistService.blacklist).toHaveBeenCalledWith(
+        'jwt-jti-1',
+        expDate,
+      );
     });
   });
 
@@ -249,8 +258,13 @@ describe('AuthService', () => {
 
       await service.logoutAllDevices(mockUser.id, 'jwt-jti-1', expDate);
 
-      expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(mockUser.id);
-      expect(blacklistService.blacklist).toHaveBeenCalledWith('jwt-jti-1', expDate);
+      expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+      expect(blacklistService.blacklist).toHaveBeenCalledWith(
+        'jwt-jti-1',
+        expDate,
+      );
     });
   });
 
@@ -287,7 +301,9 @@ describe('AuthService', () => {
   describe('resetPassword', () => {
     it('should reset password with valid Redis token', async () => {
       redisMock.get.mockResolvedValue(mockUser.id);
-      jest.spyOn(passwordService, 'hash').mockResolvedValue('newhashedpassword');
+      jest
+        .spyOn(passwordService, 'hash')
+        .mockResolvedValue('newhashedpassword');
       userRepositoryMock.updatePassword.mockResolvedValue(mockUser as any);
       tokenRepositoryMock.revokeAllByUserId.mockResolvedValue();
       redisMock.del.mockResolvedValue(1);
@@ -298,7 +314,9 @@ describe('AuthService', () => {
         mockUser.id,
         'newhashedpassword',
       );
-      expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(mockUser.id);
+      expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(
+        mockUser.id,
+      );
       expect(redisMock.del).toHaveBeenCalled();
     });
 

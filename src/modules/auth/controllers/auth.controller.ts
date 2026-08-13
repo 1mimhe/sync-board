@@ -14,28 +14,41 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiConflictResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { User } from '@prisma/client';
 import { AuthService } from '../services/auth.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AnonymousGuard } from '../../../common/guards/anonymous.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { RegisterDto } from '../dto/register.dto';
-import { LoginDto } from '../dto/login.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
-import { ForgotPasswordDto } from '../dto/forgot-password.dto';
-import { ResetPasswordDto } from '../dto/reset-password.dto';
-import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { ChangePasswordDto } from '../dto/change-password.dto';
-import type { AuthResponse, TokenPair } from '../interfaces/auth-response.interface';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  AuthResponseDto,
+  TokenPairDto,
+  UserResponseDto,
+  MessageResponseDto,
+  GoogleAuthUrlResponseDto,
+} from '../dto';
 import type { JwtPayload } from '../interfaces/jwt-payload.interface';
 import {
   REFRESH_TOKEN_COOKIE_NAME,
   getRefreshTokenCookieOptions,
+  AUTH_THROTTLE_CONFIG,
 } from '../auth.constants';
 
 /**
@@ -49,17 +62,23 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle(AUTH_THROTTLE_CONFIG.register)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({ status: 403, description: 'User is already authenticated' })
-  @ApiResponse({ status: 409, description: 'Email is already registered' })
+  @ApiCreatedResponse({
+    type: AuthResponseDto,
+    description: 'User registered successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiForbiddenResponse({ description: 'User is already authenticated' })
+  @ApiConflictResponse({ description: 'Email is already registered' })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponseDto> {
     const response = await this.authService.register(
       dto,
       req.ip,
@@ -75,17 +94,23 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle(AUTH_THROTTLE_CONFIG.login)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Authenticate with email and password' })
-  @ApiResponse({ status: 200, description: 'Login successful' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({ status: 401, description: 'Invalid email or password' })
-  @ApiResponse({ status: 403, description: 'User is already authenticated' })
+  @ApiOkResponse({
+    type: AuthResponseDto,
+    description: 'Login successful',
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
+  @ApiForbiddenResponse({ description: 'User is already authenticated' })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponseDto> {
     const response = await this.authService.login(
       dto,
       req.ip,
@@ -101,19 +126,27 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
-  @ApiResponse({ status: 200, description: 'Token pair refreshed successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({
-    status: 401,
-    description: 'Invalid, expired, or reused refresh token',
+  @Throttle(AUTH_THROTTLE_CONFIG.refresh)
+  @ApiOperation({
+    summary: 'Refresh access token using httpOnly refresh token cookie',
+  })
+  @ApiOkResponse({
+    type: TokenPairDto,
+    description: 'Token pair refreshed successfully',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid, expired, or revoked refresh token',
   })
   async refresh(
-    @Body() dto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenPair> {
-    const rawToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME] || dto.refreshToken;
+  ): Promise<TokenPairDto> {
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const rawToken =
+      typeof cookies?.[REFRESH_TOKEN_COOKIE_NAME] === 'string'
+        ? cookies[REFRESH_TOKEN_COOKIE_NAME]
+        : undefined;
+
     if (!rawToken) {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
@@ -138,15 +171,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout current device (revoke refresh token)' })
-  @ApiResponse({ status: 204, description: 'Device logged out successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
+  @ApiNoContentResponse({ description: 'Device logged out successfully' })
   async logout(
-    @Body() dto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    const rawToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME] || dto.refreshToken;
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const rawToken =
+      typeof cookies?.[REFRESH_TOKEN_COOKIE_NAME] === 'string'
+        ? cookies[REFRESH_TOKEN_COOKIE_NAME]
+        : undefined;
+
     if (rawToken) {
       await this.authService.logout(
         rawToken,
@@ -165,8 +201,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiResponse({
-    status: 204,
+  @ApiNoContentResponse({
     description: 'All device sessions revoked successfully',
   })
   async logoutAll(
@@ -186,17 +221,20 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle(AUTH_THROTTLE_CONFIG.forgotPassword)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Request password reset link email' })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
+    type: MessageResponseDto,
     description: 'Password reset email queued if user exists',
   })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({ status: 403, description: 'User is already authenticated' })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiForbiddenResponse({ description: 'User is already authenticated' })
   async forgotPassword(
     @Body() dto: ForgotPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     await this.authService.forgotPassword(dto.email);
     return {
       message:
@@ -206,15 +244,21 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle(AUTH_THROTTLE_CONFIG.resetPassword)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Reset password using valid reset token' })
-  @ApiResponse({ status: 200, description: 'Password reset successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({ status: 401, description: 'Invalid or expired reset token' })
-  @ApiResponse({ status: 403, description: 'User is already authenticated' })
+  @ApiOkResponse({
+    type: MessageResponseDto,
+    description: 'Password reset successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired reset token' })
+  @ApiForbiddenResponse({ description: 'User is already authenticated' })
   async resetPassword(
     @Body() dto: ResetPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
     return {
       message:
@@ -226,19 +270,26 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Get Google OAuth authorization URL for frontend' })
-  @ApiResponse({ status: 200, description: 'Google OAuth authorization URL' })
-  @ApiResponse({ status: 403, description: 'User is already authenticated' })
-  googleAuth(): { url: string } {
+  @ApiOkResponse({
+    type: GoogleAuthUrlResponseDto,
+    description: 'Google OAuth authorization URL',
+  })
+  @ApiForbiddenResponse({ description: 'User is already authenticated' })
+  googleAuth(): GoogleAuthUrlResponseDto {
     return this.authService.getGoogleAuthUrl();
   }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback handler' })
+  @ApiOkResponse({
+    type: AuthResponseDto,
+    description: 'Google OAuth login successful',
+  })
   async googleCallback(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponseDto> {
     const user = req.user as User;
     const response = await this.authService.handleGoogleCallback(
       user,
@@ -257,28 +308,30 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get authenticated user profile' })
-  @ApiResponse({ status: 200, description: 'User profile metadata' })
-  async getProfile(
-    @CurrentUser() user: JwtPayload,
-  ): Promise<Omit<User, 'passwordHash'>> {
-    const profile = await this.authService.getProfile(user.sub);
-    const { passwordHash, ...safeProfile } = profile;
-    return safeProfile;
+  @ApiOkResponse({
+    type: UserResponseDto,
+    description: 'User profile metadata',
+  })
+  async getProfile(@CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.authService.getProfile(user.sub);
   }
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user profile' })
-  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
+  @ApiOkResponse({
+    type: UserResponseDto,
+    description: 'Profile updated successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
   async updateProfile(
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateProfileDto,
-  ): Promise<Omit<User, 'passwordHash'>> {
-    const updated = await this.authService.updateProfile(user.sub, dto);
-    const { passwordHash, ...safeProfile } = updated;
-    return safeProfile;
+  ): Promise<UserResponseDto> {
+    return this.authService.updateProfile(user.sub, dto);
   }
 
   @Patch('me/password')
@@ -286,9 +339,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change current user password' })
-  @ApiResponse({ status: 204, description: 'Password changed successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error — invalid request body' })
-  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
+  @ApiNoContentResponse({ description: 'Password changed successfully' })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiUnauthorizedResponse({ description: 'Current password is incorrect' })
   async changePassword(
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChangePasswordDto,

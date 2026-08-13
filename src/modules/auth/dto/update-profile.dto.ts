@@ -1,12 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MinLength, MaxLength, IsUrl } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  MinLength,
+  MaxLength,
+  IsUrl,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
  * DTO for updating user profile attributes.
  */
 export class UpdateProfileDto {
-  @ApiPropertyOptional({ description: 'Display name', minLength: 2, maxLength: 100 })
+  @ApiPropertyOptional({
+    description: 'Display name',
+    minLength: 2,
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
   @MinLength(2)

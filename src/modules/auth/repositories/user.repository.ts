@@ -61,6 +61,16 @@ export class UserRepository {
   }
 
   /**
+   * Find a user by UUID, omitting the password hash — safe for API responses.
+   */
+  async findByIdPublic(id: string): Promise<Omit<User, 'passwordHash'> | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      omit: { passwordHash: true },
+    });
+  }
+
+  /**
    * Find a user by their Google OAuth ID.
    */
   async findByGoogleId(googleId: string): Promise<User | null> {
@@ -81,14 +91,16 @@ export class UserRepository {
 
   /**
    * Update user profile attributes (displayName and/or avatarUrl).
+   * The password hash is omitted so the returned record is safe for API responses.
    */
   async updateProfile(
     userId: string,
     data: Partial<Pick<User, 'displayName' | 'avatarUrl'>>,
-  ): Promise<User> {
+  ): Promise<Omit<User, 'passwordHash'>> {
     return this.prisma.user.update({
       where: { id: userId },
       data,
+      omit: { passwordHash: true },
     });
   }
 

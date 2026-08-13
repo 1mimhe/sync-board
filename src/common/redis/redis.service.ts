@@ -39,7 +39,9 @@ export class RedisService extends Redis implements OnModuleDestroy {
       this.logger.log(`Connecting to Redis instance at ${host}:${port}`),
     );
     this.on('ready', () =>
-      this.logger.log(`Redis connected successfully and ready at ${host}:${port}`),
+      this.logger.log(
+        `Redis connected successfully and ready at ${host}:${port}`,
+      ),
     );
     this.on('error', (err: Error) => {
       if (err.message.includes('ECONNREFUSED')) {

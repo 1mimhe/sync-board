@@ -19,6 +19,28 @@ import { ApiErrorDetail } from '../interfaces/response.interface';
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  private readonly unauthorizedErrorMap: Record<
+    string,
+    { code: string; message: string }
+  > = {
+    TOKEN_EXPIRED: {
+      code: 'TOKEN_EXPIRED',
+      message: 'Access token has expired',
+    },
+    TOKEN_INVALID: {
+      code: 'TOKEN_INVALID',
+      message: 'Invalid or missing authentication token',
+    },
+    TOKEN_REVOKED: {
+      code: 'TOKEN_REVOKED',
+      message: 'Access token has been revoked',
+    },
+    TOKEN_MISSING: {
+      code: 'TOKEN_MISSING',
+      message: 'Authentication token is missing',
+    },
+  };
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -51,19 +73,30 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       if (typeof exResponse === 'object' && exResponse !== null) {
         const resp = exResponse as Record<string, unknown>;
-        errorCode = (resp['code'] as string) || 'VALIDATION_ERROR';
-        message = (resp['message'] as string) || exception.message;
+        const rawMessage = resp['message'];
 
-        // Format class-validator array messages into structured error objects
-        if (Array.isArray(resp['message'])) {
-          errorCode = 'VALIDATION_ERROR';
+        if (Array.isArray(rawMessage)) {
+          errorCode = (resp['code'] as string) || 'VALIDATION_ERROR';
           message = 'Validation failed';
           details = {
-            errors: this.formatValidationErrors(resp['message'] as string[]),
+            errors: this.formatValidationErrors(rawMessage as string[]),
           };
+        } else {
+          const strMsg = typeof rawMessage === 'string' ? rawMessage : undefined;
+          errorCode =
+            (resp['code'] as string) ||
+            this.getDefaultErrorCodeForStatus(statusCode, strMsg);
+          message = this.getReadableMessageForException(
+            statusCode,
+            strMsg || exception.message,
+          );
         }
       } else if (typeof exResponse === 'string') {
-        message = exResponse;
+        errorCode = this.getDefaultErrorCodeForStatus(statusCode, exResponse);
+        message = this.getReadableMessageForException(statusCode, exResponse);
+      } else {
+        errorCode = this.getDefaultErrorCodeForStatus(statusCode);
+        message = exception.message;
       }
     }
     // Log unhandled unexpected errors
@@ -100,6 +133,42 @@ export class AllExceptionsFilter implements ExceptionFilter {
         requestId,
       },
     });
+  }
+
+  private getDefaultErrorCodeForStatus(
+    statusCode: number,
+    rawMessage?: string,
+  ): string {
+    if (statusCode === HttpStatus.UNAUTHORIZED) {
+      if (rawMessage && this.unauthorizedErrorMap[rawMessage]) {
+        return this.unauthorizedErrorMap[rawMessage].code;
+      }
+      if (rawMessage && /^[A-Z0-9_]+$/.test(rawMessage)) {
+        return rawMessage;
+      }
+      return 'UNAUTHORIZED';
+    }
+    if (statusCode === HttpStatus.FORBIDDEN) return 'FORBIDDEN';
+    if (statusCode === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
+    if (statusCode === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
+    if (statusCode === HttpStatus.CONFLICT) return 'CONFLICT';
+    if (statusCode === HttpStatus.TOO_MANY_REQUESTS) return 'TOO_MANY_REQUESTS';
+    return 'HTTP_ERROR';
+  }
+
+  private getReadableMessageForException(
+    statusCode: number,
+    rawMessage: string,
+  ): string {
+    if (statusCode === HttpStatus.UNAUTHORIZED) {
+      if (this.unauthorizedErrorMap[rawMessage]) {
+        return this.unauthorizedErrorMap[rawMessage].message;
+      }
+      if (rawMessage === 'Unauthorized') {
+        return 'Authentication required';
+      }
+    }
+    return rawMessage;
   }
 
   /**

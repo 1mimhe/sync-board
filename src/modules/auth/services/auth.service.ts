@@ -1,12 +1,13 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
-import { randomBytes, createHash, randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PasswordService } from './password.service';
 import { JwtTokenService } from './jwt-token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { RedisService } from '../../../common/redis/redis.service';
+import { hashToken } from '../../../common/utils/hash.util';
 import { UserRepository } from '../repositories/user.repository';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
 import { RegisterDto } from '../dto/register.dto';
@@ -137,8 +138,7 @@ export class AuthService {
     const newRawToken = randomBytes(32).toString('base64url');
     const newTokenHash = this.hashToken(newRawToken);
     const expiresAt = new Date(
-      Date.now() +
-        AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
+      Date.now() + AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
     );
 
     await this.tokenRepository.rotateToken(existingToken.id, {
@@ -172,7 +172,9 @@ export class AuthService {
     if (jti && jwtExpiresAt) {
       await this.blacklistService.blacklist(jti, jwtExpiresAt);
     }
-    this.logger.debug('User logged out (single device token revoked + JWT blacklisted)');
+    this.logger.debug(
+      'User logged out (single device token revoked + JWT blacklisted)',
+    );
   }
 
   /**
@@ -215,7 +217,9 @@ export class AuthService {
       email: user.email,
       token: resetToken,
     } satisfies PasswordResetRequestedEvent);
-    this.logger.log(`Password reset token created in Redis for user: ${user.id}`);
+    this.logger.log(
+      `Password reset token created in Redis for user: ${user.id}`,
+    );
   }
 
   /**
@@ -236,7 +240,9 @@ export class AuthService {
     await this.tokenRepository.revokeAllByUserId(userId);
     await this.redis.del(redisKey);
 
-    this.logger.log(`Password reset successfully via Redis for user: ${userId}`);
+    this.logger.log(
+      `Password reset successfully via Redis for user: ${userId}`,
+    );
   }
 
   /**
@@ -316,10 +322,10 @@ export class AuthService {
   }
 
   /**
-   * Get user profile details by ID.
+   * Get user profile details by ID, excluding the password hash.
    */
-  async getProfile(userId: string): Promise<User> {
-    const user = await this.userRepository.findById(userId);
+  async getProfile(userId: string): Promise<Omit<User, 'passwordHash'>> {
+    const user = await this.userRepository.findByIdPublic(userId);
     if (!user) {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
@@ -327,9 +333,19 @@ export class AuthService {
   }
 
   /**
-   * Update current user's profile info.
+   * Find user by email address (for internal module consumption).
    */
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  /**
+   * Update current user's profile info. Password hash is never returned.
+   */
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<Omit<User, 'passwordHash'>> {
     return this.userRepository.updateProfile(userId, {
       ...(dto.displayName && { displayName: dto.displayName }),
       ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
@@ -340,10 +356,7 @@ export class AuthService {
    * Change current user's password.
    * @throws UnauthorizedException INVALID_CREDENTIALS
    */
-  async changePassword(
-    userId: string,
-    dto: ChangePasswordDto,
-  ): Promise<void> {
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     const user = await this.userRepository.findById(userId);
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
@@ -395,7 +408,7 @@ export class AuthService {
    * Helper to hash refresh tokens with SHA-256 before storing in DB.
    */
   private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+    return hashToken(token);
   }
 
   /**
