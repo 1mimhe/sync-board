@@ -26,6 +26,42 @@ export const AUTH_CONFIG = {
 
 export const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken';
 
+/**
+ * Throttling threshold configurations for authentication controller endpoints.
+ */
+export const AUTH_THROTTLE_CONFIG = {
+  register: {
+    default: {
+      limit: AUTH_CONFIG.rateLimit.registerAttempts,
+      ttl: 60_000,
+    },
+  },
+  login: {
+    default: {
+      limit: AUTH_CONFIG.rateLimit.loginAttempts,
+      ttl: 60_000,
+    },
+  },
+  refresh: {
+    default: {
+      limit: AUTH_CONFIG.rateLimit.refreshAttempts,
+      ttl: 60_000,
+    },
+  },
+  forgotPassword: {
+    default: {
+      limit: AUTH_CONFIG.rateLimit.passwordResetAttempts,
+      ttl: 3_600_000,
+    },
+  },
+  resetPassword: {
+    default: {
+      limit: AUTH_CONFIG.rateLimit.passwordResetAttempts,
+      ttl: 3_600_000,
+    },
+  },
+} as const;
+
 export const getRefreshTokenCookieOptions = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -33,3 +69,4 @@ export const getRefreshTokenCookieOptions = () => ({
   path: '/api/auth',
   maxAge: AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
 });
+
