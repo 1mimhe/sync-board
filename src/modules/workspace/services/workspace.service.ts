@@ -402,6 +402,14 @@ export class WorkspaceService {
   }
 
   /**
+   * Check if a user is an active member of a workspace.
+   */
+  async isUserMember(workspaceId: string, userId: string): Promise<boolean> {
+    const member = await this.memberRepo.findMember(workspaceId, userId);
+    return !!member;
+  }
+
+  /**
    * Helper method to generate a URL-safe unique slug for workspace.
    */
   async generateUniqueSlug(name: string): Promise<string> {
