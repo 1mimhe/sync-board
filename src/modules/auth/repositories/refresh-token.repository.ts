@@ -87,7 +87,8 @@ export class RefreshTokenRepository {
 
   /**
    * Perform token rotation in an atomic transaction:
-   * Marks old token as revoked and creates a new token in the same family.
+   * Creates the new token, then marks the old token as revoked and links it
+   * to the new token via `replacedBy` — all in a single database transaction.
    */
   async rotateToken(
     oldTokenId: string,
@@ -100,12 +101,8 @@ export class RefreshTokenRepository {
       expiresAt: Date;
     },
   ): Promise<RefreshToken> {
-    const [, newToken] = await this.prisma.$transaction([
-      this.prisma.refreshToken.update({
-        where: { id: oldTokenId },
-        data: { revokedAt: new Date() },
-      }),
-      this.prisma.refreshToken.create({
+    return this.prisma.$transaction(async (tx) => {
+      const newToken = await tx.refreshToken.create({
         data: {
           userId: newTokenData.userId,
           tokenHash: newTokenData.tokenHash,
@@ -114,15 +111,15 @@ export class RefreshTokenRepository {
           userAgent: newTokenData.userAgent,
           expiresAt: newTokenData.expiresAt,
         },
-      }),
-    ]);
+      });
 
-    await this.prisma.refreshToken.update({
-      where: { id: oldTokenId },
-      data: { replacedBy: newToken.id },
+      await tx.refreshToken.update({
+        where: { id: oldTokenId },
+        data: { revokedAt: new Date(), replacedBy: newToken.id },
+      });
+
+      return newToken;
     });
-
-    return newToken;
   }
 
   /**

@@ -24,6 +24,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { User } from '@prisma/client';
 import { AuthService } from '../services/auth.service';
@@ -61,6 +62,7 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiCreatedResponse({
@@ -92,6 +94,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Authenticate with email and password' })
   @ApiOkResponse({
@@ -123,6 +126,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiOkResponse({
     type: TokenPairDto,
@@ -225,6 +229,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Request password reset link email' })
   @ApiOkResponse({
@@ -247,6 +252,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Reset password using valid reset token' })
   @ApiOkResponse({
@@ -315,10 +321,7 @@ export class AuthController {
     description: 'User profile metadata',
   })
   async getProfile(@CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
-    const profile = await this.authService.getProfile(user.sub);
-    const safeProfile = { ...profile };
-    delete (safeProfile as { passwordHash?: string }).passwordHash;
-    return safeProfile;
+    return this.authService.getProfile(user.sub);
   }
 
   @Patch('me')
@@ -336,10 +339,7 @@ export class AuthController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateProfileDto,
   ): Promise<UserResponseDto> {
-    const updated = await this.authService.updateProfile(user.sub, dto);
-    const safeProfile = { ...updated };
-    delete (safeProfile as { passwordHash?: string }).passwordHash;
-    return safeProfile;
+    return this.authService.updateProfile(user.sub, dto);
   }
 
   @Patch('me/password')

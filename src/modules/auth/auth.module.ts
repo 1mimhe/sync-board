@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { PasswordService } from './services/password.service';
@@ -12,15 +11,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AnonymousGuard } from '../../common/guards/anonymous.guard';
+import { TokenCleanupTask } from './tasks/token-cleanup.task';
 
 /**
  * Authentication feature module wiring controllers, services, strategies, and guards.
  */
 @Module({
-  imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    EventEmitterModule.forRoot(),
-  ],
+  imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -33,6 +30,7 @@ import { AnonymousGuard } from '../../common/guards/anonymous.guard';
     GoogleStrategy,
     JwtAuthGuard,
     AnonymousGuard,
+    TokenCleanupTask,
   ],
   exports: [
     AuthService,

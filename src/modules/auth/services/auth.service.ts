@@ -322,10 +322,10 @@ export class AuthService {
   }
 
   /**
-   * Get user profile details by ID.
+   * Get user profile details by ID, excluding the password hash.
    */
-  async getProfile(userId: string): Promise<User> {
-    const user = await this.userRepository.findById(userId);
+  async getProfile(userId: string): Promise<Omit<User, 'passwordHash'>> {
+    const user = await this.userRepository.findByIdPublic(userId);
     if (!user) {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
@@ -333,9 +333,19 @@ export class AuthService {
   }
 
   /**
-   * Update current user's profile info.
+   * Find user by email address (for internal module consumption).
    */
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  /**
+   * Update current user's profile info. Password hash is never returned.
+   */
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<Omit<User, 'passwordHash'>> {
     return this.userRepository.updateProfile(userId, {
       ...(dto.displayName && { displayName: dto.displayName }),
       ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
