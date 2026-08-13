@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppConfigModule } from './common/config/config.module';
 import { PrismaModule } from './common/database/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
@@ -21,6 +24,13 @@ import { FileModule } from './modules/file/file.module';
     PrismaModule,
     RedisModule,
     EventEmitterModule.forRoot(),
+
+    // Scheduled background jobs (refresh token cleanup, etc.)
+    ScheduleModule.forRoot(),
+
+    // Global rate limiting: 100 requests per minute per IP by default.
+    // Endpoint-specific limits are applied via @Throttle() decorators.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
 
     // Centralized Structured Logging (Pino)
     LoggerModule.forRootAsync({
@@ -76,6 +86,12 @@ import { FileModule } from './modules/file/file.module';
     ActivityModule,
     NotificationModule,
     FileModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
