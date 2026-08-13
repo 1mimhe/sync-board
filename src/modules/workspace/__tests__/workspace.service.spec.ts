@@ -238,5 +238,24 @@ describe('WorkspaceService', () => {
         expect.any(Date),
       );
     });
+
+    it('should throw BusinessRuleException if user is already a member', async () => {
+      const mockInvite = {
+        id: 'inv-1',
+        workspaceId: 'ws-1',
+        email: 'user@test.com',
+        role: WorkspaceRole.member,
+        token: 'valid-token',
+        status: InvitationStatus.pending,
+        expiresAt: new Date(Date.now() + 100000),
+      };
+
+      invitationRepo.findByToken.mockResolvedValue(mockInvite as any);
+      memberRepo.findMember.mockResolvedValue({ id: 'existing-m' } as any);
+
+      await expect(
+        service.acceptInvitation({ token: 'valid-token' }, 'u-2'),
+      ).rejects.toThrow(BusinessRuleException);
+    });
   });
 });

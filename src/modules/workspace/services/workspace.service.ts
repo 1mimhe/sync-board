@@ -341,12 +341,10 @@ export class WorkspaceService {
     );
 
     if (existingMember) {
-      await this.invitationRepo.updateStatus(
-        invitation.id,
-        InvitationStatus.accepted,
-        new Date(),
+      throw new BusinessRuleException(
+        'ALREADY_A_MEMBER',
+        'User is already a member of this workspace',
       );
-      return existingMember;
     }
 
     const member = await this.memberRepo.createMember(

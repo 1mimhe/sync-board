@@ -34,7 +34,6 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import {
   RegisterDto,
   LoginDto,
-  RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
   UpdateProfileDto,
@@ -128,28 +127,25 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @Throttle(AUTH_THROTTLE_CONFIG.refresh)
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiOperation({
+    summary: 'Refresh access token using httpOnly refresh token cookie',
+  })
   @ApiOkResponse({
     type: TokenPairDto,
     description: 'Token pair refreshed successfully',
   })
-  @ApiBadRequestResponse({
-    description: 'Validation error — invalid request body',
-  })
   @ApiUnauthorizedResponse({
-    description: 'Invalid, expired, or reused refresh token',
+    description: 'Invalid, expired, or revoked refresh token',
   })
   async refresh(
-    @Body() dto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenPairDto> {
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    const cookieToken =
+    const rawToken =
       typeof cookies?.[REFRESH_TOKEN_COOKIE_NAME] === 'string'
         ? cookies[REFRESH_TOKEN_COOKIE_NAME]
         : undefined;
-    const rawToken = cookieToken || dto.refreshToken;
 
     if (!rawToken) {
       throw new UnauthorizedException('TOKEN_INVALID');
@@ -176,21 +172,16 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout current device (revoke refresh token)' })
   @ApiNoContentResponse({ description: 'Device logged out successfully' })
-  @ApiBadRequestResponse({
-    description: 'Validation error — invalid request body',
-  })
   async logout(
-    @Body() dto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    const cookieToken =
+    const rawToken =
       typeof cookies?.[REFRESH_TOKEN_COOKIE_NAME] === 'string'
         ? cookies[REFRESH_TOKEN_COOKIE_NAME]
         : undefined;
-    const rawToken = cookieToken || dto.refreshToken;
 
     if (rawToken) {
       await this.authService.logout(

@@ -25,6 +25,7 @@ export class WorkspaceRepository {
           name: data.name,
           slug: data.slug,
           description: data.description,
+          avatarUrl: data.avatarUrl,
           ownerId,
         },
       });
