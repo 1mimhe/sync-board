@@ -49,6 +49,7 @@ import type { JwtPayload } from '../interfaces/jwt-payload.interface';
 import {
   REFRESH_TOKEN_COOKIE_NAME,
   getRefreshTokenCookieOptions,
+  AUTH_THROTTLE_CONFIG,
 } from '../auth.constants';
 
 /**
@@ -62,7 +63,7 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Throttle(AUTH_THROTTLE_CONFIG.register)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiCreatedResponse({
@@ -94,7 +95,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle(AUTH_THROTTLE_CONFIG.login)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Authenticate with email and password' })
   @ApiOkResponse({
@@ -126,7 +127,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(AUTH_THROTTLE_CONFIG.refresh)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiOkResponse({
     type: TokenPairDto,
@@ -229,7 +230,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
+  @Throttle(AUTH_THROTTLE_CONFIG.forgotPassword)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Request password reset link email' })
   @ApiOkResponse({
@@ -252,7 +253,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
+  @Throttle(AUTH_THROTTLE_CONFIG.resetPassword)
   @UseGuards(AnonymousGuard)
   @ApiOperation({ summary: 'Reset password using valid reset token' })
   @ApiOkResponse({
