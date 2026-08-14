@@ -4,11 +4,13 @@ import type { Board, Label } from '@prisma/client';
 import { BoardRepository } from '../repositories/board.repository';
 import { LabelRepository } from '../repositories/label.repository';
 import { ActivityRepository } from '../repositories/activity.repository';
-import { CreateBoardDto } from '../dto/create-board.dto';
-import { UpdateBoardDto } from '../dto/update-board.dto';
-import { CreateLabelDto } from '../dto/create-label.dto';
-import { UpdateLabelDto } from '../dto/update-label.dto';
-import { BoardContentQueryDto } from '../dto/board-content-query.dto';
+import {
+  CreateBoardDto,
+  UpdateBoardDto,
+  CreateLabelDto,
+  UpdateLabelDto,
+  BoardContentQueryDto,
+} from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import {
   BoardCreatedEvent,

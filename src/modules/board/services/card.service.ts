@@ -6,9 +6,7 @@ import { ListRepository } from '../repositories/list.repository';
 import { LabelRepository } from '../repositories/label.repository';
 import { LexorankService } from './lexorank.service';
 import { WorkspaceService } from '../../workspace/services/workspace.service';
-import { CreateCardDto } from '../dto/create-card.dto';
-import { UpdateCardDto } from '../dto/update-card.dto';
-import { MoveCardDto } from '../dto/move-card.dto';
+import { CreateCardDto, UpdateCardDto, MoveCardDto } from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import {
   CardCreatedEvent,
@@ -154,7 +152,6 @@ export class CardService {
    * Retrieves card details with assignees, labels, and attachments.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @returns The card with full details
    * @throws {EntityNotFoundException} If card is not found
@@ -174,7 +171,6 @@ export class CardService {
    * Updates fields of an existing card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Card update payload
    * @param userId - Modifying user UUID
@@ -217,7 +213,6 @@ export class CardService {
    * Moves or reorders a card within a list or across lists on the same board.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Target list UUID and rank positioning strings
    * @param userId - Modifying user UUID
@@ -280,7 +275,6 @@ export class CardService {
    * Soft-deletes (archives) a card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param userId - User UUID who archived the card
    * @throws {EntityNotFoundException} If card is not found
@@ -308,7 +302,6 @@ export class CardService {
    * Restores an archived card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param userId - User UUID who restored the card
    * @returns The restored card
@@ -343,7 +336,6 @@ export class CardService {
    * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param assigneeUserId - Target user UUID to assign
-   * @param userId - Requesting user UUID
    * @throws {EntityNotFoundException} If card is not found
    * @throws {BadRequestException} If assigned user is not a member of the workspace
    */
@@ -375,10 +367,8 @@ export class CardService {
    * Removes an assigned user from a card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param assigneeUserId - User UUID to remove from card
-   * @param _userId - Requesting user UUID
    * @throws {EntityNotFoundException} If card is not found
    */
   async removeAssignee(
@@ -401,7 +391,6 @@ export class CardService {
    * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param labelId - Label UUID to attach
-   * @param _userId - Requesting user UUID
    * @throws {EntityNotFoundException} If card is not found
    * @throws {BadRequestException} If label is not available for this board
    */
@@ -434,10 +423,8 @@ export class CardService {
    * Detaches a label from a card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param labelId - Label UUID to detach
-   * @param _userId - Requesting user UUID
    * @throws {EntityNotFoundException} If card is not found
    */
   async removeLabel(

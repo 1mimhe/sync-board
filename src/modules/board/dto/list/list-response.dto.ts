@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CardWithDetailsResponseDto } from './card-response.dto';
+import { CardWithDetailsResponseDto } from '../card/card-response.dto';
 
 /**
  * Response DTO representing standard list metadata.

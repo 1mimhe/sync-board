@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ListWithCardsResponseDto } from './list-response.dto';
-import { BoardLabelResponseDto } from './board-label-response.dto';
+import { ListWithCardsResponseDto } from '../list/list-response.dto';
+import { BoardLabelResponseDto } from '../label/board-label-response.dto';
 
 /**
  * Response DTO representing standard board metadata.

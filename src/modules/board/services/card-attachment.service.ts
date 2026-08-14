@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardRepository } from '../repositories/card.repository';
 import { CardAttachmentRepository } from '../repositories/card-attachment.repository';
-import { CreateCardAttachmentDto } from '../dto/create-card-attachment.dto';
-import { UpdateCardAttachmentDto } from '../dto/update-card-attachment.dto';
+import {
+  CreateCardAttachmentDto,
+  UpdateCardAttachmentDto,
+} from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import {
   AttachmentCreatedEvent,
@@ -29,7 +31,6 @@ export class CardAttachmentService {
    * Adds an attachment to a card and emits `attachment.created` event.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Attachment creation data
    * @param userId - Creating/uploading user UUID
@@ -74,7 +75,6 @@ export class CardAttachmentService {
    * Retrieves all attachments associated with a card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @returns Array of attachments with uploader details
    * @throws {EntityNotFoundException} If card is not found
@@ -95,11 +95,9 @@ export class CardAttachmentService {
    * Updates an existing attachment's metadata or URL.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param attachmentId - Attachment UUID
    * @param dto - Update data
-   * @param userId - Modifying user UUID
    * @returns The updated attachment
    * @throws {EntityNotFoundException} If card or attachment is not found
    */
@@ -133,7 +131,6 @@ export class CardAttachmentService {
    * Permanently deletes an attachment and emits `attachment.deleted` event.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param attachmentId - Attachment UUID to delete
    * @param userId - User UUID performing the deletion

@@ -4,9 +4,7 @@ import type { List } from '@prisma/client';
 import { ListRepository } from '../repositories/list.repository';
 import { BoardRepository } from '../repositories/board.repository';
 import { LexorankService } from './lexorank.service';
-import { CreateListDto } from '../dto/create-list.dto';
-import { UpdateListDto } from '../dto/update-list.dto';
-import { MoveListDto } from '../dto/move-list.dto';
+import { CreateListDto, UpdateListDto, MoveListDto } from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import {
   ListCreatedEvent,

@@ -2,9 +2,11 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardCommentRepository } from '../repositories/card-comment.repository';
 import { CardRepository } from '../repositories/card.repository';
-import { CreateCommentDto } from '../dto/create-comment.dto';
-import { UpdateCommentDto } from '../dto/update-comment.dto';
-import { PaginationQueryDto } from '../dto/pagination-query.dto';
+import {
+  CreateCommentDto,
+  UpdateCommentDto,
+  PaginationQueryDto,
+} from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import { CommentCreatedEvent } from '../events/board.events';
 import { COMMENT_EVENTS } from '../events/board-events.constants';
@@ -46,7 +48,6 @@ export class CardCommentService {
    * Adds a new comment to a card and emits `comment.created` event.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Comment content data
    * @param userId - Creating user UUID
@@ -80,7 +81,6 @@ export class CardCommentService {
    * Retrieves paginated comments for a card.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param query - Page and page size parameters
    * @returns Paginated list of comments with metadata
@@ -120,7 +120,6 @@ export class CardCommentService {
    * Updates an existing comment's text. Only the comment author is permitted.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param commentId - Comment UUID
    * @param dto - Updated comment content
@@ -154,7 +153,6 @@ export class CardCommentService {
    * Soft-deletes a comment. Only the comment author is permitted.
    *
    * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param commentId - Comment UUID
    * @param userId - Requesting user UUID

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AttachmentType } from '@prisma/client';
-import { CommentAuthorDto } from './card-comment-response.dto';
+import { CommentAuthorDto } from '../comment/card-comment-response.dto';
 
 /**
  * Response DTO representing an attachment (file, image, or external link) on a card.

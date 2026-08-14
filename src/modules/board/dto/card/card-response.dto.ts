@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
-import { BoardLabelResponseDto } from './board-label-response.dto';
-import { CommentAuthorDto } from './card-comment-response.dto';
-import { CardAttachmentResponseDto } from './card-attachment-response.dto';
+import { BoardLabelResponseDto } from '../label/board-label-response.dto';
+import { CommentAuthorDto } from '../comment/card-comment-response.dto';
+import { CardAttachmentResponseDto } from '../attachment/card-attachment-response.dto';
 
 /**
  * Response DTO representing an assigned user on a card.
