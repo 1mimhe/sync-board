@@ -12,8 +12,11 @@ describe('WorkspaceController', () => {
       findAllForUser: jest.fn(),
       findBySlug: jest.fn(),
       findById: jest.fn(),
+      findByIdWithRole: jest.fn(),
       update: jest.fn(),
       archive: jest.fn(),
+      leaveWorkspace: jest.fn(),
+      transferOwnership: jest.fn(),
       getMembers: jest.fn(),
       updateMemberRole: jest.fn(),
       removeMember: jest.fn(),
@@ -51,6 +54,46 @@ describe('WorkspaceController', () => {
       const res = await controller.listMine(mockUser);
       expect(res).toEqual(mockList);
       expect(service.findAllForUser).toHaveBeenCalledWith('user-123');
+    });
+  });
+
+  describe('getById', () => {
+    it('should delegate to workspaceService.findByIdWithRole', async () => {
+      const mockWs = { id: 'ws-1', name: 'Eng', role: WorkspaceRole.owner };
+      service.findByIdWithRole.mockResolvedValue(mockWs as any);
+
+      const res = await controller.getById('ws-1', mockUser);
+      expect(res).toEqual(mockWs);
+      expect(service.findByIdWithRole).toHaveBeenCalledWith('ws-1', 'user-123');
+    });
+  });
+
+  describe('leaveWorkspace', () => {
+    it('should delegate leaveWorkspace to service', async () => {
+      service.leaveWorkspace.mockResolvedValue(undefined);
+
+      await controller.leaveWorkspace('ws-1', mockUser);
+      expect(service.leaveWorkspace).toHaveBeenCalledWith('ws-1', 'user-123');
+    });
+  });
+
+  describe('transferOwnership', () => {
+    it('should delegate transferOwnership to service', async () => {
+      const mockMember = { id: 'm-2', role: WorkspaceRole.owner };
+      service.transferOwnership.mockResolvedValue(mockMember as any);
+
+      const res = await controller.transferOwnership(
+        'ws-1',
+        { newOwnerId: 'user-456' },
+        mockUser,
+      );
+
+      expect(res).toEqual(mockMember);
+      expect(service.transferOwnership).toHaveBeenCalledWith(
+        'ws-1',
+        'user-123',
+        'user-456',
+      );
     });
   });
 
