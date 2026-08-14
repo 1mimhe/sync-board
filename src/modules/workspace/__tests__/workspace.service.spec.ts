@@ -185,7 +185,10 @@ describe('WorkspaceService', () => {
 
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'user-2' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'user-2',
+      } as any);
       memberRepo.updateRole.mockResolvedValue({
         ...mockMember,
         role: WorkspaceRole.admin,
@@ -206,7 +209,9 @@ describe('WorkspaceService', () => {
   describe('inviteMember', () => {
     it('should throw BusinessRuleException if user is already a member', async () => {
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      authService.findUserSummaryByEmail.mockResolvedValue({ id: 'u-2' } as any);
+      authService.findUserSummaryByEmail.mockResolvedValue({
+        id: 'u-2',
+      } as any);
       memberRepo.findMember.mockResolvedValue({ id: 'm-2' } as any);
 
       await expect(

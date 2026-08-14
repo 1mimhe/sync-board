@@ -35,7 +35,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     if (!email) {
       return done(
-        new UnauthorizedException('Google profile must include a verified email address'),
+        new UnauthorizedException(
+          'Google profile must include a verified email address',
+        ),
         undefined,
       );
     }

@@ -88,7 +88,11 @@ describe('AuthController', () => {
       authService.register.mockResolvedValue(mockAuthResponse);
 
       const result = await controller.register(
-        { email: 'test@example.com', password: 'P@ssword123', displayName: 'Test User' },
+        {
+          email: 'test@example.com',
+          password: 'P@ssword123',
+          displayName: 'Test User',
+        },
         { ip: '127.0.0.1', headers: { 'user-agent': 'jest' } } as any,
         mockRes as Response,
       );

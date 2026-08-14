@@ -7,4 +7,3 @@ export * from './workspace-response.dto';
 export * from './workspace-member-response.dto';
 export * from './workspace-invitation-response.dto';
 export * from './transfer-ownership.dto';
-

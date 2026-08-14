@@ -178,7 +178,9 @@ export class WorkspaceService {
             ...dto,
             slug,
           });
-          this.logger.log(`Workspace updated: ${workspaceId} (new slug: ${slug})`);
+          this.logger.log(
+            `Workspace updated: ${workspaceId} (new slug: ${slug})`,
+          );
           return updated;
         } catch (error) {
           if (

@@ -248,7 +248,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle(AUTH_THROTTLE_CONFIG.resetPassword)
   @UseGuards(AnonymousGuard)
-  @ApiOperation({ summary: 'Reset password using valid reset token and issue fresh access token' })
+  @ApiOperation({
+    summary:
+      'Reset password using valid reset token and issue fresh access token',
+  })
   @ApiOkResponse({
     type: TokenPairDto,
     description: 'Password reset successfully, user logged in with new tokens',
@@ -301,11 +304,12 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
     const user = req.user as User;
-    const { user: profile, tokens } = await this.authService.handleGoogleCallback(
-      user,
-      req.ip,
-      req.headers['user-agent'],
-    );
+    const { user: profile, tokens } =
+      await this.authService.handleGoogleCallback(
+        user,
+        req.ip,
+        req.headers['user-agent'],
+      );
     this.setAuthCookie(res, tokens.refreshToken);
     return {
       user: profile,
@@ -352,7 +356,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Throttle(AUTH_THROTTLE_CONFIG.changePassword)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Change current user password and issue fresh access token' })
+  @ApiOperation({
+    summary: 'Change current user password and issue fresh access token',
+  })
   @ApiOkResponse({
     type: TokenPairDto,
     description: 'Password changed successfully and new tokens issued',
