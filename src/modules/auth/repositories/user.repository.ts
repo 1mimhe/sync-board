@@ -115,6 +115,23 @@ export class UserRepository {
   }
 
   /**
+   * Find lightweight user summary by email (excluding passwordHash).
+   */
+  async findUserSummaryByEmail(
+    email: string,
+  ): Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'> | null> {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+    });
+  }
+
+  /**
    * Update user record on Google login (updating metadata or linking Google ID).
    */
   async updateGoogleLogin(

@@ -1,7 +1,12 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User } from '@prisma/client';
-import { randomBytes, randomUUID } from 'crypto';
+import { Prisma, User } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PasswordService } from './password.service';
 import { JwtTokenService } from './jwt-token.service';
@@ -106,9 +111,8 @@ export class AuthService {
   }
 
   /**
-   * Rotate refresh tokens. Old token is marked as revoked, new token pair is issued.
-   * Reuse detection: if token already revoked is presented, revoke all tokens in family.
-   * @throws UnauthorizedException REFRESH_TOKEN_EXPIRED, TOKEN_REUSE_DETECTED, or TOKEN_INVALID
+   * Rotate refresh token in-place and issue a new access token.
+   * @throws UnauthorizedException REFRESH_TOKEN_EXPIRED or TOKEN_INVALID
    */
   async refreshTokens(
     refreshToken: string,
@@ -119,20 +123,11 @@ export class AuthService {
     const existingToken =
       await this.tokenRepository.findByTokenHashWithUser(tokenHash);
 
-    if (!existingToken) {
+    if (!existingToken || existingToken.revokedAt) {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
     if (existingToken.expiresAt < new Date()) {
       throw new UnauthorizedException('REFRESH_TOKEN_EXPIRED');
-    }
-
-    // Token reuse detection
-    if (existingToken.revokedAt) {
-      this.logger.warn(
-        `Refresh token reuse detected for family ${existingToken.familyId}! Revoking all tokens in family.`,
-      );
-      await this.tokenRepository.revokeAllByFamilyId(existingToken.familyId);
-      throw new UnauthorizedException('TOKEN_REUSE_DETECTED');
     }
 
     const newRawToken = randomBytes(32).toString('base64url');
@@ -141,13 +136,11 @@ export class AuthService {
       Date.now() + AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
     );
 
-    await this.tokenRepository.rotateToken(existingToken.id, {
-      userId: existingToken.userId,
+    await this.tokenRepository.updateToken(existingToken.id, {
       tokenHash: newTokenHash,
-      familyId: existingToken.familyId,
+      expiresAt,
       ipAddress,
       userAgent,
-      expiresAt,
     });
 
     const accessToken = this.jwtTokenService.generateAccessToken(
@@ -155,7 +148,11 @@ export class AuthService {
     );
     this.logger.debug(`Tokens refreshed for user: ${existingToken.userId}`);
 
-    return { accessToken, refreshToken: newRawToken, expiresIn: 900 };
+    return {
+      accessToken,
+      refreshToken: newRawToken,
+      expiresIn: AUTH_CONFIG.accessToken.expiresInSeconds,
+    };
   }
 
   /**
@@ -208,9 +205,14 @@ export class AuthService {
     const resetToken = randomBytes(32).toString('base64url');
     const tokenHash = this.hashToken(resetToken);
 
-    // Store reset token in Redis with key password_reset:<tokenHash> and 1-hour TTL (3600s)
+    // Store reset token in Redis with key password_reset:<tokenHash> and TTL from config
     const redisKey = `password_reset:${tokenHash}`;
-    await this.redis.set(redisKey, user.id, 'EX', 3600);
+    await this.redis.set(
+      redisKey,
+      user.id,
+      'EX',
+      AUTH_CONFIG.passwordReset.expiresInSeconds,
+    );
 
     this.eventEmitter.emit('user.password_reset_requested', {
       userId: user.id,
@@ -223,10 +225,15 @@ export class AuthService {
   }
 
   /**
-   * Reset user password using valid token from Redis.
+   * Reset user password using valid token from Redis, revoke previous sessions, and issue fresh token pair.
    * @throws UnauthorizedException TOKEN_INVALID or TOKEN_EXPIRED
    */
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<TokenPair> {
     const tokenHash = this.hashToken(token);
     const redisKey = `password_reset:${tokenHash}`;
     const userId = await this.redis.get(redisKey);
@@ -235,14 +242,23 @@ export class AuthService {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
 
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('USER_NOT_FOUND');
+    }
+
     const passwordHash = await this.passwordService.hash(newPassword);
     await this.userRepository.updatePassword(userId, passwordHash);
     await this.tokenRepository.revokeAllByUserId(userId);
     await this.redis.del(redisKey);
 
+    const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
+
     this.logger.log(
-      `Password reset successfully via Redis for user: ${userId}`,
+      `Password reset successfully via Redis for user: ${userId} (other sessions revoked, fresh tokens issued)`,
     );
+
+    return tokens;
   }
 
   /**
@@ -254,6 +270,10 @@ export class AuthService {
     displayName: string;
     avatarUrl?: string;
   }): Promise<User> {
+    if (!profile.email) {
+      throw new UnauthorizedException('Google account must have a valid email');
+    }
+
     let user = await this.userRepository.findByGoogleId(profile.googleId);
     if (user) {
       return this.userRepository.updateGoogleLogin(user.id, {
@@ -273,12 +293,32 @@ export class AuthService {
       });
     }
 
-    return this.userRepository.createGoogleUser({
-      email: profile.email.toLowerCase(),
-      googleId: profile.googleId,
-      displayName: profile.displayName,
-      avatarUrl: profile.avatarUrl,
-    });
+    try {
+      return await this.userRepository.createGoogleUser({
+        email: profile.email.toLowerCase(),
+        googleId: profile.googleId,
+        displayName: profile.displayName,
+        avatarUrl: profile.avatarUrl,
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existing = await this.userRepository.findByEmail(
+          profile.email.toLowerCase(),
+        );
+        if (existing) {
+          return this.userRepository.updateGoogleLogin(existing.id, {
+            googleId: profile.googleId,
+            avatarUrl: profile.avatarUrl || existing.avatarUrl,
+            isEmailVerified: true,
+            lastLoginAt: new Date(),
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -327,7 +367,7 @@ export class AuthService {
   async getProfile(userId: string): Promise<Omit<User, 'passwordHash'>> {
     const user = await this.userRepository.findByIdPublic(userId);
     if (!user) {
-      throw new UnauthorizedException('TOKEN_INVALID');
+      throw new NotFoundException('USER_NOT_FOUND');
     }
     return user;
   }
@@ -337,6 +377,15 @@ export class AuthService {
    */
   async getUserByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email);
+  }
+
+  /**
+   * Find lightweight user summary by email address (omitting password hash).
+   */
+  async findUserSummaryByEmail(
+    email: string,
+  ): Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'> | null> {
+    return this.userRepository.findUserSummaryByEmail(email);
   }
 
   /**
@@ -353,10 +402,17 @@ export class AuthService {
   }
 
   /**
-   * Change current user's password.
+   * Change current user's password, revoke existing sessions, and issue fresh token pair.
    * @throws UnauthorizedException INVALID_CREDENTIALS
    */
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    jti?: string,
+    jwtExpiresAt?: Date,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<TokenPair> {
     const user = await this.userRepository.findById(userId);
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
@@ -372,7 +428,19 @@ export class AuthService {
 
     const newHash = await this.passwordService.hash(dto.newPassword);
     await this.userRepository.updatePassword(userId, newHash);
-    this.logger.log(`Password changed for user: ${userId}`);
+    await this.tokenRepository.revokeAllByUserId(userId);
+
+    if (jti && jwtExpiresAt) {
+      await this.blacklistService.blacklist(jti, jwtExpiresAt);
+    }
+
+    const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
+
+    this.logger.log(
+      `Password changed for user: ${userId} (other sessions revoked, fresh tokens issued)`,
+    );
+
+    return tokens;
   }
 
   // ─── Private Helpers ──────────────────────────────────────────
@@ -395,13 +463,16 @@ export class AuthService {
     await this.tokenRepository.create({
       userId: user.id,
       tokenHash,
-      familyId: randomUUID(),
       ipAddress,
       userAgent,
       expiresAt,
     });
 
-    return { accessToken, refreshToken: rawRefreshToken, expiresIn: 900 };
+    return {
+      accessToken,
+      refreshToken: rawRefreshToken,
+      expiresIn: AUTH_CONFIG.accessToken.expiresInSeconds,
+    };
   }
 
   /**

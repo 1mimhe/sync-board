@@ -5,11 +5,14 @@ export const AUTH_CONFIG = {
   accessToken: {
     algorithm: 'RS256' as const,
     expiresIn: '15m',
+    expiresInSeconds: 900,
     issuer: 'syncboard',
   },
   refreshToken: {
     expiresInDays: 7,
-    familyMaxSize: 50,
+  },
+  passwordReset: {
+    expiresInSeconds: 3600,
   },
   password: {
     bcryptRounds: 12,
@@ -60,6 +63,18 @@ export const AUTH_THROTTLE_CONFIG = {
       ttl: 3_600_000,
     },
   },
+  changePassword: {
+    default: {
+      limit: 5,
+      ttl: 60_000,
+    },
+  },
+  updateProfile: {
+    default: {
+      limit: 20,
+      ttl: 60_000,
+    },
+  },
 } as const;
 
 export const getRefreshTokenCookieOptions = () => ({
@@ -69,4 +84,3 @@ export const getRefreshTokenCookieOptions = () => ({
   path: '/api/auth',
   maxAge: AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
 });
-
