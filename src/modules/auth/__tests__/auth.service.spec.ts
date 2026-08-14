@@ -38,13 +38,11 @@ describe('AuthService', () => {
     id: 'token-uuid-1',
     userId: mockUser.id,
     tokenHash: 'hashedtoken',
-    familyId: 'family-uuid-1',
     ipAddress: '127.0.0.1',
     userAgent: 'jest',
     expiresAt: new Date(Date.now() + 86400000),
     revokedAt: null,
     createdAt: new Date(),
-    replacedBy: null,
     user: mockUser,
   };
 
@@ -194,13 +192,14 @@ describe('AuthService', () => {
       tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
         mockRefreshToken,
       );
-      tokenRepositoryMock.rotateToken.mockResolvedValue(mockRefreshToken);
+      tokenRepositoryMock.updateToken.mockResolvedValue(mockRefreshToken);
 
       const result = await service.refreshTokens('valid-refresh-token');
 
       expect(result).toBeDefined();
       expect(result.accessToken).toBeDefined();
       expect(result.refreshToken).toBeDefined();
+      expect(tokenRepositoryMock.updateToken).toHaveBeenCalled();
     });
 
     it('should throw REFRESH_TOKEN_EXPIRED if expired', async () => {
@@ -217,22 +216,18 @@ describe('AuthService', () => {
       ).rejects.toThrow('REFRESH_TOKEN_EXPIRED');
     });
 
-    it('should detect token reuse and revoke token family', async () => {
-      const reusedToken = {
+    it('should throw TOKEN_INVALID if token is already revoked', async () => {
+      const revokedToken = {
         ...mockRefreshToken,
         revokedAt: new Date(),
       };
       tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
-        reusedToken,
+        revokedToken,
       );
 
       await expect(
-        service.refreshTokens('reused-refresh-token'),
-      ).rejects.toThrow('TOKEN_REUSE_DETECTED');
-
-      expect(tokenRepositoryMock.revokeAllByFamilyId).toHaveBeenCalledWith(
-        reusedToken.familyId,
-      );
+        service.refreshTokens('revoked-refresh-token'),
+      ).rejects.toThrow('TOKEN_INVALID');
     });
   });
 
@@ -299,16 +294,21 @@ describe('AuthService', () => {
   });
 
   describe('resetPassword', () => {
-    it('should reset password with valid Redis token', async () => {
+    it('should reset password with valid Redis token and return fresh tokens', async () => {
       redisMock.get.mockResolvedValue(mockUser.id);
+      userRepositoryMock.findById.mockResolvedValue(mockUser);
       jest
         .spyOn(passwordService, 'hash')
         .mockResolvedValue('newhashedpassword');
       userRepositoryMock.updatePassword.mockResolvedValue(mockUser as any);
       tokenRepositoryMock.revokeAllByUserId.mockResolvedValue();
+      tokenRepositoryMock.create.mockResolvedValue({} as any);
       redisMock.del.mockResolvedValue(1);
 
-      await service.resetPassword('valid-reset-token', 'NewSecureP@ss123!');
+      const tokens = await service.resetPassword(
+        'valid-reset-token',
+        'NewSecureP@ss123!',
+      );
 
       expect(userRepositoryMock.updatePassword).toHaveBeenCalledWith(
         mockUser.id,
@@ -318,6 +318,8 @@ describe('AuthService', () => {
         mockUser.id,
       );
       expect(redisMock.del).toHaveBeenCalled();
+      expect(tokens).toHaveProperty('accessToken');
+      expect(tokens).toHaveProperty('refreshToken');
     });
 
     it('should throw TOKEN_INVALID if token is not found in Redis', async () => {
@@ -325,6 +327,57 @@ describe('AuthService', () => {
 
       await expect(
         service.resetPassword('invalid-token', 'NewSecureP@ss123!'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should verify password, update hash, revoke previous sessions, blacklist old JWT, and issue new tokens', async () => {
+      userRepositoryMock.findById.mockResolvedValue(mockUser);
+      jest.spyOn(passwordService, 'verify').mockResolvedValue(true);
+      jest.spyOn(passwordService, 'hash').mockResolvedValue('newhashedpass');
+      userRepositoryMock.updatePassword.mockResolvedValue(mockUser as any);
+      tokenRepositoryMock.revokeAllByUserId.mockResolvedValue();
+      tokenRepositoryMock.create.mockResolvedValue({} as any);
+
+      const expDate = new Date();
+      const tokens = await service.changePassword(
+        mockUser.id,
+        { currentPassword: 'OldPassword123!', newPassword: 'NewPassword123!' },
+        'old-jti-1',
+        expDate,
+        '127.0.0.1',
+        'jest',
+      );
+
+      expect(passwordService.verify).toHaveBeenCalledWith(
+        'OldPassword123!',
+        mockUser.passwordHash,
+      );
+      expect(userRepositoryMock.updatePassword).toHaveBeenCalledWith(
+        mockUser.id,
+        'newhashedpass',
+      );
+      expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+      expect(blacklistService.blacklist).toHaveBeenCalledWith(
+        'old-jti-1',
+        expDate,
+      );
+      expect(tokens).toHaveProperty('accessToken');
+      expect(tokens).toHaveProperty('refreshToken');
+    });
+
+    it('should throw UnauthorizedException if current password does not match', async () => {
+      userRepositoryMock.findById.mockResolvedValue(mockUser);
+      jest.spyOn(passwordService, 'verify').mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(mockUser.id, {
+          currentPassword: 'WrongPassword123!',
+          newPassword: 'NewPassword123!',
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
   });
