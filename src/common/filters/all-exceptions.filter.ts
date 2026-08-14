@@ -82,7 +82,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
             errors: this.formatValidationErrors(rawMessage as string[]),
           };
         } else {
-          const strMsg = typeof rawMessage === 'string' ? rawMessage : undefined;
+          const strMsg =
+            typeof rawMessage === 'string' ? rawMessage : undefined;
           errorCode =
             (resp['code'] as string) ||
             this.getDefaultErrorCodeForStatus(statusCode, strMsg);

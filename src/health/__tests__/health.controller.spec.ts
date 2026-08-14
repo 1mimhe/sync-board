@@ -29,7 +29,7 @@ describe('Health Module', () => {
       };
       indicator = new PrismaHealthIndicator(
         prisma as unknown as PrismaService,
-        healthIndicatorService as unknown as HealthIndicatorService,
+        healthIndicatorService,
       );
     });
 
@@ -65,7 +65,7 @@ describe('Health Module', () => {
       };
       indicator = new RedisHealthIndicator(
         redis as unknown as RedisService,
-        healthIndicatorService as unknown as HealthIndicatorService,
+        healthIndicatorService,
       );
     });
 
@@ -110,7 +110,9 @@ describe('Health Module', () => {
       };
 
       const mockMemoryIndicator = {
-        checkHeap: jest.fn().mockResolvedValue({ memory_heap: { status: 'up' } }),
+        checkHeap: jest
+          .fn()
+          .mockResolvedValue({ memory_heap: { status: 'up' } }),
       };
 
       const mockDiskIndicator = {

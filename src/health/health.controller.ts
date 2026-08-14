@@ -70,7 +70,10 @@ export class HealthController {
   @HealthCheck()
   @ApiOperation({ summary: 'Liveness probe for container orchestrators' })
   @ApiOkResponse({ description: 'Application process is alive' })
-  @ApiResponse({ status: 503, description: 'Application process is unresponsive' })
+  @ApiResponse({
+    status: 503,
+    description: 'Application process is unresponsive',
+  })
   checkLiveness(): Promise<HealthCheckResult> {
     return this.health.check([
       () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
@@ -81,7 +84,10 @@ export class HealthController {
   @HealthCheck()
   @ApiOperation({ summary: 'Readiness probe for load balancers' })
   @ApiOkResponse({ description: 'Application is ready to serve traffic' })
-  @ApiResponse({ status: 503, description: 'Application is not ready to serve traffic' })
+  @ApiResponse({
+    status: 503,
+    description: 'Application is not ready to serve traffic',
+  })
   checkReadiness(): Promise<HealthCheckResult> {
     return this.health.check([
       () => this.prisma.pingCheck('database'),

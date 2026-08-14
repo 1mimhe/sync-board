@@ -11,13 +11,11 @@ describe('RefreshTokenRepository', () => {
     id: 'token-uuid-1',
     userId: 'user-uuid-1',
     tokenHash: 'hashedtoken',
-    familyId: 'family-uuid-1',
     ipAddress: '127.0.0.1',
     userAgent: 'jest',
     expiresAt: new Date(Date.now() + 86400000),
     revokedAt: null,
     createdAt: new Date(),
-    replacedBy: null,
   };
 
   beforeEach(async () => {
@@ -47,7 +45,6 @@ describe('RefreshTokenRepository', () => {
       const result = await repository.create({
         userId: 'user-uuid-1',
         tokenHash: 'hashedtoken',
-        familyId: 'family-uuid-1',
         expiresAt: mockToken.expiresAt,
       });
 
@@ -55,15 +52,25 @@ describe('RefreshTokenRepository', () => {
     });
   });
 
-  describe('revokeAllByFamilyId', () => {
-    it('should revoke all tokens in family', async () => {
-      prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 2 });
+  describe('updateToken', () => {
+    it('should update token hash and expiration in place', async () => {
+      prismaMock.refreshToken.update.mockResolvedValue(mockToken);
 
-      await repository.revokeAllByFamilyId('family-uuid-1');
+      const result = await repository.updateToken('token-uuid-1', {
+        tokenHash: 'new-token-hash',
+        expiresAt: mockToken.expiresAt,
+      });
 
-      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { familyId: 'family-uuid-1' },
-        data: { revokedAt: expect.any(Date) },
+      expect(result).toEqual(mockToken);
+      expect(prismaMock.refreshToken.update).toHaveBeenCalledWith({
+        where: { id: 'token-uuid-1' },
+        data: {
+          tokenHash: 'new-token-hash',
+          expiresAt: mockToken.expiresAt,
+          ipAddress: undefined,
+          userAgent: undefined,
+          revokedAt: null,
+        },
       });
     });
   });

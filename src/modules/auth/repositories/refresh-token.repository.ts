@@ -12,12 +12,11 @@ export class RefreshTokenRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Create a new refresh token record in DB.
+   * Create a new refresh token record in DB for an active session.
    */
   async create(data: {
     userId: string;
     tokenHash: string;
-    familyId: string;
     ipAddress?: string;
     userAgent?: string;
     expiresAt: Date;
@@ -26,7 +25,6 @@ export class RefreshTokenRepository {
       data: {
         userId: data.userId,
         tokenHash: data.tokenHash,
-        familyId: data.familyId,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
         expiresAt: data.expiresAt,
@@ -56,21 +54,35 @@ export class RefreshTokenRepository {
   }
 
   /**
-   * Revoke a single refresh token by its hash.
+   * Update / rotate an active refresh token in-place on refresh.
    */
-  async revokeByTokenHash(tokenHash: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { tokenHash, revokedAt: null },
-      data: { revokedAt: new Date() },
+  async updateToken(
+    tokenId: string,
+    data: {
+      tokenHash: string;
+      expiresAt: Date;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+  ): Promise<RefreshToken> {
+    return this.prisma.refreshToken.update({
+      where: { id: tokenId },
+      data: {
+        tokenHash: data.tokenHash,
+        expiresAt: data.expiresAt,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        revokedAt: null,
+      },
     });
   }
 
   /**
-   * Revoke all refresh tokens in a given token family (reuse detection).
+   * Revoke a single refresh token by its hash (single device logout).
    */
-  async revokeAllByFamilyId(familyId: string): Promise<void> {
+  async revokeByTokenHash(tokenHash: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where: { familyId },
+      where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }
@@ -82,43 +94,6 @@ export class RefreshTokenRepository {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
-    });
-  }
-
-  /**
-   * Perform token rotation in an atomic transaction:
-   * Creates the new token, then marks the old token as revoked and links it
-   * to the new token via `replacedBy` — all in a single database transaction.
-   */
-  async rotateToken(
-    oldTokenId: string,
-    newTokenData: {
-      userId: string;
-      tokenHash: string;
-      familyId: string;
-      ipAddress?: string;
-      userAgent?: string;
-      expiresAt: Date;
-    },
-  ): Promise<RefreshToken> {
-    return this.prisma.$transaction(async (tx) => {
-      const newToken = await tx.refreshToken.create({
-        data: {
-          userId: newTokenData.userId,
-          tokenHash: newTokenData.tokenHash,
-          familyId: newTokenData.familyId,
-          ipAddress: newTokenData.ipAddress,
-          userAgent: newTokenData.userAgent,
-          expiresAt: newTokenData.expiresAt,
-        },
-      });
-
-      await tx.refreshToken.update({
-        where: { id: oldTokenId },
-        data: { revokedAt: new Date(), replacedBy: newToken.id },
-      });
-
-      return newToken;
     });
   }
 

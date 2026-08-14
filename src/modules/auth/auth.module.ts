@@ -7,17 +7,13 @@ import { JwtTokenService } from './services/jwt-token.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
 import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AnonymousGuard } from '../../common/guards/anonymous.guard';
 import { TokenCleanupTask } from './tasks/token-cleanup.task';
 
-/**
- * Authentication feature module wiring controllers, services, strategies, and guards.
- */
 @Module({
-  imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [PassportModule],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -26,7 +22,6 @@ import { TokenCleanupTask } from './tasks/token-cleanup.task';
     PasswordService,
     JwtTokenService,
     TokenBlacklistService,
-    JwtStrategy,
     GoogleStrategy,
     JwtAuthGuard,
     AnonymousGuard,

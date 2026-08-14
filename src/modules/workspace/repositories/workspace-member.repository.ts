@@ -50,6 +50,19 @@ export class WorkspaceMemberRepository {
     });
   }
 
+  async findOtherOwner(
+    workspaceId: string,
+    excludeUserId: string,
+  ): Promise<WorkspaceMember | null> {
+    return this.prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId,
+        role: WorkspaceRole.owner,
+        userId: { not: excludeUserId },
+      },
+    });
+  }
+
   async createMember(
     workspaceId: string,
     userId: string,

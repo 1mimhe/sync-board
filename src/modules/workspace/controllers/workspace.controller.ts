@@ -28,6 +28,7 @@ import {
   InviteMemberDto,
   UpdateMemberRoleDto,
   AcceptInvitationDto,
+  TransferOwnershipDto,
   WorkspaceResponseDto,
   WorkspaceWithRoleResponseDto,
   WorkspaceMemberResponseDto,
@@ -82,6 +83,11 @@ export class WorkspaceController {
     return this.workspaceService.findAllForUser(user.sub);
   }
 
+  /**
+   * CRITICAL ROUTE ORDERING: `GET slug/:slug` MUST be declared BEFORE `GET :workspaceId`.
+   * Otherwise NestJS pattern matching treats 'slug' as a `:workspaceId` UUID parameter
+   * and fails route resolution.
+   */
   @Get('slug/:slug')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -122,14 +128,15 @@ export class WorkspaceController {
   @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
   @ApiOperation({ summary: 'Get workspace details by ID' })
   @ApiOkResponse({
-    type: WorkspaceResponseDto,
-    description: 'Workspace details',
+    type: WorkspaceWithRoleResponseDto,
+    description: 'Workspace details including requesting user role',
   })
   @ApiResponse({ status: 404, description: 'Workspace not found' })
   async getById(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
-  ): Promise<Workspace> {
-    return this.workspaceService.findById(workspaceId);
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkspaceWithRole> {
+    return this.workspaceService.findByIdWithRole(workspaceId, user.sub);
   }
 
   @Patch(':workspaceId')
@@ -157,6 +164,42 @@ export class WorkspaceController {
     await this.workspaceService.archive(workspaceId);
   }
 
+  @Delete(':workspaceId/leave')
+  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Leave a workspace (self-remove)' })
+  @ApiNoContentResponse({ description: 'Successfully left workspace' })
+  @ApiResponse({
+    status: 422,
+    description: 'Sole owner must transfer ownership before leaving',
+  })
+  async leaveWorkspace(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    await this.workspaceService.leaveWorkspace(workspaceId, user.sub);
+  }
+
+  @Post(':workspaceId/transfer-ownership')
+  @WorkspaceAuth('owner')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Transfer workspace ownership to another member' })
+  @ApiOkResponse({
+    type: WorkspaceMemberResponseDto,
+    description: 'Ownership transferred successfully',
+  })
+  async transferOwnership(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Body() dto: TransferOwnershipDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<WorkspaceMember> {
+    return this.workspaceService.transferOwnership(
+      workspaceId,
+      user.sub,
+      dto.newOwnerId,
+    );
+  }
+
   @Get(':workspaceId/members')
   @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
   @ApiOperation({ summary: 'List workspace members with user details' })
@@ -182,8 +225,14 @@ export class WorkspaceController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
     @Body() dto: UpdateMemberRoleDto,
+    @CurrentUser() user: JwtPayload,
   ): Promise<WorkspaceMember> {
-    return this.workspaceService.updateMemberRole(workspaceId, memberId, dto);
+    return this.workspaceService.updateMemberRole(
+      workspaceId,
+      memberId,
+      dto,
+      user.sub,
+    );
   }
 
   @Delete(':workspaceId/members/:memberId')
@@ -195,8 +244,9 @@ export class WorkspaceController {
   async removeMember(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
+    @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.workspaceService.removeMember(workspaceId, memberId);
+    await this.workspaceService.removeMember(workspaceId, memberId, user.sub);
   }
 
   @Post(':workspaceId/invitations')

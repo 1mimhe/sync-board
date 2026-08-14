@@ -89,4 +89,49 @@ describe('UserRepository', () => {
       expect(result).toEqual(mockUser);
     });
   });
+
+  describe('createGoogleUser', () => {
+    it('should create a new google user record', async () => {
+      prismaMock.user.create.mockResolvedValue({
+        ...mockUser,
+        googleId: 'google-123',
+        isEmailVerified: true,
+      });
+
+      const result = await repository.createGoogleUser({
+        email: 'user@example.com',
+        googleId: 'google-123',
+        displayName: 'John Doe',
+      });
+
+      expect(result.googleId).toBe('google-123');
+      expect(result.isEmailVerified).toBe(true);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should update user display name and avatar', async () => {
+      const updatedUser = { ...mockUser, displayName: 'Updated Name' };
+      prismaMock.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.updateProfile('user-uuid-1', {
+        displayName: 'Updated Name',
+      });
+
+      expect(result.displayName).toBe('Updated Name');
+    });
+  });
+
+  describe('updatePassword', () => {
+    it('should update user password hash', async () => {
+      prismaMock.user.update.mockResolvedValue(mockUser);
+
+      await repository.updatePassword('user-uuid-1', 'new-hashed-password');
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        data: { passwordHash: 'new-hashed-password' },
+      });
+    });
+  });
 });

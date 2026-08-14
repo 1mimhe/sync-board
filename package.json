@@ -43,6 +43,7 @@
     "ioredis": "^6.0.0",
     "joi": "^18.2.3",
     "jsonwebtoken": "^9.0.3",
+    "lexorank": "^1.0.5",
     "nestjs-pino": "^4.6.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",

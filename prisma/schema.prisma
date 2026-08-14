@@ -24,6 +24,37 @@ enum InvitationStatus {
   @@map("invitation_status")
 }
 
+enum ActionType {
+  created
+  updated
+  deleted
+  moved
+  archived
+  unarchived
+
+  @@map("action_type")
+}
+
+enum EntityType {
+  board
+  list
+  card
+  comment
+  label
+  assignee
+  attachment
+
+  @@map("entity_type")
+}
+
+enum AttachmentType {
+  file
+  image
+  link
+
+  @@map("attachment_type")
+}
+
 model User {
   id                   String                @id @default(uuid()) @db.Uuid
   email                String                @unique @db.VarChar(255)
@@ -40,26 +71,28 @@ model User {
   workspaceMemberships WorkspaceMember[]
   sentInvitations      WorkspaceInvitation[] @relation("InvitedBy")
   createdBoards        Board[]               @relation("BoardCreator")
+  starredBoards        UserStarredBoard[]
+  createdCards         Card[]                @relation("CardCreator")
+  assignedCards        CardAssignee[]
+  cardComments         CardComment[]
+  uploadedAttachments  CardAttachment[]
+  activities           Activity[]
 
   @@index([googleId], map: "idx_users_google_id")
   @@map("users")
 }
 
 model RefreshToken {
-  id         String    @id @default(uuid()) @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
-  familyId   String    @map("family_id") @db.Uuid
-  ipAddress  String?   @map("ip_address") @db.VarChar(45)
-  userAgent  String?   @map("user_agent") @db.Text
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  replacedBy String?   @map("replaced_by") @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.Text
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replacedToken    RefreshToken?  @relation("TokenRotation", fields: [replacedBy], references: [id])
-  replacedByTokens RefreshToken[] @relation("TokenRotation")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt], map: "idx_refresh_tokens_expires")
   @@index([userId], map: "idx_refresh_tokens_user_id")
@@ -81,6 +114,7 @@ model Workspace {
   members     WorkspaceMember[]
   invitations WorkspaceInvitation[]
   boards      Board[]
+  labels      Label[]
 
   @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
@@ -123,17 +157,170 @@ model WorkspaceInvitation {
 }
 
 model Board {
-  id          String    @id @default(uuid()) @db.Uuid
-  workspaceId String    @map("workspace_id") @db.Uuid
-  title       String    @db.VarChar(200)
-  description String?
-  createdBy   String    @map("created_by") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  archivedAt  DateTime? @map("archived_at") @db.Timestamptz
+  id              String    @id @default(uuid()) @db.Uuid
+  workspaceId     String    @map("workspace_id") @db.Uuid
+  title           String    @db.VarChar(200)
+  description     String?
+  backgroundColor String?   @default("#1A1A2E") @map("background_color") @db.VarChar(7)
+  createdBy       String    @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  creator   User      @relation("BoardCreator", fields: [createdBy], references: [id])
+  workspace  Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator    User               @relation("BoardCreator", fields: [createdBy], references: [id])
+  starredBy  UserStarredBoard[]
+  labels     Label[]
+  lists      List[]
+  activities Activity[]
 
   @@map("boards")
+}
+
+model UserStarredBoard {
+  userId    String   @map("user_id") @db.Uuid
+  boardId   String   @map("board_id") @db.Uuid
+  starredAt DateTime @default(now()) @map("starred_at") @db.Timestamptz
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, boardId])
+  @@index([userId], map: "idx_starred_boards_user")
+  @@map("user_starred_boards")
+}
+
+model Label {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  boardId     String?  @map("board_id") @db.Uuid
+  name        String?  @db.VarChar(50)
+  color       String   @db.VarChar(7)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace  Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  board      Board?      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cardLabels CardLabel[]
+
+  @@index([workspaceId, boardId], map: "idx_labels_workspace_board")
+  @@map("labels")
+}
+
+model List {
+  id         String    @id @default(uuid()) @db.Uuid
+  boardId    String    @map("board_id") @db.Uuid
+  title      String    @db.VarChar(200)
+  rank       String    @db.VarChar(50)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@map("lists")
+}
+
+model Card {
+  id            String    @id @default(uuid()) @db.Uuid
+  listId        String    @map("list_id") @db.Uuid
+  title         String    @db.VarChar(500)
+  description   Json?     @db.JsonB
+  rank          String    @db.VarChar(50)
+  dueDate       DateTime? @map("due_date") @db.Timestamptz
+  isComplete    Boolean   @default(false) @map("is_complete")
+  coverImageUrl String?   @map("cover_image_url") @db.Text
+  createdBy     String    @map("created_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz
+
+  list        List             @relation(fields: [listId], references: [id], onDelete: Cascade)
+  creator     User             @relation("CardCreator", fields: [createdBy], references: [id])
+  assignees   CardAssignee[]
+  labels      CardLabel[]
+  comments    CardComment[]
+  attachments CardAttachment[]
+
+  @@map("cards")
+}
+
+model CardAssignee {
+  cardId     String   @map("card_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId], map: "idx_card_assignees_user")
+  @@map("card_assignees")
+}
+
+model CardLabel {
+  cardId  String @map("card_id") @db.Uuid
+  labelId String @map("label_id") @db.Uuid
+
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@map("card_labels")
+}
+
+model CardComment {
+  id        String    @id @default(uuid()) @db.Uuid
+  cardId    String    @map("card_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  content   String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("card_comments")
+}
+
+model CardAttachment {
+  id           String         @id @default(uuid()) @db.Uuid
+  cardId       String         @map("card_id") @db.Uuid
+  uploadedById String         @map("uploaded_by_id") @db.Uuid
+  type         AttachmentType @default(file)
+  url          String         @db.Text
+  name         String         @db.VarChar(255)
+  mimeType     String?        @map("mime_type") @db.VarChar(100)
+  fileSize     Int?           @map("file_size")
+  coverUrl     String?        @map("cover_url") @db.Text
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt   DateTime?      @map("archived_at") @db.Timestamptz
+
+  card       Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([cardId], map: "idx_card_attachments_card")
+  @@map("card_attachments")
+}
+
+model Activity {
+  id          String     @id @default(uuid()) @db.Uuid
+  boardId     String     @map("board_id") @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  action      ActionType
+  entityType  EntityType @map("entity_type")
+  entityId    String     @map("entity_id") @db.Uuid
+  entityTitle String?    @db.VarChar(500)
+  fromListId  String?    @map("from_list_id") @db.Uuid
+  toListId    String?    @map("to_list_id") @db.Uuid
+  details     Json?      @db.JsonB
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([boardId], map: "idx_activities_board")
+  @@map("activities")
 }

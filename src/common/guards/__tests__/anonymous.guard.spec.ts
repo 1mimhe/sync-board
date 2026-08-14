@@ -28,8 +28,6 @@ describe('AnonymousGuard', () => {
     id: 'token-uuid-1',
     userId: 'user-uuid-1',
     tokenHash: createHash('sha256').update('raw-refresh-token').digest('hex'),
-    familyId: 'family-uuid-1',
-    replacedBy: null,
     revokedAt: null,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     ipAddress: null,

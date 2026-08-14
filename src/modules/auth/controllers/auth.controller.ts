@@ -79,17 +79,19 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    const response = await this.authService.register(
+    const { user, tokens } = await this.authService.register(
       dto,
       req.ip,
       req.headers['user-agent'],
     );
-    res.cookie(
-      REFRESH_TOKEN_COOKIE_NAME,
-      response.tokens.refreshToken,
-      getRefreshTokenCookieOptions(),
-    );
-    return response;
+    this.setAuthCookie(res, tokens.refreshToken);
+    return {
+      user,
+      tokens: {
+        accessToken: tokens.accessToken,
+        expiresIn: tokens.expiresIn,
+      },
+    };
   }
 
   @Post('login')
@@ -111,17 +113,19 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    const response = await this.authService.login(
+    const { user, tokens } = await this.authService.login(
       dto,
       req.ip,
       req.headers['user-agent'],
     );
-    res.cookie(
-      REFRESH_TOKEN_COOKIE_NAME,
-      response.tokens.refreshToken,
-      getRefreshTokenCookieOptions(),
-    );
-    return response;
+    this.setAuthCookie(res, tokens.refreshToken);
+    return {
+      user,
+      tokens: {
+        accessToken: tokens.accessToken,
+        expiresIn: tokens.expiresIn,
+      },
+    };
   }
 
   @Post('refresh')
@@ -132,7 +136,7 @@ export class AuthController {
   })
   @ApiOkResponse({
     type: TokenPairDto,
-    description: 'Token pair refreshed successfully',
+    description: 'Access token refreshed successfully',
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid, expired, or revoked refresh token',
@@ -157,13 +161,11 @@ export class AuthController {
       req.headers['user-agent'],
     );
 
-    res.cookie(
-      REFRESH_TOKEN_COOKIE_NAME,
-      tokens.refreshToken,
-      getRefreshTokenCookieOptions(),
-    );
-
-    return tokens;
+    this.setAuthCookie(res, tokens.refreshToken);
+    return {
+      accessToken: tokens.accessToken,
+      expiresIn: tokens.expiresIn,
+    };
   }
 
   @Post('logout')
@@ -246,10 +248,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle(AUTH_THROTTLE_CONFIG.resetPassword)
   @UseGuards(AnonymousGuard)
-  @ApiOperation({ summary: 'Reset password using valid reset token' })
+  @ApiOperation({
+    summary:
+      'Reset password using valid reset token and issue fresh access token',
+  })
   @ApiOkResponse({
-    type: MessageResponseDto,
-    description: 'Password reset successfully',
+    type: TokenPairDto,
+    description: 'Password reset successfully, user logged in with new tokens',
   })
   @ApiBadRequestResponse({
     description: 'Validation error — invalid request body',
@@ -257,12 +262,20 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid or expired reset token' })
   @ApiForbiddenResponse({ description: 'User is already authenticated' })
   async resetPassword(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Body() dto: ResetPasswordDto,
-  ): Promise<MessageResponseDto> {
-    await this.authService.resetPassword(dto.token, dto.newPassword);
+  ): Promise<TokenPairDto> {
+    const tokens = await this.authService.resetPassword(
+      dto.token,
+      dto.newPassword,
+      req.ip,
+      req.headers['user-agent'],
+    );
+    this.setAuthCookie(res, tokens.refreshToken);
     return {
-      message:
-        'Password reset successfully. Please log in with your new password.',
+      accessToken: tokens.accessToken,
+      expiresIn: tokens.expiresIn,
     };
   }
 
@@ -291,17 +304,20 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
     const user = req.user as User;
-    const response = await this.authService.handleGoogleCallback(
-      user,
-      req.ip,
-      req.headers['user-agent'],
-    );
-    res.cookie(
-      REFRESH_TOKEN_COOKIE_NAME,
-      response.tokens.refreshToken,
-      getRefreshTokenCookieOptions(),
-    );
-    return response;
+    const { user: profile, tokens } =
+      await this.authService.handleGoogleCallback(
+        user,
+        req.ip,
+        req.headers['user-agent'],
+      );
+    this.setAuthCookie(res, tokens.refreshToken);
+    return {
+      user: profile,
+      tokens: {
+        accessToken: tokens.accessToken,
+        expiresIn: tokens.expiresIn,
+      },
+    };
   }
 
   @Get('me')
@@ -318,6 +334,7 @@ export class AuthController {
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
+  @Throttle(AUTH_THROTTLE_CONFIG.updateProfile)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiOkResponse({
@@ -335,19 +352,50 @@ export class AuthController {
   }
 
   @Patch('me/password')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @Throttle(AUTH_THROTTLE_CONFIG.changePassword)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Change current user password' })
-  @ApiNoContentResponse({ description: 'Password changed successfully' })
+  @ApiOperation({
+    summary: 'Change current user password and issue fresh access token',
+  })
+  @ApiOkResponse({
+    type: TokenPairDto,
+    description: 'Password changed successfully and new tokens issued',
+  })
   @ApiBadRequestResponse({
     description: 'Validation error — invalid request body',
   })
   @ApiUnauthorizedResponse({ description: 'Current password is incorrect' })
   async changePassword(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChangePasswordDto,
-  ): Promise<void> {
-    await this.authService.changePassword(user.sub, dto);
+  ): Promise<TokenPairDto> {
+    const tokens = await this.authService.changePassword(
+      user.sub,
+      dto,
+      user.jti,
+      new Date(user.exp * 1000),
+      req.ip,
+      req.headers['user-agent'],
+    );
+    this.setAuthCookie(res, tokens.refreshToken);
+    return {
+      accessToken: tokens.accessToken,
+      expiresIn: tokens.expiresIn,
+    };
+  }
+
+  /**
+   * Helper to set refresh token cookie on response.
+   */
+  private setAuthCookie(res: Response, refreshToken: string): void {
+    res.cookie(
+      REFRESH_TOKEN_COOKIE_NAME,
+      refreshToken,
+      getRefreshTokenCookieOptions(),
+    );
   }
 }
