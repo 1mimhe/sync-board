@@ -73,6 +73,7 @@ export class CardCommentController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async create(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() dto: CreateCommentDto,
@@ -80,6 +81,7 @@ export class CardCommentController {
   ): Promise<CardCommentResponseDto> {
     const comment = await this.commentService.create(
       boardId,
+      workspaceId,
       cardId,
       dto,
       user.sub,
@@ -117,12 +119,14 @@ export class CardCommentController {
   })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async list(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedCommentsResponseDto> {
     const result = await this.commentService.getCardComments(
       boardId,
+      workspaceId,
       cardId,
       query,
     );
@@ -169,6 +173,7 @@ export class CardCommentController {
   @ApiResponse({ status: 403, description: 'Forbidden (not the author)' })
   @ApiResponse({ status: 404, description: 'Comment not found' })
   async update(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
@@ -177,6 +182,7 @@ export class CardCommentController {
   ): Promise<CardCommentResponseDto> {
     const comment = await this.commentService.update(
       boardId,
+      workspaceId,
       cardId,
       commentId,
       dto,
@@ -220,6 +226,7 @@ export class CardCommentController {
   @ApiResponse({ status: 403, description: 'Forbidden (not the author)' })
   @ApiResponse({ status: 404, description: 'Comment not found' })
   async delete(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('commentId', ParseUUIDPipe) commentId: string,
@@ -227,6 +234,7 @@ export class CardCommentController {
   ): Promise<void> {
     await this.commentService.delete(
       boardId,
+      workspaceId,
       cardId,
       commentId,
       user.sub,

@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CardService } from '../services/card.service';
 import { CardRepository } from '../repositories/card.repository';
+import { BoardRepository } from '../repositories/board.repository';
 import { ListRepository } from '../repositories/list.repository';
 import { LabelRepository } from '../repositories/label.repository';
 import { WorkspaceService } from '../../workspace/services/workspace.service';
@@ -12,6 +13,7 @@ import { EntityNotFoundException } from '../../../common/exceptions/app.exceptio
 describe('CardService', () => {
   let service: CardService;
   let cardRepo: DeepMockProxy<CardRepository>;
+  let boardRepo: DeepMockProxy<BoardRepository>;
   let listRepo: DeepMockProxy<ListRepository>;
   let labelRepo: DeepMockProxy<LabelRepository>;
   let workspaceService: DeepMockProxy<WorkspaceService>;
@@ -20,6 +22,7 @@ describe('CardService', () => {
 
   beforeEach(async () => {
     cardRepo = mockDeep<CardRepository>();
+    boardRepo = mockDeep<BoardRepository>();
     listRepo = mockDeep<ListRepository>();
     labelRepo = mockDeep<LabelRepository>();
     workspaceService = mockDeep<WorkspaceService>();
@@ -30,6 +33,7 @@ describe('CardService', () => {
         CardService,
         LexorankService,
         { provide: CardRepository, useValue: cardRepo },
+        { provide: BoardRepository, useValue: boardRepo },
         { provide: ListRepository, useValue: listRepo },
         { provide: LabelRepository, useValue: labelRepo },
         { provide: WorkspaceService, useValue: workspaceService },
@@ -124,6 +128,7 @@ describe('CardService', () => {
 
       const result = await service.move(
         'board-uuid',
+        'ws-uuid',
         'card-uuid',
         {
           targetListId: 'list-2',
@@ -200,6 +205,7 @@ describe('CardService', () => {
 
       const result = await service.unarchive(
         'board-uuid',
+        'ws-uuid',
         'card-uuid',
         'user-uuid',
       );
@@ -218,6 +224,7 @@ describe('CardService', () => {
       await expect(
         service.unarchive(
           'board-uuid',
+          'ws-uuid',
           'nonexistent-uuid',
           'user-uuid',
         ),

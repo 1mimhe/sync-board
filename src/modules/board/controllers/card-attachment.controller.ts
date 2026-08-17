@@ -70,6 +70,7 @@ export class CardAttachmentController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async create(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() dto: CreateCardAttachmentDto,
@@ -77,6 +78,7 @@ export class CardAttachmentController {
   ): Promise<CardAttachmentResponseDto> {
     const attachment = await this.attachmentService.addAttachment(
       boardId,
+      workspaceId,
       cardId,
       dto,
       user.sub,
@@ -114,11 +116,13 @@ export class CardAttachmentController {
   })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async list(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
   ): Promise<CardAttachmentResponseDto[]> {
     const attachments = await this.attachmentService.getAttachments(
       boardId,
+      workspaceId,
       cardId,
     );
     return attachments.map(toCardAttachmentResponseDto);
@@ -160,6 +164,7 @@ export class CardAttachmentController {
   })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
   async update(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
@@ -167,6 +172,7 @@ export class CardAttachmentController {
   ): Promise<CardAttachmentResponseDto> {
     const attachment = await this.attachmentService.updateAttachment(
       boardId,
+      workspaceId,
       cardId,
       attachmentId,
       dto,
@@ -208,6 +214,7 @@ export class CardAttachmentController {
   @ApiNoContentResponse({ description: 'Attachment deleted' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
   async delete(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
@@ -215,6 +222,7 @@ export class CardAttachmentController {
   ): Promise<void> {
     await this.attachmentService.deleteAttachment(
       boardId,
+      workspaceId,
       cardId,
       attachmentId,
       user.sub,

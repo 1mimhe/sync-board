@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CardAttachmentService } from '../services/card-attachment.service';
 import { CardRepository } from '../repositories/card.repository';
+import { BoardRepository } from '../repositories/board.repository';
 import { CardAttachmentRepository } from '../repositories/card-attachment.repository';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import { AttachmentType } from '@prisma/client';
@@ -10,11 +11,13 @@ import { AttachmentType } from '@prisma/client';
 describe('CardAttachmentService', () => {
   let service: CardAttachmentService;
   let cardRepo: DeepMockProxy<CardRepository>;
+  let boardRepo: DeepMockProxy<BoardRepository>;
   let attachmentRepo: DeepMockProxy<CardAttachmentRepository>;
   let eventEmitter: DeepMockProxy<EventEmitter2>;
 
   beforeEach(async () => {
     cardRepo = mockDeep<CardRepository>();
+    boardRepo = mockDeep<BoardRepository>();
     attachmentRepo = mockDeep<CardAttachmentRepository>();
     eventEmitter = mockDeep<EventEmitter2>();
 
@@ -22,6 +25,7 @@ describe('CardAttachmentService', () => {
       providers: [
         CardAttachmentService,
         { provide: CardRepository, useValue: cardRepo },
+        { provide: BoardRepository, useValue: boardRepo },
         { provide: CardAttachmentRepository, useValue: attachmentRepo },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
@@ -61,6 +65,7 @@ describe('CardAttachmentService', () => {
 
       const result = await service.addAttachment(
         'board-1',
+        'ws-1',
         'card-1',
         {
           type: AttachmentType.link,
@@ -94,6 +99,7 @@ describe('CardAttachmentService', () => {
       await expect(
         service.addAttachment(
           'board-1',
+          'ws-1',
           'nonexistent-card',
           {
             type: AttachmentType.file,
@@ -127,7 +133,7 @@ describe('CardAttachmentService', () => {
         },
       ]);
 
-      const result = await service.getAttachments('board-1', 'card-1');
+      const result = await service.getAttachments('board-1', 'ws-1', 'card-1');
 
       expect(result).toHaveLength(1);
       expect(attachmentRepo.findByCardId).toHaveBeenCalledWith('card-1');
@@ -137,7 +143,7 @@ describe('CardAttachmentService', () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.getAttachments('board-1', 'nonexistent-card'),
+        service.getAttachments('board-1', 'ws-1', 'nonexistent-card'),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });
@@ -157,6 +163,7 @@ describe('CardAttachmentService', () => {
 
       const result = await service.updateAttachment(
         'board-1',
+        'ws-1',
         'card-1',
         'att-1',
         { name: 'New Name' },
@@ -178,6 +185,7 @@ describe('CardAttachmentService', () => {
       await expect(
         service.updateAttachment(
           'board-1',
+          'ws-1',
           'card-1',
           'att-1',
           { name: 'New Name' },
@@ -197,6 +205,7 @@ describe('CardAttachmentService', () => {
 
       await service.deleteAttachment(
         'board-1',
+        'ws-1',
         'card-1',
         'att-1',
         'user-1',

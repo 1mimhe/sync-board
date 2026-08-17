@@ -4,17 +4,20 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CardCommentService } from '../services/card-comment.service';
 import { CardCommentRepository } from '../repositories/card-comment.repository';
 import { CardRepository } from '../repositories/card.repository';
+import { BoardRepository } from '../repositories/board.repository';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 
 describe('CardCommentService', () => {
   let service: CardCommentService;
   let commentRepo: DeepMockProxy<CardCommentRepository>;
   let cardRepo: DeepMockProxy<CardRepository>;
+  let boardRepo: DeepMockProxy<BoardRepository>;
   let eventEmitter: DeepMockProxy<EventEmitter2>;
 
   beforeEach(async () => {
     commentRepo = mockDeep<CardCommentRepository>();
     cardRepo = mockDeep<CardRepository>();
+    boardRepo = mockDeep<BoardRepository>();
     eventEmitter = mockDeep<EventEmitter2>();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -22,6 +25,7 @@ describe('CardCommentService', () => {
         CardCommentService,
         { provide: CardCommentRepository, useValue: commentRepo },
         { provide: CardRepository, useValue: cardRepo },
+        { provide: BoardRepository, useValue: boardRepo },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
@@ -52,6 +56,7 @@ describe('CardCommentService', () => {
 
       const result = await service.getCardComments(
         'board-uuid',
+        'ws-uuid',
         'card-uuid',
         {
           page: 1,
@@ -80,6 +85,7 @@ describe('CardCommentService', () => {
 
       const result = await service.getCardComments(
         'board-uuid',
+        'ws-uuid',
         'card-uuid',
       );
 
@@ -102,6 +108,7 @@ describe('CardCommentService', () => {
       await expect(
         service.getCardComments(
           'board-uuid',
+          'ws-uuid',
           'nonexistent-uuid',
         ),
       ).rejects.toThrow(EntityNotFoundException);

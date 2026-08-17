@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Card } from '@prisma/client';
 import { CardRepository } from '../repositories/card.repository';
+import { BoardRepository } from '../repositories/board.repository';
 import { ListRepository } from '../repositories/list.repository';
 import { LabelRepository } from '../repositories/label.repository';
 import { LexorankService } from './lexorank.service';
@@ -27,12 +28,30 @@ export class CardService {
 
   constructor(
     private readonly cardRepo: CardRepository,
+    private readonly boardRepo: BoardRepository,
     private readonly listRepo: ListRepository,
     private readonly labelRepo: LabelRepository,
     private readonly workspaceService: WorkspaceService,
     private readonly lexorank: LexorankService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  /**
+   * Verifies that a board exists within the given workspace and is active.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @throws {EntityNotFoundException} If board is not found or archived
+   */
+  private async verifyBoardInWorkspace(
+    boardId: string,
+    workspaceId: string,
+  ): Promise<void> {
+    const board = await this.boardRepo.findById(boardId, workspaceId);
+    if (!board) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+  }
 
   /**
    * Validates that all candidate assignee IDs belong to the active workspace members.
@@ -152,14 +171,18 @@ export class CardService {
    * Retrieves card details with assignees, labels, and attachments.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @returns The card with full details
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    */
   async getCardDetails(
     boardId: string,
+    workspaceId: string,
     cardId: string,
   ): Promise<CardWithDetails> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -171,19 +194,23 @@ export class CardService {
    * Updates fields of an existing card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Card update payload
    * @param userId - Modifying user UUID
    * @returns The updated card
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    * @emits card.updated - After successful update
    */
   async update(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     dto: UpdateCardDto,
     userId: string,
   ): Promise<Card> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const existing = await this.cardRepo.findActiveById(cardId, boardId);
     if (!existing) {
       throw new EntityNotFoundException('Card', cardId);
@@ -213,20 +240,24 @@ export class CardService {
    * Moves or reorders a card within a list or across lists on the same board.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Target list UUID and rank positioning strings
    * @param userId - Modifying user UUID
    * @returns The moved card with updated listId and rank
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    * @throws {BadRequestException} If target list does not belong to board
    * @emits card.moved - After successful move
    */
   async move(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     dto: MoveCardDto,
     userId: string,
   ): Promise<Card> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -275,16 +306,20 @@ export class CardService {
    * Soft-deletes (archives) a card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param userId - User UUID who archived the card
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    * @emits card.archived - After successful archiving
    */
   async archive(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     userId: string,
   ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -302,17 +337,21 @@ export class CardService {
    * Restores an archived card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param userId - User UUID who restored the card
    * @returns The restored card
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    * @emits card.unarchived - After successful restoration
    */
   async unarchive(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     userId: string,
   ): Promise<Card> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findByIdIncludingArchived(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -367,15 +406,19 @@ export class CardService {
    * Removes an assigned user from a card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param assigneeUserId - User UUID to remove from card
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    */
   async removeAssignee(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     assigneeUserId: string,
   ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -423,15 +466,19 @@ export class CardService {
    * Detaches a label from a card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param labelId - Label UUID to detach
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    */
   async removeLabel(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     labelId: string,
   ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);

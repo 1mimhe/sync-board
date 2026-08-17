@@ -20,6 +20,13 @@ import { WorkspaceMemberGuard } from './guards/workspace-member.guard';
     WorkspaceMemberGuard,
     RbacGuard,
   ],
-  exports: [WorkspaceService, WorkspaceMemberGuard, RbacGuard],
+  exports: [
+    WorkspaceService,
+    WorkspaceRepository,
+    WorkspaceMemberRepository,
+    WorkspaceInvitationRepository,
+    WorkspaceMemberGuard,
+    RbacGuard,
+  ],
 })
 export class WorkspaceModule {}

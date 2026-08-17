@@ -121,11 +121,13 @@ export class CardController {
   })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async getOne(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
   ): Promise<CardWithDetailsResponseDto> {
     const card = await this.cardService.getCardDetails(
       boardId,
+      workspaceId,
       cardId,
     );
     return toCardWithDetailsResponseDto(card);
@@ -164,6 +166,7 @@ export class CardController {
   })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async update(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() dto: UpdateCardDto,
@@ -171,6 +174,7 @@ export class CardController {
   ): Promise<CardResponseDto> {
     const card = await this.cardService.update(
       boardId,
+      workspaceId,
       cardId,
       dto,
       user.sub,
@@ -212,6 +216,7 @@ export class CardController {
   @ApiResponse({ status: 400, description: 'Invalid destination list' })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async move(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Body() dto: MoveCardDto,
@@ -219,6 +224,7 @@ export class CardController {
   ): Promise<CardResponseDto> {
     const card = await this.cardService.move(
       boardId,
+      workspaceId,
       cardId,
       dto,
       user.sub,
@@ -254,12 +260,14 @@ export class CardController {
   @ApiNoContentResponse({ description: 'Card archived' })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async archive(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     await this.cardService.archive(
       boardId,
+      workspaceId,
       cardId,
       user.sub,
     );
@@ -292,12 +300,14 @@ export class CardController {
   @ApiOkResponse({ description: 'Card unarchived', type: CardResponseDto })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async unarchive(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<CardResponseDto> {
     const card = await this.cardService.unarchive(
       boardId,
+      workspaceId,
       cardId,
       user.sub,
     );
@@ -383,12 +393,14 @@ export class CardController {
   })
   @ApiNoContentResponse({ description: 'User unassigned from card' })
   async removeAssignee(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('targetUserId', ParseUUIDPipe) targetUserId: string,
   ): Promise<void> {
     await this.cardService.removeAssignee(
       boardId,
+      workspaceId,
       cardId,
       targetUserId,
     );
@@ -473,12 +485,14 @@ export class CardController {
   })
   @ApiNoContentResponse({ description: 'Label detached from card' })
   async removeLabel(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
   ): Promise<void> {
     await this.cardService.removeLabel(
       boardId,
+      workspaceId,
       cardId,
       labelId,
     );

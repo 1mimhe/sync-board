@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardRepository } from '../repositories/card.repository';
+import { BoardRepository } from '../repositories/board.repository';
 import { CardAttachmentRepository } from '../repositories/card-attachment.repository';
 import {
   CreateCardAttachmentDto,
@@ -23,27 +24,49 @@ export class CardAttachmentService {
 
   constructor(
     private readonly cardRepo: CardRepository,
+    private readonly boardRepo: BoardRepository,
     private readonly attachmentRepo: CardAttachmentRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
+   * Verifies that a board exists within the given workspace and is active.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @throws {EntityNotFoundException} If board is not found or archived
+   */
+  private async verifyBoardInWorkspace(
+    boardId: string,
+    workspaceId: string,
+  ): Promise<void> {
+    const board = await this.boardRepo.findById(boardId, workspaceId);
+    if (!board) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+  }
+
+  /**
    * Adds an attachment to a card and emits `attachment.created` event.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param dto - Attachment creation data
    * @param userId - Creating/uploading user UUID
    * @returns The created attachment with uploader details
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    * @emits attachment.created - After successful creation
    */
   async addAttachment(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     dto: CreateCardAttachmentDto,
     userId: string,
   ): Promise<CardAttachmentWithUser> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -75,14 +98,18 @@ export class CardAttachmentService {
    * Retrieves all attachments associated with a card.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @returns Array of attachments with uploader details
-   * @throws {EntityNotFoundException} If card is not found
+   * @throws {EntityNotFoundException} If board or card is not found
    */
   async getAttachments(
     boardId: string,
+    workspaceId: string,
     cardId: string,
   ): Promise<CardAttachmentWithUser[]> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -95,18 +122,22 @@ export class CardAttachmentService {
    * Updates an existing attachment's metadata or URL.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param attachmentId - Attachment UUID
    * @param dto - Update data
    * @returns The updated attachment
-   * @throws {EntityNotFoundException} If card or attachment is not found
+   * @throws {EntityNotFoundException} If board, card, or attachment is not found
    */
   async updateAttachment(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     attachmentId: string,
     dto: UpdateCardAttachmentDto,
   ): Promise<CardAttachmentWithUser> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
@@ -131,18 +162,22 @@ export class CardAttachmentService {
    * Permanently deletes an attachment and emits `attachment.deleted` event.
    *
    * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param attachmentId - Attachment UUID to delete
    * @param userId - User UUID performing the deletion
-   * @throws {EntityNotFoundException} If card or attachment is not found
+   * @throws {EntityNotFoundException} If board, card, or attachment is not found
    * @emits attachment.deleted - After successful deletion
    */
   async deleteAttachment(
     boardId: string,
+    workspaceId: string,
     cardId: string,
     attachmentId: string,
     userId: string,
   ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
       throw new EntityNotFoundException('Card', cardId);
