@@ -8,6 +8,7 @@ import { WorkspaceRepository } from './repositories/workspace.repository';
 import { WorkspaceMemberRepository } from './repositories/workspace-member.repository';
 import { WorkspaceInvitationRepository } from './repositories/workspace-invitation.repository';
 import { WorkspaceMemberGuard } from './guards/workspace-member.guard';
+import { WsWorkspaceMemberGuard } from './guards/ws-workspace-member.guard';
 
 @Module({
   imports: [PrismaModule, AuthModule],
@@ -18,6 +19,7 @@ import { WorkspaceMemberGuard } from './guards/workspace-member.guard';
     WorkspaceMemberRepository,
     WorkspaceInvitationRepository,
     WorkspaceMemberGuard,
+    WsWorkspaceMemberGuard,
     RbacGuard,
   ],
   exports: [
@@ -26,6 +28,7 @@ import { WorkspaceMemberGuard } from './guards/workspace-member.guard';
     WorkspaceMemberRepository,
     WorkspaceInvitationRepository,
     WorkspaceMemberGuard,
+    WsWorkspaceMemberGuard,
     RbacGuard,
   ],
 })
