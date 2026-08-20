@@ -50,13 +50,18 @@ describe('JwtTokenService', () => {
   });
 
   it('should verify and decode a valid access token', () => {
-    const token = service.generateAccessToken(mockUser);
+    const userWithAvatar: User = {
+      ...mockUser,
+      avatarUrl: 'https://example.com/avatar.png',
+    };
+    const token = service.generateAccessToken(userWithAvatar);
     const payload = service.verifyAccessToken(token);
 
     expect(payload).toBeDefined();
-    expect(payload.sub).toEqual(mockUser.id);
-    expect(payload.email).toEqual(mockUser.email);
-    expect(payload.displayName).toEqual(mockUser.displayName);
+    expect(payload.sub).toEqual(userWithAvatar.id);
+    expect(payload.email).toEqual(userWithAvatar.email);
+    expect(payload.displayName).toEqual(userWithAvatar.displayName);
+    expect(payload.avatarUrl).toEqual('https://example.com/avatar.png');
     expect(payload.iss).toEqual('syncboard');
     expect(payload.jti).toBeDefined();
   });

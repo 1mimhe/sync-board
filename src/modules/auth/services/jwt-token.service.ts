@@ -57,6 +57,7 @@ export class JwtTokenService {
       sub: user.id,
       email: user.email,
       displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
     };
     const signingKey = this.privateKey || this.secret;
     return jwt.sign(payload, signingKey, {
