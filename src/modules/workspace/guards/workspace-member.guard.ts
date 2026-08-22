@@ -16,9 +16,6 @@ const UUID_V4_SCHEMA = Joi.string().uuid({ version: 'uuidv4' }).required();
 /**
  * Guard that verifies the authenticated user is an active member of the target workspace.
  * Attaches the workspace member record to `request.workspaceMember`.
- *
- * Data access goes through `WorkspaceMemberRepository` (per CODE_STANDARDS.md),
- * keeping Prisma queries out of the guard layer.
  */
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {

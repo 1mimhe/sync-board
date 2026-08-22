@@ -41,7 +41,6 @@ export interface PresenceUser {
 
 /**
  * WebSocket error event payload emitted to clients.
- * Matches the error format defined in `04-websocket-events.md` § Error Handling.
  */
 export interface WsErrorPayload {
   code: string;

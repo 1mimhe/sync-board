@@ -1,9 +1,10 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
+import { WsRateLimitCategory } from 'src/modules/board/board.constants';
 
 export const WS_RATE_LIMIT_KEY = 'ws_rate_limit';
 
 export interface WsRateLimitOptions {
-  category: string;
+  category: WsRateLimitCategory;
   limit: number;
   windowMs: number;
   silent?: boolean;

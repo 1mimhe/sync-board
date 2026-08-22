@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../../common/redis/redis.service';
+import { WsRateLimitCategory } from '../board.constants';
 
 /**
  * Sliding-window rate limiter for WebSocket events using Redis sorted sets.
@@ -21,7 +22,7 @@ export class WsRateLimiterService {
    */
   async checkRateLimit(
     userId: string,
-    eventCategory: string,
+    eventCategory: WsRateLimitCategory,
     limit: number,
     windowMs: number,
   ): Promise<boolean> {

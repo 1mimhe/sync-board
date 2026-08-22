@@ -547,6 +547,9 @@ export class WorkspaceService {
     this.logger.log(
       `Invitation sent to ${dto.email} for workspace ${workspaceId}`,
     );
+    this.logger.debug(
+      `Invitation sent to ${dto.email} and the raw token is ${rawToken}`,
+    );
 
     const inviterUser = await this.authService.getProfile(invitedBy);
 
@@ -705,7 +708,7 @@ export class WorkspaceService {
 
     let slug = baseSlug;
 
-    while (await this.workspaceRepo.findBySlug(slug)) {
+    while (await this.workspaceRepo.existsBySlug(slug)) {
       slug = `${baseSlug}-${randomBytes(3).toString('hex')}`;
     }
 

@@ -10,9 +10,7 @@ export const configValidationSchema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
     .default('info'),
-  JWT_SECRET: Joi.string()
-    .optional()
-    .default('default-super-secret-key-change-in-prod'),
+  JWT_SECRET: Joi.string().optional(),
   JWT_PRIVATE_KEY_PATH: Joi.string().optional(),
   JWT_PUBLIC_KEY_PATH: Joi.string().optional(),
   REDIS_HOST: Joi.string().default('localhost'),
