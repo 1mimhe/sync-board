@@ -20,27 +20,37 @@ export class JwtTokenService {
   private readonly algorithm: jwt.Algorithm;
 
   constructor(private readonly config: ConfigService) {
+    const nodeEnv = this.config.get<string>('NODE_ENV', 'development');
     const privatePath = this.config.get<string>('JWT_PRIVATE_KEY_PATH');
     const publicPath = this.config.get<string>('JWT_PUBLIC_KEY_PATH');
-
-    if (
+    const hasKeyFiles = !!(
       privatePath &&
       publicPath &&
       fs.existsSync(privatePath) &&
       fs.existsSync(publicPath)
-    ) {
-      this.privateKey = fs.readFileSync(privatePath, 'utf-8');
-      this.publicKey = fs.readFileSync(publicPath, 'utf-8');
+    );
+    const jwtSecret = this.config.get<string>('JWT_SECRET');
+
+    if (hasKeyFiles) {
+      this.privateKey = fs.readFileSync(privatePath!, 'utf-8');
+      this.publicKey = fs.readFileSync(publicPath!, 'utf-8');
       this.algorithm = 'RS256';
       this.secret = '';
       this.logger.log('JWT configured with RS256 (asymmetric keys)');
     } else {
+      if (nodeEnv === 'production') {
+        throw new Error(
+          'Production requires RS256 key files (JWT_PRIVATE_KEY_PATH / JWT_PUBLIC_KEY_PATH).',
+        );
+      }
+      if (!jwtSecret) {
+        throw new Error(
+          'JWT signing material missing. Provide JWT_PRIVATE_KEY_PATH/JWT_PUBLIC_KEY_PATH (RS256) or JWT_SECRET (HS256) before boot.',
+        );
+      }
       this.privateKey = null;
       this.publicKey = null;
-      this.secret = this.config.get<string>(
-        'JWT_SECRET',
-        'default-super-secret-key-change-in-prod',
-      );
+      this.secret = jwtSecret;
       this.algorithm = 'HS256';
       this.logger.warn(
         'JWT falling back to HS256 (symmetric secret). Use RS256 key files in production.',
@@ -57,6 +67,7 @@ export class JwtTokenService {
       sub: user.id,
       email: user.email,
       displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
     };
     const signingKey = this.privateKey || this.secret;
     return jwt.sign(payload, signingKey, {

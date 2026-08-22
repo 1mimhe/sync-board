@@ -288,7 +288,7 @@ export class AuthController {
     description: 'Google OAuth authorization URL',
   })
   @ApiForbiddenResponse({ description: 'User is already authenticated' })
-  googleAuth(): GoogleAuthUrlResponseDto {
+  async googleAuth(): Promise<GoogleAuthUrlResponseDto> {
     return this.authService.getGoogleAuthUrl();
   }
 
@@ -303,6 +303,9 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
+    const state = req.query?.state as string | undefined;
+    await this.authService.validateOAuthState(state);
+
     const user = req.user as User;
     const { user: profile, tokens } =
       await this.authService.handleGoogleCallback(

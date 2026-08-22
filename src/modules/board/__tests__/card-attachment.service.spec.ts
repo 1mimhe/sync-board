@@ -21,6 +21,8 @@ describe('CardAttachmentService', () => {
     attachmentRepo = mockDeep<CardAttachmentRepository>();
     eventEmitter = mockDeep<EventEmitter2>();
 
+    boardRepo.findById.mockResolvedValue({ id: 'board-1' } as any);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CardAttachmentService,

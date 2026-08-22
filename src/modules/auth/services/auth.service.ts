@@ -322,9 +322,9 @@ export class AuthService {
   }
 
   /**
-   * Constructs and returns the Google OAuth 2.0 authorization URL for frontend clients.
+   * Constructs and returns the Google OAuth 2.0 authorization URL with a secure random state stored in Redis.
    */
-  getGoogleAuthUrl(): { url: string } {
+  async getGoogleAuthUrl(): Promise<{ url: string }> {
     const clientId = this.config.get<string>(
       'GOOGLE_CLIENT_ID',
       'dummy-client-id',
@@ -334,12 +334,30 @@ export class AuthService {
       'http://localhost:3000/api/auth/google/callback',
     );
     const scope = encodeURIComponent('email profile');
+    const state = randomBytes(32).toString('base64url');
+
+    // Store state in Redis for 10 minutes (600s) to protect against OAuth login CSRF
+    await this.redis.set(`oauth:state:${state}`, '1', 'EX', 600);
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(
       clientId,
-    )}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${scope}&access_type=offline`;
+    )}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${scope}&access_type=offline&state=${encodeURIComponent(state)}`;
 
     return { url };
+  }
+
+  /**
+   * Validates and single-use consumes the OAuth state parameter to prevent CSRF attacks.
+   */
+  async validateOAuthState(state?: string): Promise<void> {
+    if (!state) {
+      throw new UnauthorizedException('INVALID_OAUTH_STATE');
+    }
+    const exists = await this.redis.exists(`oauth:state:${state}`);
+    if (exists !== 1) {
+      throw new UnauthorizedException('INVALID_OAUTH_STATE');
+    }
+    await this.redis.del(`oauth:state:${state}`);
   }
 
   /**

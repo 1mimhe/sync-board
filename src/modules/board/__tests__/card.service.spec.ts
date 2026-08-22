@@ -28,6 +28,8 @@ describe('CardService', () => {
     workspaceService = mockDeep<WorkspaceService>();
     eventEmitter = mockDeep<EventEmitter2>();
 
+    boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CardService,

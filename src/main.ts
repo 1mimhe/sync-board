@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { RedisIoAdapter } from './common/redis/redis-io.adapter';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
@@ -26,6 +27,11 @@ async function bootstrap() {
 
   // Register cookie parser middleware
   app.use(cookieParser());
+
+  // Attach distributed Socket.IO Redis adapter
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   // Configure OpenAPI / Swagger documentation
   const swaggerConfig = new DocumentBuilder()

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 /**
- * Service extending ioredis for Redis in-memory cache and PubSub operations.
+ * Service extending ioredis for Redis in-memory cache operations.
  * Handles lifecycle events, connection retries, and cleanup on module destruction.
  */
 @Injectable()

@@ -8,6 +8,8 @@ export interface JwtPayload {
   email: string;
   /** User display name */
   displayName: string;
+  /** User avatar image URL (optional) */
+  avatarUrl?: string | null;
   /** Token issue timestamp (seconds since epoch) */
   iat: number;
   /** Token expiration timestamp (seconds since epoch) */

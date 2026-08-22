@@ -54,6 +54,12 @@ export class WorkspaceRepository {
     });
   }
 
+  async existsBySlug(slug: string): Promise<boolean> {
+    return !!(await this.prisma.workspace.count({
+      where: { slug },
+    }));
+  }
+
   async findUserWorkspaces(userId: string): Promise<WorkspaceWithRole[]> {
     const workspaces = await this.prisma.workspace.findMany({
       where: {
