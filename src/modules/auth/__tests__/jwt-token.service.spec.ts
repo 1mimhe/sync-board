@@ -73,4 +73,28 @@ describe('JwtTokenService', () => {
       UnauthorizedException,
     );
   });
+
+  it('should fail fast in production if RS256 key files are missing', () => {
+    const configService = {
+      get: jest.fn((key: string) => {
+        if (key === 'NODE_ENV') return 'production';
+        if (key === 'JWT_SECRET') return 'test-secret';
+        return null;
+      }),
+    } as unknown as ConfigService;
+
+    expect(() => new JwtTokenService(configService)).toThrow(
+      'Production requires RS256 key files (JWT_PRIVATE_KEY_PATH / JWT_PUBLIC_KEY_PATH).',
+    );
+  });
+
+  it('should fail fast if both RSA key files and JWT_SECRET are missing', () => {
+    const configService = {
+      get: jest.fn(() => null),
+    } as unknown as ConfigService;
+
+    expect(() => new JwtTokenService(configService)).toThrow(
+      'JWT signing material missing. Provide JWT_PRIVATE_KEY_PATH/JWT_PUBLIC_KEY_PATH (RS256) or JWT_SECRET (HS256) before boot.',
+    );
+  });
 });
