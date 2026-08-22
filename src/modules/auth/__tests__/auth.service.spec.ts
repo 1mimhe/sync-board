@@ -381,4 +381,48 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
   });
+
+  describe('getGoogleAuthUrl', () => {
+    it('should generate Google OAuth URL with state param stored in Redis', async () => {
+      redisMock.set.mockResolvedValue('OK');
+
+      const result = await service.getGoogleAuthUrl();
+
+      expect(result.url).toContain('https://accounts.google.com/o/oauth2/v2/auth');
+      expect(result.url).toContain('state=');
+      expect(redisMock.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^oauth:state:/),
+        '1',
+        'EX',
+        600,
+      );
+    });
+  });
+
+  describe('validateOAuthState', () => {
+    it('should validate and consume state from Redis successfully', async () => {
+      redisMock.exists.mockResolvedValue(1);
+      redisMock.del.mockResolvedValue(1);
+
+      await expect(
+        service.validateOAuthState('valid-state'),
+      ).resolves.toBeUndefined();
+      expect(redisMock.exists).toHaveBeenCalledWith('oauth:state:valid-state');
+      expect(redisMock.del).toHaveBeenCalledWith('oauth:state:valid-state');
+    });
+
+    it('should throw UnauthorizedException if state is missing', async () => {
+      await expect(service.validateOAuthState(undefined)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException if state does not exist in Redis', async () => {
+      redisMock.exists.mockResolvedValue(0);
+
+      await expect(
+        service.validateOAuthState('unknown-state'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
 });

@@ -57,6 +57,7 @@ describe('AuthController', () => {
       forgotPassword: jest.fn(),
       resetPassword: jest.fn(),
       getGoogleAuthUrl: jest.fn(),
+      validateOAuthState: jest.fn(),
       handleGoogleCallback: jest.fn(),
       getProfile: jest.fn(),
       updateProfile: jest.fn(),
@@ -223,6 +224,54 @@ describe('AuthController', () => {
         'jest',
       );
       expect(result).toEqual(mockTokenResponse);
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        REFRESH_TOKEN_COOKIE_NAME,
+        mockTokens.refreshToken,
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('googleAuth', () => {
+    it('should return Google OAuth authorization URL', async () => {
+      authService.getGoogleAuthUrl.mockResolvedValue({
+        url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
+      });
+
+      const result = await controller.googleAuth();
+
+      expect(authService.getGoogleAuthUrl).toHaveBeenCalled();
+      expect(result).toEqual({
+        url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
+      });
+    });
+  });
+
+  describe('googleCallback', () => {
+    it('should validate state, handle callback, and set cookie', async () => {
+      authService.validateOAuthState.mockResolvedValue();
+      authService.handleGoogleCallback.mockResolvedValue({
+        user: { id: 'u-1', email: 'g@test.com' } as any,
+        tokens: mockTokens,
+      });
+
+      const req = {
+        query: { state: 'valid-state' },
+        user: { id: 'u-1', email: 'g@test.com' },
+        ip: '127.0.0.1',
+        headers: { 'user-agent': 'jest' },
+      } as any;
+
+      const result = await controller.googleCallback(req, mockRes as Response);
+
+      expect(authService.validateOAuthState).toHaveBeenCalledWith('valid-state');
+      expect(authService.handleGoogleCallback).toHaveBeenCalledWith(
+        req.user,
+        '127.0.0.1',
+        'jest',
+      );
+      expect(result.user).toEqual({ id: 'u-1', email: 'g@test.com' });
+      expect(result.tokens).toEqual(mockTokenResponse);
       expect(mockRes.cookie).toHaveBeenCalledWith(
         REFRESH_TOKEN_COOKIE_NAME,
         mockTokens.refreshToken,
