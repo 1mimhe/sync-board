@@ -1,8 +1,13 @@
-import { validateWsPayload } from '../utils/ws-validation.util';
-import { WsBoardJoinDto, WsCursorDto } from '../../modules/board/dto/ws-messages.dto';
+import { validateWsPayload } from '../ws-validation.util';
+import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
+import * as classValidator from 'class-validator';
 
 describe('validateWsPayload', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('should return validated instance when payload is valid', async () => {
     const validPayload = { boardId: '123e4567-e89b-42d3-a456-426614174000' };
     const result = await validateWsPayload(WsBoardJoinDto, validPayload);
@@ -64,5 +69,19 @@ describe('validateWsPayload', () => {
     };
 
     await expect(validateWsPayload(WsCursorDto, outOfBoundsPayload)).rejects.toThrow(WsException);
+  });
+
+  it('should handle validation errors with undefined constraints safely', async () => {
+    const mockError: classValidator.ValidationError = {
+      property: 'boardId',
+      children: [],
+      constraints: undefined,
+    };
+
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([mockError]);
+
+    await expect(
+      validateWsPayload(WsBoardJoinDto, { boardId: 'test' }),
+    ).rejects.toThrow(WsException);
   });
 });

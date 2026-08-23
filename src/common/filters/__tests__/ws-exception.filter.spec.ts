@@ -24,6 +24,10 @@ describe('WsExceptionFilter', () => {
     } as unknown as ArgumentsHost;
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('should format and emit structured error for WsException with object payload', () => {
     const wsException = new WsException({
       code: 'BOARD_ACCESS_DENIED',
@@ -37,6 +41,18 @@ describe('WsExceptionFilter', () => {
       code: 'BOARD_ACCESS_DENIED',
       message: 'You do not have access to this board',
       event: 'board:join',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('should use default code and message when object payload lacks code and message', () => {
+    const wsException = new WsException({});
+
+    filter.catch(wsException, mockHost);
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+      code: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred',
       timestamp: expect.any(String),
     });
   });
@@ -63,5 +79,27 @@ describe('WsExceptionFilter', () => {
       message: 'An unexpected error occurred',
       timestamp: expect.any(String),
     });
+  });
+
+  it('should handle non-Error primitives gracefully', () => {
+    filter.catch('Unexpected string thrown', mockHost);
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+      code: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('should not throw if client is undefined or lacks emit method', () => {
+    const emptyHost = {
+      switchToWs: () => ({
+        getClient: () => null as any,
+      }),
+    } as unknown as ArgumentsHost;
+
+    expect(() => {
+      filter.catch(new WsException('error'), emptyHost);
+    }).not.toThrow();
   });
 });
