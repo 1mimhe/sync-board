@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
-import { AuthController } from '../controllers/auth.controller';
-import { AuthService } from '../services/auth.service';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { AnonymousGuard } from '../../../common/guards/anonymous.guard';
-import { REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
+import { AuthController } from '../../controllers/auth.controller';
+import { AuthService } from '../../services/auth.service';
+import { JwtAuthGuard } from '../../../../common/guards/jwt-auth.guard';
+import { AnonymousGuard } from '../../../../common/guards/anonymous.guard';
+import { REFRESH_TOKEN_COOKIE_NAME } from '../../auth.constants';
 
 describe('AuthController', () => {
   let controller: AuthController;

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
-import { PrismaService } from '../../../common/database/prisma.service';
+import { RefreshTokenRepository } from '../../repositories/refresh-token.repository';
+import { PrismaService } from '../../../../common/database/prisma.service';
 
 describe('RefreshTokenRepository', () => {
   let repository: RefreshTokenRepository;

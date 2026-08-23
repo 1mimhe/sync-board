@@ -1,16 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { AuthService } from '../services/auth.service';
-import { PasswordService } from '../services/password.service';
-import { JwtTokenService } from '../services/jwt-token.service';
-import { TokenBlacklistService } from '../services/token-blacklist.service';
-import { RedisService } from '../../../common/redis/redis.service';
-import { UserRepository } from '../repositories/user.repository';
-import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
-import { AppException } from '../../../common/exceptions/app.exception';
+import { Prisma } from '@prisma/client';
+import { AuthService } from '../../services/auth.service';
+import { PasswordService } from '../../services/password.service';
+import { JwtTokenService } from '../../services/jwt-token.service';
+import { TokenBlacklistService } from '../../services/token-blacklist.service';
+import { RedisService } from '../../../../common/redis/redis.service';
+import { UserRepository } from '../../repositories/user.repository';
+import { RefreshTokenRepository } from '../../repositories/refresh-token.repository';
+import { AppException } from '../../../../common/exceptions/app.exception';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -329,6 +330,15 @@ describe('AuthService', () => {
         service.resetPassword('invalid-token', 'NewSecureP@ss123!'),
       ).rejects.toThrow(UnauthorizedException);
     });
+
+    it('should throw USER_NOT_FOUND if user not found in db during reset', async () => {
+      redisMock.get.mockResolvedValue('missing-user-id');
+      userRepositoryMock.findById.mockResolvedValue(null);
+
+      await expect(
+        service.resetPassword('valid-token', 'NewSecureP@ss123!'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   describe('changePassword', () => {
@@ -369,6 +379,17 @@ describe('AuthService', () => {
       expect(tokens).toHaveProperty('refreshToken');
     });
 
+    it('should throw UnauthorizedException if user not found or passwordHash missing', async () => {
+      userRepositoryMock.findById.mockResolvedValue(null);
+
+      await expect(
+        service.changePassword('missing-user', {
+          currentPassword: 'pass',
+          newPassword: 'new',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
     it('should throw UnauthorizedException if current password does not match', async () => {
       userRepositoryMock.findById.mockResolvedValue(mockUser);
       jest.spyOn(passwordService, 'verify').mockResolvedValue(false);
@@ -379,6 +400,131 @@ describe('AuthService', () => {
           newPassword: 'NewPassword123!',
         }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('Google OAuth', () => {
+    describe('findOrCreateGoogleUser', () => {
+      it('should throw UnauthorizedException if email is missing', async () => {
+        await expect(
+          service.findOrCreateGoogleUser({
+            googleId: 'g-1',
+            email: '',
+            displayName: 'Test',
+          }),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('should update user if googleId already matches', async () => {
+        userRepositoryMock.findByGoogleId.mockResolvedValue(mockUser);
+        userRepositoryMock.updateGoogleLogin.mockResolvedValue(mockUser);
+
+        const result = await service.findOrCreateGoogleUser({
+          googleId: 'g-1',
+          email: 'user@example.com',
+          displayName: 'John',
+        });
+
+        expect(result).toEqual(mockUser);
+        expect(userRepositoryMock.updateGoogleLogin).toHaveBeenCalled();
+      });
+
+      it('should link googleId if email already exists', async () => {
+        userRepositoryMock.findByGoogleId.mockResolvedValue(null);
+        userRepositoryMock.findByEmail.mockResolvedValue(mockUser);
+        userRepositoryMock.updateGoogleLogin.mockResolvedValue(mockUser);
+
+        const result = await service.findOrCreateGoogleUser({
+          googleId: 'g-1',
+          email: 'user@example.com',
+          displayName: 'John',
+        });
+
+        expect(result).toEqual(mockUser);
+        expect(userRepositoryMock.updateGoogleLogin).toHaveBeenCalled();
+      });
+
+      it('should create new google user if neither googleId nor email exists', async () => {
+        userRepositoryMock.findByGoogleId.mockResolvedValue(null);
+        userRepositoryMock.findByEmail.mockResolvedValue(null);
+        userRepositoryMock.createGoogleUser.mockResolvedValue(mockUser);
+
+        const result = await service.findOrCreateGoogleUser({
+          googleId: 'g-1',
+          email: 'newuser@example.com',
+          displayName: 'New User',
+        });
+
+        expect(result).toEqual(mockUser);
+      });
+
+      it('should fallback to linking account if P2002 happens on createGoogleUser race condition', async () => {
+        const p2002Error = new Prisma.PrismaClientKnownRequestError('P2002', {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        });
+        userRepositoryMock.findByGoogleId.mockResolvedValue(null);
+        userRepositoryMock.findByEmail
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(mockUser);
+        userRepositoryMock.createGoogleUser.mockRejectedValue(p2002Error);
+        userRepositoryMock.updateGoogleLogin.mockResolvedValue(mockUser);
+
+        const result = await service.findOrCreateGoogleUser({
+          googleId: 'g-1',
+          email: 'user@example.com',
+          displayName: 'John',
+        });
+
+        expect(result).toEqual(mockUser);
+      });
+    });
+
+    describe('handleGoogleCallback', () => {
+      it('should issue tokens and emit user.logged_in event', async () => {
+        tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken);
+
+        const result = await service.handleGoogleCallback(mockUser, '127.0.0.1', 'agent');
+        expect(result.tokens).toBeDefined();
+        expect(eventEmitter.emit).toHaveBeenCalledWith('user.logged_in', {
+          userId: mockUser.id,
+          method: 'google',
+        });
+      });
+    });
+  });
+
+  describe('User profile & summary methods', () => {
+    it('should return profile by id or throw NotFoundException', async () => {
+      const { passwordHash, ...publicUser } = mockUser;
+      userRepositoryMock.findByIdPublic.mockResolvedValue(publicUser as any);
+
+      const res = await service.getProfile('user-1');
+      expect(res).toEqual(publicUser);
+
+      userRepositoryMock.findByIdPublic.mockResolvedValue(null);
+      await expect(service.getProfile('missing-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should find user by email', async () => {
+      userRepositoryMock.findByEmail.mockResolvedValue(mockUser);
+      const res = await service.getUserByEmail('user@example.com');
+      expect(res).toEqual(mockUser);
+    });
+
+    it('should find user summary by email', async () => {
+      const summary = { id: 'u-1', email: 'u@example.com', displayName: 'U', avatarUrl: null };
+      userRepositoryMock.findUserSummaryByEmail.mockResolvedValue(summary);
+      const res = await service.findUserSummaryByEmail('u@example.com');
+      expect(res).toEqual(summary);
+    });
+
+    it('should update profile', async () => {
+      const updated = { id: 'u-1', displayName: 'New Name' };
+      userRepositoryMock.updateProfile.mockResolvedValue(updated as any);
+
+      const res = await service.updateProfile('u-1', { displayName: 'New Name' });
+      expect(res).toEqual(updated);
     });
   });
 

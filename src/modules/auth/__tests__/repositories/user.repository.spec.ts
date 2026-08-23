@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { Prisma } from '@prisma/client';
-import { UserRepository } from '../repositories/user.repository';
-import { PrismaService } from '../../../common/database/prisma.service';
-import { AppException } from '../../../common/exceptions/app.exception';
+import { UserRepository } from '../../repositories/user.repository';
+import { PrismaService } from '../../../../common/database/prisma.service';
+import { AppException } from '../../../../common/exceptions/app.exception';
 
 describe('UserRepository', () => {
   let repository: UserRepository;
@@ -70,6 +70,18 @@ describe('UserRepository', () => {
         }),
       ).rejects.toThrow(AppException);
     });
+
+    it('should rethrow generic errors during user creation', async () => {
+      prismaMock.user.create.mockRejectedValue(new Error('DB connection lost'));
+
+      await expect(
+        repository.createUser({
+          email: 'user@example.com',
+          passwordHash: 'hash',
+          displayName: 'John Doe',
+        }),
+      ).rejects.toThrow('DB connection lost');
+    });
   });
 
   describe('findByEmail', () => {
@@ -87,6 +99,45 @@ describe('UserRepository', () => {
 
       const result = await repository.findById('user-uuid-1');
       expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('findByIdPublic', () => {
+    it('should return user omitting passwordHash', async () => {
+      const { passwordHash, ...publicUser } = mockUser;
+      prismaMock.user.findUnique.mockResolvedValue(publicUser as any);
+
+      const result = await repository.findByIdPublic('user-uuid-1');
+      expect(result).toEqual(publicUser);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        omit: { passwordHash: true },
+      });
+    });
+  });
+
+  describe('findByGoogleId', () => {
+    it('should return user by googleId', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(mockUser);
+
+      const result = await repository.findByGoogleId('google-123');
+      expect(result).toEqual(mockUser);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { googleId: 'google-123' },
+      });
+    });
+  });
+
+  describe('updateLastLogin', () => {
+    it('should update lastLoginAt timestamp', async () => {
+      prismaMock.user.update.mockResolvedValue(mockUser);
+
+      await repository.updateLastLogin('user-uuid-1');
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        data: { lastLoginAt: expect.any(Date) },
+      });
     });
   });
 
@@ -131,6 +182,44 @@ describe('UserRepository', () => {
       expect(prismaMock.user.update).toHaveBeenCalledWith({
         where: { id: 'user-uuid-1' },
         data: { passwordHash: 'new-hashed-password' },
+      });
+    });
+  });
+
+  describe('findUserSummaryByEmail', () => {
+    it('should return lightweight user summary', async () => {
+      const summary = {
+        id: 'user-1',
+        email: 'user@example.com',
+        displayName: 'User',
+        avatarUrl: null,
+      };
+      prismaMock.user.findUnique.mockResolvedValue(summary as any);
+
+      const result = await repository.findUserSummaryByEmail('user@example.com');
+      expect(result).toEqual(summary);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'user@example.com' },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      });
+    });
+  });
+
+  describe('updateGoogleLogin', () => {
+    it('should update user with google login payload', async () => {
+      prismaMock.user.update.mockResolvedValue(mockUser);
+
+      const result = await repository.updateGoogleLogin('user-1', { googleId: 'g-1' });
+
+      expect(result).toEqual(mockUser);
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { googleId: 'g-1' },
       });
     });
   });
