@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LexorankService } from '../services/lexorank.service';
+import { LexorankService } from '../../services/lexorank.service';
+import { BusinessRuleException } from '../../../../common/exceptions/app.exception';
 
 describe('LexorankService', () => {
   let service: LexorankService;
@@ -22,6 +23,11 @@ describe('LexorankService', () => {
     expect(typeof rank).toBe('string');
   });
 
+  it('should return initial rank when both prevRank and nextRank are omitted or null', () => {
+    const rank = service.getRankBetween(null, null);
+    expect(rank).toBe(service.getInitialRank());
+  });
+
   it('should return a rank between prev and next ranks', () => {
     const initial = service.getInitialRank();
     const next = service.getRankBetween(initial, null);
@@ -38,5 +44,11 @@ describe('LexorankService', () => {
 
     expect(prev).toBeDefined();
     expect(prev < initial).toBe(true);
+  });
+
+  it('should throw BusinessRuleException when rank string is invalid or malformed', () => {
+    expect(() => service.getRankBetween('invalid-rank-string', 'another-invalid')).toThrow(
+      BusinessRuleException,
+    );
   });
 });

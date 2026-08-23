@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { ListService } from '../services/list.service';
-import { ListRepository } from '../repositories/list.repository';
-import { BoardRepository } from '../repositories/board.repository';
-import { LexorankService } from '../services/lexorank.service';
-import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
+import { ListService } from '../../services/list.service';
+import { ListRepository } from '../../repositories/list.repository';
+import { BoardRepository } from '../../repositories/board.repository';
+import { LexorankService } from '../../services/lexorank.service';
+import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
 
 describe('ListService', () => {
   let service: ListService;
@@ -33,8 +33,8 @@ describe('ListService', () => {
     lexorankService = module.get<LexorankService>(LexorankService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('create', () => {
@@ -71,6 +71,41 @@ describe('ListService', () => {
       );
     });
 
+    it('should append after last list if lists already exist in board', async () => {
+      boardRepo.findById.mockResolvedValue({
+        id: 'board-uuid',
+        workspaceId: 'ws-uuid',
+      } as any);
+      listRepo.findLastInBoard.mockResolvedValue({
+        id: 'list-1',
+        rank: '0|hzzzzz:',
+      } as any);
+
+      const mockList = {
+        id: 'list-2',
+        boardId: 'board-uuid',
+        title: 'Doing',
+        rank: '0|i00000:',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        archivedAt: null,
+      };
+
+      listRepo.create.mockResolvedValue(mockList);
+
+      const result = await service.create(
+        'board-uuid',
+        'ws-uuid',
+        { title: 'Doing' },
+        'user-uuid',
+      );
+
+      expect(result).toEqual(mockList);
+      expect(listRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ rank: expect.any(String) }),
+      );
+    });
+
     it('should throw EntityNotFoundException if board does not exist', async () => {
       boardRepo.findById.mockResolvedValue(null);
 
@@ -82,6 +117,26 @@ describe('ListService', () => {
           'user-uuid',
         ),
       ).rejects.toThrow(EntityNotFoundException);
+    });
+  });
+
+  describe('update', () => {
+    it('should update list title and emit list.updated', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      listRepo.findActiveById.mockResolvedValue({ id: 'l-1' } as any);
+      listRepo.update.mockResolvedValue({ id: 'l-1', title: 'New Title' } as any);
+
+      const result = await service.update('b-1', 'ws-1', 'l-1', { title: 'New Title' }, 'u-1');
+
+      expect(result.title).toBe('New Title');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('list.updated', expect.any(Object));
+    });
+
+    it('should throw EntityNotFoundException if list not found during update', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      listRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(service.update('b-1', 'ws-1', 'l-99', { title: 'Title' }, 'u-1')).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -118,6 +173,33 @@ describe('ListService', () => {
         'list.moved',
         expect.any(Object),
       );
+    });
+
+    it('should throw EntityNotFoundException if list not found during move', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      listRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(service.move('b-1', 'ws-1', 'l-99', { prevRank: '0|a:' }, 'u-1')).rejects.toThrow(EntityNotFoundException);
+    });
+  });
+
+  describe('archive', () => {
+    it('should archive list and emit list.archived', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      listRepo.findActiveById.mockResolvedValue({ id: 'l-1' } as any);
+      listRepo.archive.mockResolvedValue({ id: 'l-1' } as any);
+
+      await service.archive('b-1', 'ws-1', 'l-1', 'u-1');
+
+      expect(listRepo.archive).toHaveBeenCalledWith('l-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('list.archived', expect.any(Object));
+    });
+
+    it('should throw EntityNotFoundException if list not found during archive', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      listRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(service.archive('b-1', 'ws-1', 'l-99', 'u-1')).rejects.toThrow(EntityNotFoundException);
     });
   });
 

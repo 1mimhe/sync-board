@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { WsRateLimiterService } from '../services/ws-rate-limiter.service';
-import { RedisService } from '../../../common/redis/redis.service';
+import { WsRateLimiterService } from '../../services/ws-rate-limiter.service';
+import { RedisService } from '../../../../common/redis/redis.service';
 
 describe('WsRateLimiterService', () => {
   let service: WsRateLimiterService;

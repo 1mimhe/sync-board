@@ -1,17 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { UnauthorizedException } from '@nestjs/common';
-import { BoardGateway } from '../gateways/board.gateway';
-import { JwtTokenService } from '../../auth/services/jwt-token.service';
-import { TokenBlacklistService } from '../../auth/services/token-blacklist.service';
-import { WorkspaceMemberRepository } from '../../workspace/repositories/workspace-member.repository';
-import { BoardRepository } from '../repositories/board.repository';
-import { PresenceService } from '../services/presence.service';
-import { WsRateLimiterService } from '../services/ws-rate-limiter.service';
-import { WsWorkspaceMemberGuard } from '../../workspace/guards/ws-workspace-member.guard';
-import { WsBoardAccessGuard } from '../guards/ws-board-access.guard';
-import { WS_EVENTS } from '../board.constants';
+import { BoardGateway } from '../../gateways/board.gateway';
+import { JwtTokenService } from '../../../auth/services/jwt-token.service';
+import { TokenBlacklistService } from '../../../auth/services/token-blacklist.service';
+import { WorkspaceMemberRepository } from '../../../workspace/repositories/workspace-member.repository';
+import { BoardRepository } from '../../repositories/board.repository';
+import { PresenceService } from '../../services/presence.service';
+import { WsRateLimiterService } from '../../services/ws-rate-limiter.service';
+import { WsWorkspaceMemberGuard } from '../../../workspace/guards/ws-workspace-member.guard';
+import { WsBoardAccessGuard } from '../../guards/ws-board-access.guard';
+import { WS_EVENTS } from '../../board.constants';
+import { GATEWAY_OPTIONS } from '@nestjs/websockets/constants';
 import {
+  BoardCreatedEvent,
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
@@ -28,7 +30,7 @@ import {
   CommentCreatedEvent,
   AttachmentCreatedEvent,
   AttachmentDeletedEvent,
-} from '../events/board.events';
+} from '../../events/board.events';
 import type { Server, Socket } from 'socket.io';
 
 describe('BoardGateway', () => {
@@ -96,6 +98,49 @@ describe('BoardGateway', () => {
       to: jest.fn().mockReturnThis(),
       disconnect: jest.fn(),
     };
+  });
+
+  afterEach(() => {
+    gateway.onModuleDestroy();
+  });
+
+  describe('CORS Configuration', () => {
+    it('should allow all origins in cors callback', () => {
+      const options = Reflect.getMetadata(GATEWAY_OPTIONS, BoardGateway);
+      expect(options).toBeDefined();
+      const corsOrigin = options.cors.origin;
+      const callback = jest.fn();
+      corsOrigin('https://localhost:3000', callback);
+      expect(callback).toHaveBeenCalledWith(null, true);
+    });
+  });
+
+  describe('Lifecycle', () => {
+    it('should start cleanup interval in afterInit and clear in onModuleDestroy', () => {
+      jest.useFakeTimers();
+      gateway.afterInit();
+      expect((gateway as any).cleanupInterval).toBeDefined();
+
+      gateway.onModuleDestroy();
+      expect((gateway as any).cleanupInterval).toBeNull();
+      jest.useRealTimers();
+    });
+
+    it('should broadcast left events for pruned stale presence entries in runPresenceCleanup', async () => {
+      const prunedMap = new Map([
+        ['b-1', { userId: 'u-1', displayName: 'Stale User' }],
+      ]);
+      presenceService.cleanupStaleEntries.mockResolvedValue(prunedMap as any);
+
+      await (gateway as any).runPresenceCleanup();
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.BOARD_PRESENCE, {
+        userId: 'u-1',
+        action: 'left',
+        displayName: 'Stale User',
+      });
+    });
   });
 
   describe('handleConnection', () => {
@@ -441,6 +486,21 @@ describe('BoardGateway', () => {
   });
 
   describe('Domain Event Broadcasters (@OnEvent)', () => {
+    it('should broadcast board:created on BoardCreatedEvent', () => {
+      const event = new BoardCreatedEvent(
+        { id: 'b-1', workspaceId: 'ws-1', title: 'New Board' } as any,
+        'user-1',
+      );
+
+      gateway.broadcastBoardCreated(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('workspace:ws-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.BOARD_CREATED, {
+        board: event.board,
+        createdBy: { id: 'user-1' },
+      });
+    });
+
     it('should broadcast board:updated on BoardUpdatedEvent', () => {
       const event = new BoardUpdatedEvent(
         {
@@ -502,6 +562,22 @@ describe('BoardGateway', () => {
       });
     });
 
+    it('should broadcast list:updated on ListUpdatedEvent', () => {
+      const event = new ListUpdatedEvent(
+        { id: 'l-1', boardId: 'b-1', title: 'Doing', updatedAt: new Date() } as any,
+        'user-1',
+      );
+
+      gateway.broadcastListUpdated(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LIST_UPDATED, {
+        listId: 'l-1',
+        changes: { title: 'Doing', updatedAt: event.list.updatedAt },
+        updatedBy: { id: 'user-1' },
+      });
+    });
+
     it('should broadcast list:moved on ListMovedEvent', () => {
       const event = new ListMovedEvent('list-1', '123e4567-e89b-42d3-a456-426614174000', 'rank-b', 'user-1');
 
@@ -512,6 +588,34 @@ describe('BoardGateway', () => {
         listId: 'list-1',
         newRank: 'rank-b',
         movedBy: { id: 'user-1' },
+      });
+    });
+
+    it('should broadcast list:archived on ListArchivedEvent', () => {
+      const event = new ListArchivedEvent('l-1', 'b-1', 'u-1');
+
+      gateway.broadcastListArchived(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LIST_ARCHIVED, {
+        listId: 'l-1',
+        archivedBy: { id: 'u-1' },
+      });
+    });
+
+    it('should broadcast list:unarchived on ListUnarchivedEvent', () => {
+      const event = new ListUnarchivedEvent(
+        { id: 'l-1', boardId: 'b-1', title: 'Restored' } as any,
+        'u-1',
+      );
+
+      gateway.broadcastListUnarchived(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LIST_UNARCHIVED, {
+        listId: 'l-1',
+        list: event.list,
+        unarchivedBy: { id: 'u-1' },
       });
     });
 
@@ -530,6 +634,38 @@ describe('BoardGateway', () => {
         card: event.card,
         listId: 'list-1',
         createdBy: { id: 'user-1' },
+      });
+    });
+
+    it('should broadcast card:updated on CardUpdatedEvent', () => {
+      const event = new CardUpdatedEvent(
+        {
+          id: 'c-1',
+          title: 'Card',
+          description: 'Desc',
+          dueDate: null,
+          isComplete: true,
+          coverImageUrl: null,
+          updatedAt: new Date(),
+        } as any,
+        'b-1',
+        'u-1',
+      );
+
+      gateway.broadcastCardUpdated(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CARD_UPDATED, {
+        cardId: 'c-1',
+        changes: {
+          title: 'Card',
+          description: 'Desc',
+          dueDate: null,
+          isComplete: true,
+          coverImageUrl: null,
+          updatedAt: event.card.updatedAt,
+        },
+        updatedBy: { id: 'u-1' },
       });
     });
 
@@ -552,6 +688,38 @@ describe('BoardGateway', () => {
         toListId: 'list-target',
         newRank: 'rank-x',
         movedBy: { id: 'user-1' },
+      });
+    });
+
+    it('should broadcast card:archived on CardArchivedEvent', () => {
+      const event = new CardArchivedEvent('c-1', 'b-1', 'l-1', 'u-1');
+
+      gateway.broadcastCardArchived(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CARD_ARCHIVED, {
+        cardId: 'c-1',
+        listId: 'l-1',
+        archivedBy: { id: 'u-1' },
+      });
+    });
+
+    it('should broadcast card:unarchived on CardUnarchivedEvent', () => {
+      const event = new CardUnarchivedEvent(
+        { id: 'c-1', title: 'Restored' } as any,
+        'b-1',
+        'l-1',
+        'u-1',
+      );
+
+      gateway.broadcastCardUnarchived(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:b-1');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CARD_UNARCHIVED, {
+        cardId: 'c-1',
+        card: event.card,
+        listId: 'l-1',
+        unarchivedBy: { id: 'u-1' },
       });
     });
 
@@ -600,6 +768,30 @@ describe('BoardGateway', () => {
         attachmentId: 'att-1',
         deletedBy: { id: 'user-1' },
       });
+    });
+
+    it('should gracefully return when server is undefined across all broadcaster methods', () => {
+      (gateway as any).server = undefined;
+
+      expect(() => {
+        gateway.broadcastBoardCreated(new BoardCreatedEvent({ workspaceId: 'ws-1' } as any, 'u-1'));
+        gateway.broadcastBoardUpdated(new BoardUpdatedEvent({ id: 'b-1' } as any, 'u-1'));
+        gateway.broadcastBoardArchived(new BoardArchivedEvent('b-1', 'ws-1', 'u-1'));
+        gateway.broadcastBoardUnarchived(new BoardUnarchivedEvent({ id: 'b-1' } as any, 'u-1'));
+        gateway.broadcastListCreated(new ListCreatedEvent({ boardId: 'b-1' } as any, 'u-1'));
+        gateway.broadcastListUpdated(new ListUpdatedEvent({ id: 'l-1', boardId: 'b-1' } as any, 'u-1'));
+        gateway.broadcastListMoved(new ListMovedEvent('l-1', 'b-1', 'rank', 'u-1'));
+        gateway.broadcastListArchived(new ListArchivedEvent('l-1', 'b-1', 'u-1'));
+        gateway.broadcastListUnarchived(new ListUnarchivedEvent({ id: 'l-1', boardId: 'b-1' } as any, 'u-1'));
+        gateway.broadcastCardCreated(new CardCreatedEvent({} as any, 'b-1', 'l-1', 'u-1'));
+        gateway.broadcastCardUpdated(new CardUpdatedEvent({ id: 'c-1' } as any, 'b-1', 'u-1'));
+        gateway.broadcastCardMoved(new CardMovedEvent('c-1', 'b-1', 'l-1', 'l-2', 'r', 'u-1'));
+        gateway.broadcastCardArchived(new CardArchivedEvent('c-1', 'b-1', 'l-1', 'u-1'));
+        gateway.broadcastCardUnarchived(new CardUnarchivedEvent({ id: 'c-1' } as any, 'b-1', 'l-1', 'u-1'));
+        gateway.broadcastCommentCreated(new CommentCreatedEvent({} as any, 'b-1', 'u-1'));
+        gateway.broadcastAttachmentCreated(new AttachmentCreatedEvent({} as any, 'b-1', 'u-1'));
+        gateway.broadcastAttachmentDeleted(new AttachmentDeletedEvent('att-1', 'c-1', 'b-1', 'u-1'));
+      }).not.toThrow();
     });
   });
 });

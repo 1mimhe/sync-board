@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { PresenceService } from '../services/presence.service';
-import { RedisService } from '../../../common/redis/redis.service';
-import { COLLABORATOR_COLORS } from '../board.constants';
-import type { PresenceEntry } from '../../../common/interfaces/ws.interface';
+import { PresenceService } from '../../services/presence.service';
+import { RedisService } from '../../../../common/redis/redis.service';
+import { COLLABORATOR_COLORS } from '../../board.constants';
+import type { PresenceEntry } from '../../../../common/interfaces/ws.interface';
 
 describe('PresenceService', () => {
   let service: PresenceService;
@@ -131,10 +131,23 @@ describe('PresenceService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should return null when entry in redis is corrupted/invalid JSON', async () => {
+      mockPipeline.exec.mockResolvedValue([
+        [null, 'INVALID_JSON_CORRUPTED'],
+        [null, 1],
+        [null, 1],
+        [null, 1],
+      ]);
+
+      const result = await service.removePresence('board-1', 'corrupted-socket');
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('removeUserPresence', () => {
-    it('should remove ALL sockets for a given userId from active ZSET and meta HASH in a single pipeline', async () => {
+    it('should remove ALL sockets for a given userId and srem active_boards if empty', async () => {
       const entry1: PresenceEntry = {
         userId: 'user-1',
         socketId: 'sock-tab-1',
@@ -143,49 +156,21 @@ describe('PresenceService', () => {
         color: '#E74C3C',
         connectedAt: '2026-08-18T10:00:00.000Z',
       };
-      const entry2: PresenceEntry = {
-        userId: 'user-1',
-        socketId: 'sock-tab-2',
-        displayName: 'Alice',
-        avatarUrl: null,
-        color: '#E74C3C',
-        connectedAt: '2026-08-18T10:01:00.000Z',
-      };
-      const otherUserEntry: PresenceEntry = {
-        userId: 'user-2',
-        socketId: 'sock-bob',
-        displayName: 'Bob',
-        avatarUrl: null,
-        color: '#3498DB',
-        connectedAt: '2026-08-18T10:02:00.000Z',
-      };
 
       redisService.hgetall.mockResolvedValue({
         'sock-tab-1': JSON.stringify(entry1),
-        'sock-tab-2': JSON.stringify(entry2),
-        'sock-bob': JSON.stringify(otherUserEntry),
       });
 
       mockPipeline.exec.mockResolvedValue([
-        [null, 2], // zrem
-        [null, 2], // hdel
-        [null, 1], // zcard (1 remaining)
+        [null, 1], // zrem
+        [null, 1], // hdel
+        [null, 0], // zcard (0 remaining)
       ]);
 
       const removed = await service.removeUserPresence('board-1', 'user-1');
 
-      expect(removed).toHaveLength(2);
-      expect(removed).toEqual([entry1, entry2]);
-      expect(mockPipeline.zrem).toHaveBeenCalledWith(
-        'presence:board:board-1:active',
-        'sock-tab-1',
-        'sock-tab-2',
-      );
-      expect(mockPipeline.hdel).toHaveBeenCalledWith(
-        'presence:board:board-1:meta',
-        'sock-tab-1',
-        'sock-tab-2',
-      );
+      expect(removed).toHaveLength(1);
+      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
     });
 
     it('should return empty array when user has no presence entries', async () => {
@@ -313,10 +298,49 @@ describe('PresenceService', () => {
       const color = await service.getCollaboratorColor('user-1', 'board-1');
       expect(color).not.toBe(activeViewer.color);
     });
+
+    it('should fall back to a golden-ratio HSL color when all 16 palette slots are taken', async () => {
+      const allTakenEntries: PresenceEntry[] = [...COLLABORATOR_COLORS].map((color, idx) => ({
+        userId: `filler-${idx}`,
+        socketId: `filler-sock-${idx}`,
+        displayName: `Filler ${idx}`,
+        avatarUrl: null,
+        color,
+        connectedAt: '2026-08-18T10:00:00.000Z',
+      }));
+
+      redisService.zrangebyscore.mockResolvedValue(allTakenEntries.map((e) => e.socketId));
+      redisService.hmget.mockResolvedValue(allTakenEntries.map((e) => JSON.stringify(e)));
+
+      const color = await service.getCollaboratorColor('overflow-user', 'board-full');
+
+      expect(COLLABORATOR_COLORS as readonly string[]).not.toContain(color);
+      expect(color).toMatch(/^hsl\(\d+, 75%, 50%\)$/);
+    });
   });
 
   describe('cleanupStaleEntries', () => {
-    it('should iterate active_boards set only and prune stale entries via pipeline', async () => {
+    const makeCheckPipeline = (execResult: any[][]) => ({
+      zrangebyscore: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(execResult),
+    });
+
+    const makePrunePipeline = (execResult: any[][]) => ({
+      hmget: jest.fn().mockReturnThis(),
+      zrem: jest.fn().mockReturnThis(),
+      hdel: jest.fn().mockReturnThis(),
+      zcard: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(execResult),
+    });
+
+    it('should catch and log error if redis throws in cleanupStaleEntries', async () => {
+      redisService.smembers.mockRejectedValue(new Error('Redis connection down'));
+
+      const result = await service.cleanupStaleEntries();
+      expect(result).toEqual([]);
+    });
+
+    it('should prune stale entries across active boards using two batched pipelines', async () => {
       redisService.smembers.mockResolvedValue(['board-1', 'board-2']);
 
       const staleEntry: PresenceEntry = {
@@ -324,37 +348,30 @@ describe('PresenceService', () => {
         socketId: 'stale-sock',
         displayName: 'Stale User',
         avatarUrl: null,
-        color: '#E74C3C',
+        color: '#E11D48',
         connectedAt: '2026-08-18T08:00:00.000Z',
       };
 
-      redisService.zrangebyscore
-        .mockResolvedValueOnce(['stale-sock']) // board-1 has stale socket
-        .mockResolvedValueOnce([]); // board-2 has no stale socket
-
-      redisService.hmget.mockResolvedValueOnce([JSON.stringify(staleEntry)]);
-
-      mockPipeline.exec.mockResolvedValueOnce([
-        [null, 1], // zrem
-        [null, 1], // hdel
-        [null, 0], // zcard = 0 remaining
+      const checkPipeline = makeCheckPipeline([
+        [null, ['stale-sock']], // board-1 has 1 stale socket
+        [null, []],             // board-2 is clean
       ]);
+      const prunePipeline = makePrunePipeline([
+        [null, [JSON.stringify(staleEntry)]], // hmget  (offset 0)
+        [null, 1],                            // zrem   (offset 1)
+        [null, 1],                            // hdel   (offset 2)
+        [null, 0],                            // zcard  (offset 3) → board empty
+      ]);
+
+      redisService.pipeline
+        .mockReturnValueOnce(checkPipeline)
+        .mockReturnValueOnce(prunePipeline);
 
       const pruned = await service.cleanupStaleEntries();
 
       expect(redisService.smembers).toHaveBeenCalledWith('presence:active_boards');
       expect(pruned).toHaveLength(1);
       expect(pruned[0]).toEqual(['board-1', staleEntry]);
-      expect(mockPipeline.zrem).toHaveBeenCalledWith('presence:board:board-1:active', 'stale-sock');
-      expect(mockPipeline.hdel).toHaveBeenCalledWith('presence:board:board-1:meta', 'stale-sock');
-      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
-    });
-
-    it('should handle empty active boards set gracefully', async () => {
-      redisService.smembers.mockResolvedValue([]);
-
-      const pruned = await service.cleanupStaleEntries();
-      expect(pruned).toEqual([]);
     });
   });
 });

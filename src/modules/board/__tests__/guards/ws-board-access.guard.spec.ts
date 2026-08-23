@@ -1,7 +1,7 @@
 import { ExecutionContext } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { WsBoardAccessGuard } from '../ws-board-access.guard';
+import { WsBoardAccessGuard } from '../../guards/ws-board-access.guard';
 import { BoardRepository } from '../../repositories/board.repository';
 import { WorkspaceMemberRepository } from '../../../workspace/repositories/workspace-member.repository';
 

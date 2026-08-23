@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { CardAttachmentService } from '../services/card-attachment.service';
-import { CardRepository } from '../repositories/card.repository';
-import { BoardRepository } from '../repositories/board.repository';
-import { CardAttachmentRepository } from '../repositories/card-attachment.repository';
-import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
+import { CardAttachmentService } from '../../services/card-attachment.service';
+import { CardRepository } from '../../repositories/card.repository';
+import { BoardRepository } from '../../repositories/board.repository';
+import { CardAttachmentRepository } from '../../repositories/card-attachment.repository';
+import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
 import { AttachmentType } from '@prisma/client';
 
 describe('CardAttachmentService', () => {
@@ -36,8 +36,16 @@ describe('CardAttachmentService', () => {
     service = module.get<CardAttachmentService>(CardAttachmentService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should throw EntityNotFoundException if board does not exist', async () => {
+    boardRepo.findById.mockResolvedValue(null);
+
+    await expect(
+      service.getAttachments('nonexistent-board', 'ws-1', 'card-1'),
+    ).rejects.toThrow(EntityNotFoundException);
   });
 
   describe('addAttachment', () => {
@@ -161,6 +169,11 @@ describe('CardAttachmentService', () => {
         id: 'att-1',
         cardId: 'card-1',
         name: 'New Name',
+        type: AttachmentType.file,
+        url: 'https://example.com/file',
+        mimeType: 'application/pdf',
+        fileSize: 500,
+        coverUrl: 'https://example.com/thumb',
       } as any);
 
       const result = await service.updateAttachment(
@@ -168,13 +181,33 @@ describe('CardAttachmentService', () => {
         'ws-1',
         'card-1',
         'att-1',
-        { name: 'New Name' },
+        {
+          name: 'New Name',
+          type: AttachmentType.file,
+          url: 'https://example.com/file',
+          mimeType: 'application/pdf',
+          fileSize: 500,
+          coverUrl: 'https://example.com/thumb',
+        },
       );
 
       expect(result.name).toBe('New Name');
       expect(attachmentRepo.update).toHaveBeenCalledWith('att-1', {
         name: 'New Name',
+        type: AttachmentType.file,
+        url: 'https://example.com/file',
+        mimeType: 'application/pdf',
+        fileSize: 500,
+        coverUrl: 'https://example.com/thumb',
       });
+    });
+
+    it('should throw EntityNotFoundException if card does not exist during update', async () => {
+      cardRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(
+        service.updateAttachment('board-1', 'ws-1', 'c-99', 'att-1', { name: 'Name' }),
+      ).rejects.toThrow(EntityNotFoundException);
     });
 
     it('should throw EntityNotFoundException if attachment does not belong to card', async () => {
@@ -190,6 +223,21 @@ describe('CardAttachmentService', () => {
           'ws-1',
           'card-1',
           'att-1',
+          { name: 'New Name' },
+        ),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should throw EntityNotFoundException if attachment does not exist', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-1' } as any);
+      attachmentRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateAttachment(
+          'board-1',
+          'ws-1',
+          'card-1',
+          'att-99',
           { name: 'New Name' },
         ),
       ).rejects.toThrow(EntityNotFoundException);
@@ -218,6 +266,23 @@ describe('CardAttachmentService', () => {
         'attachment.deleted',
         expect.any(Object),
       );
+    });
+
+    it('should throw EntityNotFoundException if card does not exist during deletion', async () => {
+      cardRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteAttachment('board-1', 'ws-1', 'c-99', 'att-1', 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should throw EntityNotFoundException if attachment does not exist during deletion', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-1' } as any);
+      attachmentRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteAttachment('board-1', 'ws-1', 'card-1', 'att-99', 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 });
