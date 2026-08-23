@@ -317,6 +317,23 @@ describe('PresenceService', () => {
       expect(COLLABORATOR_COLORS as readonly string[]).not.toContain(color);
       expect(color).toMatch(/^hsl\(\d+, 75%, 50%\)$/);
     });
+
+    it('should reuse existing color for a user who already has active presence on the board (multi-tab)', async () => {
+      const activeViewer: PresenceEntry = {
+        userId: 'user-tab-1',
+        socketId: 'sock-tab-1',
+        displayName: 'Tab User',
+        avatarUrl: null,
+        color: '#EA580C',
+        connectedAt: '2026-08-18T10:00:00.000Z',
+      };
+
+      redisService.zrangebyscore.mockResolvedValue(['sock-tab-1']);
+      redisService.hmget.mockResolvedValue([JSON.stringify(activeViewer)]);
+
+      const color = await service.getCollaboratorColor('user-tab-1', 'board-1');
+      expect(color).toBe('#EA580C');
+    });
   });
 
   describe('cleanupStaleEntries', () => {
@@ -335,6 +352,49 @@ describe('PresenceService', () => {
 
     it('should catch and log error if redis throws in cleanupStaleEntries', async () => {
       redisService.smembers.mockRejectedValue(new Error('Redis connection down'));
+
+      const result = await service.cleanupStaleEntries();
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array if active_boards set is empty', async () => {
+      redisService.smembers.mockResolvedValue([]);
+
+      const result = await service.cleanupStaleEntries();
+      expect(result).toEqual([]);
+      expect(redisService.pipeline).not.toHaveBeenCalled();
+    });
+
+    it('should return empty array if checkPipeline returns null', async () => {
+      redisService.smembers.mockResolvedValue(['board-1']);
+      const checkPipeline = makeCheckPipeline(null as any);
+      redisService.pipeline.mockReturnValueOnce(checkPipeline);
+
+      const result = await service.cleanupStaleEntries();
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array if no active boards contain stale sockets', async () => {
+      redisService.smembers.mockResolvedValue(['board-1', 'board-2']);
+      const checkPipeline = makeCheckPipeline([
+        [null, []],
+        [null, []],
+      ]);
+      redisService.pipeline.mockReturnValueOnce(checkPipeline);
+
+      const result = await service.cleanupStaleEntries();
+      expect(result).toEqual([]);
+      expect(redisService.pipeline).toHaveBeenCalledTimes(1); // Only checkPipeline was called
+    });
+
+    it('should return empty array if prunePipeline returns null', async () => {
+      redisService.smembers.mockResolvedValue(['board-1']);
+      const checkPipeline = makeCheckPipeline([[null, ['stale-sock']]]);
+      const prunePipeline = makePrunePipeline(null as any);
+
+      redisService.pipeline
+        .mockReturnValueOnce(checkPipeline)
+        .mockReturnValueOnce(prunePipeline);
 
       const result = await service.cleanupStaleEntries();
       expect(result).toEqual([]);
@@ -372,6 +432,28 @@ describe('PresenceService', () => {
       expect(redisService.smembers).toHaveBeenCalledWith('presence:active_boards');
       expect(pruned).toHaveLength(1);
       expect(pruned[0]).toEqual(['board-1', staleEntry]);
+      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
+    });
+
+    it('should ignore malformed JSON and not remove board if active viewers remain', async () => {
+      redisService.smembers.mockResolvedValue(['board-1']);
+
+      const checkPipeline = makeCheckPipeline([[null, ['stale-sock']]]);
+      const prunePipeline = makePrunePipeline([
+        [null, ['INVALID_MALFORMED_JSON']], // hmget
+        [null, 1],                          // zrem
+        [null, 1],                          // hdel
+        [null, 2],                          // zcard = 2 remaining viewers
+      ]);
+
+      redisService.pipeline
+        .mockReturnValueOnce(checkPipeline)
+        .mockReturnValueOnce(prunePipeline);
+
+      const pruned = await service.cleanupStaleEntries();
+
+      expect(pruned).toHaveLength(0);
+      expect(redisService.srem).not.toHaveBeenCalled();
     });
   });
 });

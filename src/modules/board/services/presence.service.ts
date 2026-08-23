@@ -204,15 +204,23 @@ export class PresenceService {
    *
    * @param userId - User UUID
    * @param boardId - Board UUID
-   * @returns Hex color string
+   * @returns Hex or HSL color string
    */
   async getCollaboratorColor(userId: string, boardId: string): Promise<string> {
     const currentViewers = await this.getBoardViewers(boardId);
+
+    // If the user already has an active presence on this board (e.g., multi-tab), reuse their color
+    const existingViewer = currentViewers.find((v) => v.userId === userId);
+    if (existingViewer) {
+      return existingViewer.color;
+    }
+
     const takenColors = new Set(currentViewers.map((v) => v.color));
 
     const hash = this.hashUserId(userId);
     let colorIdx = hash % COLLABORATOR_COLORS.length;
 
+    // 1. Try to find an unused color from the curated 16-color palette
     let attempts = 0;
     while (
       takenColors.has(COLLABORATOR_COLORS[colorIdx]) &&
@@ -222,12 +230,22 @@ export class PresenceService {
       attempts++;
     }
 
-    return COLLABORATOR_COLORS[colorIdx];
+    if (!takenColors.has(COLLABORATOR_COLORS[colorIdx])) {
+      return COLLABORATOR_COLORS[colorIdx];
+    }
+
+    // 2. If all 16 palette colors are taken on a large board,
+    // generate a distinct, vibrant HSL color using the Golden Ratio (137.508°)
+    const goldenHue = Math.round((hash + attempts * 137.508) % 360);
+    return `hsl(${goldenHue}, 75%, 50%)`;
   }
 
   /**
-   * Scans and prunes presence entries that missed heartbeats.
-   * Scans ONLY active boards tracked in Redis set rather than the entire keyspace.
+   * Scans and prunes presence entries that missed heartbeats across all active boards.
+   * Uses two batched Redis pipelines to eliminate N+1 network round trips:
+   * - Phase 1: Checks all active boards for stale sockets in one pipeline.
+   * - Phase 2: Batch-fetches metadata and prunes stale sockets (HMGET, ZREM, HDEL, ZCARD) in one pipeline.
+   * - Phase 3: Prunes empty boards from the active boards tracking set in a single SREM.
    *
    * @returns List of [boardId, expiredEntry] tuples for broadcasting disconnect events
    */
@@ -238,37 +256,71 @@ export class PresenceService {
       const activeBoardIds = await this.redis.smembers(
         PRESENCE_CONFIG.ACTIVE_BOARDS_KEY,
       );
+
+      if (!activeBoardIds || activeBoardIds.length === 0) {
+        return results;
+      }
+
       const staleThreshold = Date.now() - PRESENCE_CONFIG.STALE_THRESHOLD_MS;
 
+      // Phase 1: Check ALL active boards for stale sockets in one pipeline
+      const checkPipeline = this.redis.pipeline();
       for (const boardId of activeBoardIds) {
-        const activeKey = this.getActiveKey(boardId);
-        const metaKey = this.getMetaKey(boardId);
-
-        const staleSocketIds = await this.redis.zrangebyscore(
-          activeKey,
+        checkPipeline.zrangebyscore(
+          this.getActiveKey(boardId),
           0,
           staleThreshold,
         );
+      }
+      const checkResults = await checkPipeline.exec();
+      if (!checkResults) return results;
 
-        if (staleSocketIds.length > 0) {
-          const staleMetas = await this.redis.hmget(metaKey, ...staleSocketIds);
+      // Collect only the boards that actually have stale sockets
+      const boardsWithStale: Array<{
+        boardId: string;
+        staleSocketIds: string[];
+      }> = [];
+      for (let i = 0; i < activeBoardIds.length; i++) {
+        const staleSocketIds = checkResults[i]?.[1] as string[] | undefined;
+        if (staleSocketIds && staleSocketIds.length > 0) {
+          boardsWithStale.push({ boardId: activeBoardIds[i], staleSocketIds });
+        }
+      }
 
-          const pipeline = this.redis.pipeline();
-          pipeline.zrem(activeKey, ...staleSocketIds);
-          pipeline.hdel(metaKey, ...staleSocketIds);
-          pipeline.zcard(activeKey);
+      if (boardsWithStale.length === 0) {
+        return results;
+      }
 
-          const pipelineResults = await pipeline.exec();
-          const remainingCount = pipelineResults?.[2]?.[1] as number;
+      // Phase 2: Batch-fetch metadata + delete stale entries in one pipeline
+      // Each board contributes exactly 4 commands: hmget, zrem, hdel, zcard (stride = 4)
+      const prunePipeline = this.redis.pipeline();
+      for (const { boardId, staleSocketIds } of boardsWithStale) {
+        prunePipeline.hmget(this.getMetaKey(boardId), ...staleSocketIds);
+        prunePipeline.zrem(this.getActiveKey(boardId), ...staleSocketIds);
+        prunePipeline.hdel(this.getMetaKey(boardId), ...staleSocketIds);
+        prunePipeline.zcard(this.getActiveKey(boardId));
+      }
+      const pruneResults = await prunePipeline.exec();
+      if (!pruneResults) return results;
 
-          if (remainingCount === 0) {
-            await this.redis.srem(PRESENCE_CONFIG.ACTIVE_BOARDS_KEY, boardId);
-          }
+      const emptyBoardIds: string[] = [];
 
-          for (const rawMeta of staleMetas) {
-            if (!rawMeta) continue;
+      for (let i = 0; i < boardsWithStale.length; i++) {
+        const { boardId } = boardsWithStale[i];
+        const offset = i * 4;
+
+        const rawMetas = pruneResults[offset]?.[1] as (string | null)[] | undefined;
+        const remainingCount = pruneResults[offset + 3]?.[1] as number | undefined;
+
+        if (remainingCount === 0) {
+          emptyBoardIds.push(boardId);
+        }
+
+        if (Array.isArray(rawMetas)) {
+          for (const raw of rawMetas) {
+            if (!raw) continue;
             try {
-              const entry = JSON.parse(rawMeta) as PresenceEntry;
+              const entry = JSON.parse(raw) as PresenceEntry;
               results.push([boardId, entry]);
               this.logger.debug(
                 `Pruned stale presence: user ${entry.userId} on board ${boardId}`,
@@ -279,8 +331,19 @@ export class PresenceService {
           }
         }
       }
+
+      // Phase 3: Remove empty boards from the tracking set in a single SREM
+      if (emptyBoardIds.length > 0) {
+        await this.redis.srem(
+          PRESENCE_CONFIG.ACTIVE_BOARDS_KEY,
+          ...emptyBoardIds,
+        );
+      }
     } catch (error) {
-      this.logger.error('Error executing presence cleanup', (error as Error).stack);
+      this.logger.error(
+        'Error executing presence cleanup',
+        (error as Error).stack,
+      );
     }
 
     return results;

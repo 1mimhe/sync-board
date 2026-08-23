@@ -80,7 +80,6 @@ export const PRESENCE_CONFIG = {
 
 /**
  * Rate limits for incoming WebSocket client events.
- * These map to the limits defined in `04-websocket-events.md` § Rate Limiting.
  */
 export const WS_RATE_LIMITS = {
   BOARD_EVENTS: { category: 'board', limit: 60, windowMs: 60_000 },
@@ -88,11 +87,28 @@ export const WS_RATE_LIMITS = {
   ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
 } as const;
 
+export type WsRateLimitCategory =
+  (typeof WS_RATE_LIMITS)[keyof typeof WS_RATE_LIMITS]['category'];
+
 /**
  * Distinct collaborator colors assigned deterministically to board viewers.
+ * Curated 16 high-contrast, accessible colors matching modern collaboration design systems.
  */
 export const COLLABORATOR_COLORS = [
-  '#E74C3C', '#3498DB', '#2ECC71', '#F39C12',
-  '#9B59B6', '#1ABC9C', '#E67E22', '#34495E',
-  '#16A085', '#C0392B', '#8E44AD', '#27AE60',
+  '#E11D48', // Rose / Red
+  '#2563EB', // Blue
+  '#059669', // Emerald
+  '#D97706', // Amber
+  '#7C3AED', // Violet
+  '#0891B2', // Cyan
+  '#DB2777', // Pink
+  '#4F46E5', // Indigo
+  '#EA580C', // Orange
+  '#16A34A', // Green
+  '#9333EA', // Purple
+  '#0284C7', // Sky
+  '#CA8A04', // Yellow Gold
+  '#65A30D', // Lime
+  '#0D9488', // Teal
+  '#C026D3', // Fuchsia
 ] as const;
