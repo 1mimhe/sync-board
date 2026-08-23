@@ -281,8 +281,8 @@ export class PresenceService {
         staleSocketIds: string[];
       }> = [];
       for (let i = 0; i < activeBoardIds.length; i++) {
-        const staleSocketIds = checkResults[i]?.[1] as string[] | undefined;
-        if (staleSocketIds && staleSocketIds.length > 0) {
+        const staleSocketIds = checkResults[i]?.[1];
+        if (Array.isArray(staleSocketIds) && staleSocketIds.length > 0) {
           boardsWithStale.push({ boardId: activeBoardIds[i], staleSocketIds });
         }
       }
