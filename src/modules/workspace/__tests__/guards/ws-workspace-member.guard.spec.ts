@@ -1,7 +1,7 @@
 import { ExecutionContext } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { WsWorkspaceMemberGuard } from '../ws-workspace-member.guard';
+import { WsWorkspaceMemberGuard } from '../../guards/ws-workspace-member.guard';
 import { WorkspaceMemberRepository } from '../../repositories/workspace-member.repository';
 
 describe('WsWorkspaceMemberGuard', () => {

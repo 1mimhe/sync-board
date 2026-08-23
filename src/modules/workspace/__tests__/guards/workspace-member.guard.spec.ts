@@ -3,7 +3,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { WorkspaceMemberGuard } from '../workspace-member.guard';
+import { WorkspaceMemberGuard } from '../../guards/workspace-member.guard';
 import { WorkspaceMemberRepository } from '../../repositories/workspace-member.repository';
 import { WorkspaceRole } from '@prisma/client';
 
