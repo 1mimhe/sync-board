@@ -22,6 +22,8 @@ import {
 } from '@nestjs/swagger';
 import { Workspace, WorkspaceMember } from '@prisma/client';
 import { WorkspaceService } from '../services/workspace.service';
+import { MembershipService } from '../services/membership.service';
+import { InvitationService } from '../services/invitation.service';
 import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
@@ -48,7 +50,11 @@ import {
 @ApiTags('Workspaces')
 @Controller('workspaces')
 export class WorkspaceController {
-  constructor(private readonly workspaceService: WorkspaceService) {}
+  constructor(
+    private readonly workspaceService: WorkspaceService,
+    private readonly membershipService: MembershipService,
+    private readonly invitationService: InvitationService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -121,7 +127,7 @@ export class WorkspaceController {
     @Body() dto: AcceptInvitationDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<WorkspaceMember> {
-    return this.workspaceService.acceptInvitation(dto, user.sub);
+    return this.invitationService.acceptInvitation(dto, user.sub);
   }
 
   @Get(':workspaceId')
@@ -177,7 +183,7 @@ export class WorkspaceController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.workspaceService.leaveWorkspace(workspaceId, user.sub);
+    await this.membershipService.leaveWorkspace(workspaceId, user.sub);
   }
 
   @Post(':workspaceId/transfer-ownership')
@@ -193,7 +199,7 @@ export class WorkspaceController {
     @Body() dto: TransferOwnershipDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<WorkspaceMember> {
-    return this.workspaceService.transferOwnership(
+    return this.membershipService.transferOwnership(
       workspaceId,
       user.sub,
       dto.newOwnerId,
@@ -210,7 +216,7 @@ export class WorkspaceController {
   async getMembers(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
   ): Promise<MemberWithUser[]> {
-    return this.workspaceService.getMembers(workspaceId);
+    return this.membershipService.getMembers(workspaceId);
   }
 
   @Patch(':workspaceId/members/:memberId')
@@ -227,7 +233,7 @@ export class WorkspaceController {
     @Body() dto: UpdateMemberRoleDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<WorkspaceMember> {
-    return this.workspaceService.updateMemberRole(
+    return this.membershipService.updateMemberRole(
       workspaceId,
       memberId,
       dto,
@@ -246,7 +252,7 @@ export class WorkspaceController {
     @Param('memberId', ParseUUIDPipe) memberId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.workspaceService.removeMember(workspaceId, memberId, user.sub);
+    await this.membershipService.removeMember(workspaceId, memberId, user.sub);
   }
 
   @Post(':workspaceId/invitations')
@@ -266,7 +272,7 @@ export class WorkspaceController {
     @Body() dto: InviteMemberDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<WorkspaceInvitationWithInviter> {
-    return this.workspaceService.inviteMember(workspaceId, dto, user.sub);
+    return this.invitationService.inviteMember(workspaceId, dto, user.sub);
   }
 
   @Get(':workspaceId/invitations')
@@ -279,7 +285,7 @@ export class WorkspaceController {
   async getInvitations(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
   ): Promise<WorkspaceInvitationWithInviter[]> {
-    return this.workspaceService.getInvitations(workspaceId);
+    return this.invitationService.getInvitations(workspaceId);
   }
 
   @Delete(':workspaceId/invitations/:invitationId')
@@ -291,6 +297,6 @@ export class WorkspaceController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('invitationId', ParseUUIDPipe) invitationId: string,
   ): Promise<void> {
-    await this.workspaceService.revokeInvitation(workspaceId, invitationId);
+    await this.invitationService.revokeInvitation(workspaceId, invitationId);
   }
 }

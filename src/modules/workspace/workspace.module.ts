@@ -4,6 +4,8 @@ import { AuthModule } from '../auth/auth.module';
 import { RbacGuard } from '../../common/guards/rbac.guard';
 import { WorkspaceController } from './controllers/workspace.controller';
 import { WorkspaceService } from './services/workspace.service';
+import { MembershipService } from './services/membership.service';
+import { InvitationService } from './services/invitation.service';
 import { WorkspaceRepository } from './repositories/workspace.repository';
 import { WorkspaceMemberRepository } from './repositories/workspace-member.repository';
 import { WorkspaceInvitationRepository } from './repositories/workspace-invitation.repository';
@@ -15,6 +17,8 @@ import { WsWorkspaceMemberGuard } from './guards/ws-workspace-member.guard';
   controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
+    MembershipService,
+    InvitationService,
     WorkspaceRepository,
     WorkspaceMemberRepository,
     WorkspaceInvitationRepository,
@@ -24,6 +28,8 @@ import { WsWorkspaceMemberGuard } from './guards/ws-workspace-member.guard';
   ],
   exports: [
     WorkspaceService,
+    MembershipService,
+    InvitationService,
     WorkspaceRepository,
     WorkspaceMemberRepository,
     WorkspaceInvitationRepository,
