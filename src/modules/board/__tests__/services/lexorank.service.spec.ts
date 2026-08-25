@@ -51,4 +51,16 @@ describe('LexorankService', () => {
       BusinessRuleException,
     );
   });
+
+  it('should rethrow BusinessRuleException unchanged instead of wrapping it', () => {
+    const businessError = new BusinessRuleException(
+      'INVALID_RANK',
+      'pre-existing business rule failure',
+    );
+    jest.spyOn(service, 'getInitialRank').mockImplementation(() => {
+      throw businessError;
+    });
+
+    expect(() => service.getRankBetween(null, null)).toThrow(businessError);
+  });
 });
