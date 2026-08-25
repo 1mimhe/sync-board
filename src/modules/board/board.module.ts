@@ -11,6 +11,7 @@ import { CardController } from './card/controllers/card.controller';
 import { CardCommentController } from './comment/controllers/comment.controller';
 import { CardAttachmentController } from './attachment/controllers/attachment.controller';
 import { ChecklistController } from './checklist/controllers/checklist.controller';
+import { LabelController } from './label/controllers/label.controller';
 
 // Gateways
 import { BoardGateway } from './realtime/gateways/board.gateway';
@@ -25,6 +26,7 @@ import { CardAttachmentService } from './attachment/services/attachment.service'
 import { PresenceService } from './realtime/services/presence.service';
 import { WsRateLimiterService } from './realtime/services/ws-rate-limiter.service';
 import { ChecklistService } from './checklist/services/checklist.service';
+import { LabelService } from './label/services/label.service';
 
 // Repositories
 import { BoardRepository } from './board/repositories/board.repository';
@@ -52,6 +54,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     CardCommentController,
     CardAttachmentController,
     ChecklistController,
+    LabelController,
   ],
   providers: [
     // Services
@@ -64,6 +67,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     PresenceService,
     WsRateLimiterService,
     ChecklistService,
+    LabelService,
 
     // Repositories
     BoardRepository,

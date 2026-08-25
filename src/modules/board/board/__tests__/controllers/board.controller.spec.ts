@@ -76,10 +76,6 @@ describe('BoardController', () => {
       unarchive: jest.fn(),
       starBoard: jest.fn(),
       unstarBoard: jest.fn(),
-      createLabel: jest.fn(),
-      getBoardLabels: jest.fn(),
-      updateLabel: jest.fn(),
-      deleteLabel: jest.fn(),
       getBoardActivities: jest.fn(),
     } as unknown as jest.Mocked<BoardService>;
 
@@ -171,43 +167,6 @@ describe('BoardController', () => {
       await controller.unstar('ws-1', 'board-1', mockUser);
 
       expect(boardService.unstarBoard).toHaveBeenCalledWith('user-uuid-1', 'board-1', 'ws-1');
-    });
-  });
-
-  describe('labels', () => {
-    it('should create board label', async () => {
-      boardService.createLabel.mockResolvedValue(mockLabel as any);
-
-      const result = await controller.createLabel('ws-1', 'board-1', { name: 'Bug', color: '#ff0000' });
-
-      expect(boardService.createLabel).toHaveBeenCalledWith('board-1', 'ws-1', { name: 'Bug', color: '#ff0000' });
-      expect(result.name).toBe('Bug');
-    });
-
-    it('should get board labels', async () => {
-      boardService.getBoardLabels.mockResolvedValue([mockLabel as any]);
-
-      const result = await controller.getBoardLabels('ws-1', 'board-1');
-
-      expect(boardService.getBoardLabels).toHaveBeenCalledWith('board-1', 'ws-1');
-      expect(result).toHaveLength(1);
-    });
-
-    it('should update label', async () => {
-      boardService.updateLabel.mockResolvedValue({ ...mockLabel, name: 'Critical' } as any);
-
-      const result = await controller.updateLabel('ws-1', 'board-1', 'label-1', { name: 'Critical' });
-
-      expect(boardService.updateLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'label-1', { name: 'Critical' });
-      expect(result.name).toBe('Critical');
-    });
-
-    it('should delete label', async () => {
-      boardService.deleteLabel.mockResolvedValue(undefined as any);
-
-      await controller.deleteLabel('ws-1', 'board-1', 'label-1');
-
-      expect(boardService.deleteLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'label-1');
     });
   });
 
