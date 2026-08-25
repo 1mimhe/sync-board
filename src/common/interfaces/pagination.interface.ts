@@ -1,21 +1,18 @@
 /**
- * Options for cursor-based pagination.
- */
-export interface CursorPagination {
-  /** Optional cursor string representing the last item from previous page */
-  cursor?: string;
-  /** Number of items per page (default 20, max 50) */
-  limit: number;
-}
-
-/**
- * Standard paginated result envelope.
+ * Standard cursor-paginated result payload.
+ * Returned by services; wrapped by ResponseInterceptor as:
+ * { success: true, data: { items, pagination }, meta }
  */
 export interface PaginatedResult<T> {
-  data: T[];
+  items: T[];
   pagination: {
+    /** Last item id of the current page; null when no further pages */
     cursor: string | null;
     hasMore: boolean;
-    total?: number;
   };
+}
+
+export interface CursorPagination {
+  cursor?: string;
+  limit: number;
 }
