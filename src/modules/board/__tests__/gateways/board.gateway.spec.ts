@@ -10,7 +10,7 @@ import { PresenceService } from '../../services/presence.service';
 import { WsRateLimiterService } from '../../services/ws-rate-limiter.service';
 import { WsWorkspaceMemberGuard } from '../../../workspace/guards/ws-workspace-member.guard';
 import { WsBoardAccessGuard } from '../../guards/ws-board-access.guard';
-import { WS_EVENTS } from '../../board.constants';
+import { WS_EVENTS, PRESENCE_CONFIG } from '../../board.constants';
 import { GATEWAY_OPTIONS } from '@nestjs/websockets/constants';
 import {
   BoardCreatedEvent,
@@ -124,6 +124,19 @@ describe('BoardGateway', () => {
       gateway.onModuleDestroy();
       expect((gateway as any).cleanupInterval).toBeNull();
       jest.useRealTimers();
+    });
+
+    it('should run presence cleanup when the interval ticks', async () => {
+      jest.useFakeTimers();
+      try {
+        presenceService.cleanupStaleEntries.mockResolvedValue(new Map());
+        gateway.afterInit();
+        await jest.advanceTimersByTimeAsync(PRESENCE_CONFIG.CLEANUP_INTERVAL_MS);
+        expect(presenceService.cleanupStaleEntries).toHaveBeenCalled();
+      } finally {
+        gateway.onModuleDestroy();
+        jest.useRealTimers();
+      }
     });
 
     it('should broadcast left events for pruned stale presence entries in runPresenceCleanup', async () => {
@@ -392,6 +405,37 @@ describe('BoardGateway', () => {
         avatarUrl: null,
         color: '#3498DB',
       });
+    });
+
+    it('should leave the previous board room when switching boards', async () => {
+      const previousBoardId = '123e4567-e89b-42d3-a456-426614174002';
+      mockSocket.data = {
+        user: validJwtPayload,
+        currentBoardId: previousBoardId,
+      };
+      boardRepo.findById.mockResolvedValue({
+        id: validBoardId,
+        workspaceId,
+        title: 'Sprint Board',
+        archivedAt: null,
+      } as any);
+      workspaceMemberRepo.findMember.mockResolvedValue({
+        id: 'member-1',
+        workspaceId,
+        userId: validJwtPayload.sub,
+      } as any);
+      presenceService.getCollaboratorColor.mockResolvedValue('#3498DB');
+      presenceService.getBoardViewers.mockResolvedValue([]);
+      presenceService.removePresence.mockResolvedValue({} as any);
+
+      await gateway.handleBoardJoin(mockSocket as Socket, { boardId: validBoardId });
+
+      expect(mockSocket.leave).toHaveBeenCalledWith(`board:${previousBoardId}`);
+      expect(presenceService.removePresence).toHaveBeenCalledWith(
+        previousBoardId,
+        mockSocket.id,
+      );
+      expect(mockSocket.join).toHaveBeenCalledWith(`board:${validBoardId}`);
     });
 
     it('should have WsBoardAccessGuard and WsRateLimit decorators applied', () => {
