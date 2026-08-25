@@ -63,4 +63,37 @@ describe('configValidationSchema', () => {
     expect(value.REDIS_PASSWORD).toBe('mypassword');
     expect(value.JWT_SECRET).toBe('secret');
   });
+
+  it('should fail validation in production without JWT key paths', () => {
+    const { error } = configValidationSchema.validate(
+      { ...validConfig, NODE_ENV: 'production' },
+      { allowUnknown: true },
+    );
+
+    expect(error).toBeDefined();
+    expect(error?.message).toContain('"JWT_PRIVATE_KEY_PATH" is required');
+  });
+
+  it('should fail validation in production when JWT_SECRET is provided', () => {
+    const { error } = configValidationSchema.validate({
+      ...validConfig,
+      NODE_ENV: 'production',
+      JWT_PRIVATE_KEY_PATH: 'keys/private.pem',
+      JWT_PUBLIC_KEY_PATH: 'keys/public.pem',
+      JWT_SECRET: 'secret',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.message).toContain('"JWT_SECRET" is not allowed');
+  });
+
+  it('should pass validation in development with only JWT_SECRET', () => {
+    const { error } = configValidationSchema.validate({
+      ...validConfig,
+      NODE_ENV: 'development',
+      JWT_SECRET: 'secret',
+    });
+
+    expect(error).toBeUndefined();
+  });
 });
