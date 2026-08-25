@@ -2,6 +2,24 @@ import { WsValidationPipe } from '../ws-validation.pipe';
 import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
 import { ArgumentMetadata } from '@nestjs/common';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+class NestedItemDto {
+  @IsString()
+  name!: string;
+}
+
+class ParentDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => NestedItemDto)
+  items!: NestedItemDto[];
+}
 
 describe('WsValidationPipe', () => {
   let pipe: WsValidationPipe;
@@ -82,5 +100,23 @@ describe('WsValidationPipe', () => {
 
     const result = await pipe.transform(rawData, metadata);
     expect(result).toEqual(rawData);
+  });
+
+  it('should include messages from nested validation errors (children)', async () => {
+    const invalidNestedPayload = { items: [{ name: 123 }] };
+    const metadata: ArgumentMetadata = {
+      type: 'body',
+      metatype: ParentDto,
+    };
+
+    try {
+      await pipe.transform(invalidNestedPayload, metadata);
+      fail('Expected transform to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(WsException);
+      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      expect(wsErr.code).toBe('INVALID_PAYLOAD');
+      expect(wsErr.message).toContain('Validation failed');
+    }
   });
 });
