@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import type { Label } from '@prisma/client';
 import { LabelRepository } from '../repositories/label.repository';
 import { BoardRepository } from '../../board/repositories/board.repository';
@@ -13,6 +13,7 @@ import { EntityNotFoundException } from '../../../../common/exceptions/app.excep
 export class LabelService {
   constructor(
     private readonly labelRepo: LabelRepository,
+    @Inject(forwardRef(() => BoardRepository))
     private readonly boardRepo: BoardRepository,
   ) {}
 

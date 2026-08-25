@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Board } from '@prisma/client';
 import { BoardRepository } from '../repositories/board.repository';
@@ -31,6 +31,7 @@ export class BoardService {
 
   constructor(
     private readonly boardRepo: BoardRepository,
+    @Inject(forwardRef(() => LabelRepository))
     private readonly labelRepo: LabelRepository,
     private readonly activityRepo: ActivityRepository,
     private readonly eventEmitter: EventEmitter2,
