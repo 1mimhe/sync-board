@@ -3,9 +3,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { ChecklistService } from '../../services/checklist.service';
 import { ChecklistRepository } from '../../repositories/checklist.repository';
-import { CardRepository } from '../../../repositories/card.repository';
-import { BoardRepository } from '../../../repositories/board.repository';
-import { LexorankService } from '../../../services/lexorank.service';
+import { CardRepository } from '../../../card/repositories/card.repository';
+import { BoardRepository } from '../../../board/repositories/board.repository';
+import { LexorankService } from '../../../lexorank/services/lexorank.service';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { CHECKLIST_EVENTS } from '../../events/checklist.events';
 

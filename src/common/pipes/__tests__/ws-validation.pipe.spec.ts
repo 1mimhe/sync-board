@@ -1,5 +1,5 @@
 import { WsValidationPipe } from '../ws-validation.pipe';
-import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/dto/ws-messages.dto';
+import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/realtime/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
 import { ArgumentMetadata } from '@nestjs/common';
 import { Type } from 'class-transformer';

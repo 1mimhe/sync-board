@@ -5,47 +5,43 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { RedisModule } from '../../common/redis/redis.module';
 
 // Controllers
-import { BoardController } from './controllers/board.controller';
-import { ListController } from './controllers/list.controller';
-import { CardController } from './controllers/card.controller';
-import { CardCommentController } from './controllers/card-comment.controller';
-import { CardAttachmentController } from './controllers/card-attachment.controller';
+import { BoardController } from './board/controllers/board.controller';
+import { ListController } from './list/controllers/list.controller';
+import { CardController } from './card/controllers/card.controller';
+import { CardCommentController } from './comment/controllers/comment.controller';
+import { CardAttachmentController } from './attachment/controllers/attachment.controller';
 import { ChecklistController } from './checklist/controllers/checklist.controller';
 
 // Gateways
-import { BoardGateway } from './gateways/board.gateway';
+import { BoardGateway } from './realtime/gateways/board.gateway';
 
 // Services
-import { LexorankService } from './services/lexorank.service';
-import { BoardService } from './services/board.service';
-import { ListService } from './services/list.service';
-import { CardService } from './services/card.service';
-import { CardCommentService } from './services/card-comment.service';
-import { CardAttachmentService } from './services/card-attachment.service';
-import { PresenceService } from './services/presence.service';
-import { WsRateLimiterService } from './services/ws-rate-limiter.service';
+import { LexorankService } from './lexorank/services/lexorank.service';
+import { BoardService } from './board/services/board.service';
+import { ListService } from './list/services/list.service';
+import { CardService } from './card/services/card.service';
+import { CardCommentService } from './comment/services/comment.service';
+import { CardAttachmentService } from './attachment/services/attachment.service';
+import { PresenceService } from './realtime/services/presence.service';
+import { WsRateLimiterService } from './realtime/services/ws-rate-limiter.service';
 import { ChecklistService } from './checklist/services/checklist.service';
 
 // Repositories
-import { BoardRepository } from './repositories/board.repository';
-import { ListRepository } from './repositories/list.repository';
-import { CardRepository } from './repositories/card.repository';
-import { LabelRepository } from './repositories/label.repository';
-import { CardCommentRepository } from './repositories/card-comment.repository';
-import { CardAttachmentRepository } from './repositories/card-attachment.repository';
-import { ActivityRepository } from './repositories/activity.repository';
+import { BoardRepository } from './board/repositories/board.repository';
+import { ListRepository } from './list/repositories/list.repository';
+import { CardRepository } from './card/repositories/card.repository';
+import { LabelRepository } from './label/repositories/label.repository';
+import { CardCommentRepository } from './comment/repositories/comment.repository';
+import { CardAttachmentRepository } from './attachment/repositories/attachment.repository';
 import { ChecklistRepository } from './checklist/repositories/checklist.repository';
 
-// Listeners
-import { ActivityListener } from './listeners/activity.listener';
-
 // Guards
-import { WsBoardAccessGuard } from './guards/ws-board-access.guard';
+import { WsBoardAccessGuard } from './realtime/guards/ws-board-access.guard';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 
 /**
  * NestJS module encapsulating all board, list, card, comment, attachment, label,
- * real-time WebSocket gateway, presence, and board activity features.
+ * checklist, real-time WebSocket gateway, presence, and board activity features.
  */
 @Module({
   imports: [PrismaModule, AuthModule, WorkspaceModule, RedisModule],
@@ -76,11 +72,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     LabelRepository,
     CardCommentRepository,
     CardAttachmentRepository,
-    ActivityRepository,
     ChecklistRepository,
-
-    // Listeners
-    ActivityListener,
 
     // Guards
     WsBoardAccessGuard,

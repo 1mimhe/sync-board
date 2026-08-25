@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { WsException } from '@nestjs/websockets';
 import type { Socket } from 'socket.io';
-import { WsRateLimiterService } from '../../modules/board/services/ws-rate-limiter.service';
+import { WsRateLimiterService } from '../../modules/board/realtime/services/ws-rate-limiter.service';
 import { WS_RATE_LIMIT_KEY } from '../decorators/ws-rate-limit.decorator';
 import type { WsRateLimitOptions } from '../decorators/ws-rate-limit.decorator';
 import type { AuthenticatedSocketData } from '../interfaces/ws.interface';
