@@ -39,6 +39,8 @@ describe('AuthService', () => {
     id: 'token-uuid-1',
     userId: mockUser.id,
     tokenHash: 'hashedtoken',
+    familyId: 'fam-1',
+    replacedBy: null,
     ipAddress: '127.0.0.1',
     userAgent: 'jest',
     expiresAt: new Date(Date.now() + 86400000),
@@ -119,6 +121,9 @@ describe('AuthService', () => {
       expect(result.user.email).toEqual(mockUser.email);
       expect(result.tokens.accessToken).toBeDefined();
       expect(result.tokens.refreshToken).toBeDefined();
+      expect(tokenRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({ familyId: expect.any(String) }),
+      );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'user.registered',
         expect.objectContaining({ userId: mockUser.id }),
@@ -189,21 +194,55 @@ describe('AuthService', () => {
   });
 
   describe('refreshTokens', () => {
-    it('should refresh tokens when given valid refresh token', async () => {
+    it('should rotate the token chain when given a valid refresh token', async () => {
+      const successor = {
+        ...mockRefreshToken,
+        id: 'token-uuid-2',
+        tokenHash: 'new-hashedtoken',
+      };
       tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
         mockRefreshToken,
       );
-      tokenRepositoryMock.updateToken.mockResolvedValue(mockRefreshToken);
+      tokenRepositoryMock.rotate.mockResolvedValue(successor);
 
       const result = await service.refreshTokens('valid-refresh-token');
 
       expect(result).toBeDefined();
       expect(result.accessToken).toBeDefined();
       expect(result.refreshToken).toBeDefined();
-      expect(tokenRepositoryMock.updateToken).toHaveBeenCalled();
+      expect(result.refreshToken).not.toBe('valid-refresh-token');
+      expect(tokenRepositoryMock.rotate).toHaveBeenCalledWith(
+        mockRefreshToken.id,
+        expect.objectContaining({
+          userId: mockUser.id,
+          familyId: 'fam-1',
+          ipAddress: undefined,
+          userAgent: undefined,
+          expiresAt: expect.any(Date),
+        }),
+      );
     });
 
-    it('should throw REFRESH_TOKEN_EXPIRED if expired', async () => {
+    it('should revoke the whole family and throw TOKEN_REUSE_DETECTED on revoked token replay', async () => {
+      const revokedToken = {
+        ...mockRefreshToken,
+        revokedAt: new Date(),
+      };
+      tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
+        revokedToken,
+      );
+      tokenRepositoryMock.revokeFamily.mockResolvedValue(2);
+
+      await expect(
+        service.refreshTokens('revoked-refresh-token'),
+      ).rejects.toThrow('TOKEN_REUSE_DETECTED');
+
+      expect(tokenRepositoryMock.revokeFamily).toHaveBeenCalledTimes(1);
+      expect(tokenRepositoryMock.revokeFamily).toHaveBeenCalledWith('fam-1');
+      expect(tokenRepositoryMock.rotate).not.toHaveBeenCalled();
+    });
+
+    it('should throw REFRESH_TOKEN_EXPIRED if expired without rotating', async () => {
       const expiredToken = {
         ...mockRefreshToken,
         expiresAt: new Date(Date.now() - 1000),
@@ -215,20 +254,16 @@ describe('AuthService', () => {
       await expect(
         service.refreshTokens('expired-refresh-token'),
       ).rejects.toThrow('REFRESH_TOKEN_EXPIRED');
+      expect(tokenRepositoryMock.rotate).not.toHaveBeenCalled();
     });
 
-    it('should throw TOKEN_INVALID if token is already revoked', async () => {
-      const revokedToken = {
-        ...mockRefreshToken,
-        revokedAt: new Date(),
-      };
-      tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(
-        revokedToken,
-      );
+    it('should throw TOKEN_INVALID for unknown hash without rotating', async () => {
+      tokenRepositoryMock.findByTokenHashWithUser.mockResolvedValue(null);
 
       await expect(
-        service.refreshTokens('revoked-refresh-token'),
+        service.refreshTokens('unknown-refresh-token'),
       ).rejects.toThrow('TOKEN_INVALID');
+      expect(tokenRepositoryMock.rotate).not.toHaveBeenCalled();
     });
   });
 
@@ -295,8 +330,8 @@ describe('AuthService', () => {
   });
 
   describe('resetPassword', () => {
-    it('should reset password with valid Redis token and return fresh tokens', async () => {
-      redisMock.get.mockResolvedValue(mockUser.id);
+    it('should reset password with valid single-use Redis token and return fresh tokens', async () => {
+      redisMock.getdel.mockResolvedValue(mockUser.id);
       userRepositoryMock.findById.mockResolvedValue(mockUser);
       jest
         .spyOn(passwordService, 'hash')
@@ -304,13 +339,15 @@ describe('AuthService', () => {
       userRepositoryMock.updatePassword.mockResolvedValue(mockUser as any);
       tokenRepositoryMock.revokeAllByUserId.mockResolvedValue();
       tokenRepositoryMock.create.mockResolvedValue({} as any);
-      redisMock.del.mockResolvedValue(1);
 
       const tokens = await service.resetPassword(
         'valid-reset-token',
         'NewSecureP@ss123!',
       );
 
+      expect(redisMock.getdel).toHaveBeenCalledWith(
+        expect.stringMatching(/^password_reset:/),
+      );
       expect(userRepositoryMock.updatePassword).toHaveBeenCalledWith(
         mockUser.id,
         'newhashedpassword',
@@ -318,21 +355,37 @@ describe('AuthService', () => {
       expect(tokenRepositoryMock.revokeAllByUserId).toHaveBeenCalledWith(
         mockUser.id,
       );
-      expect(redisMock.del).toHaveBeenCalled();
       expect(tokens).toHaveProperty('accessToken');
       expect(tokens).toHaveProperty('refreshToken');
     });
 
     it('should throw TOKEN_INVALID if token is not found in Redis', async () => {
-      redisMock.get.mockResolvedValue(null);
+      redisMock.getdel.mockResolvedValue(null);
 
       await expect(
         service.resetPassword('invalid-token', 'NewSecureP@ss123!'),
       ).rejects.toThrow(UnauthorizedException);
     });
 
+    it('should throw TOKEN_INVALID when a consumed (replayed) token is reused', async () => {
+      // First call consumes the key atomically; replay finds nothing
+      redisMock.getdel
+        .mockResolvedValueOnce(mockUser.id)
+        .mockResolvedValueOnce(null);
+      userRepositoryMock.findById.mockResolvedValue(mockUser);
+      jest.spyOn(passwordService, 'hash').mockResolvedValue('hashed');
+      userRepositoryMock.updatePassword.mockResolvedValue(mockUser as any);
+      tokenRepositoryMock.revokeAllByUserId.mockResolvedValue();
+      tokenRepositoryMock.create.mockResolvedValue({} as any);
+
+      await service.resetPassword('valid-reset-token', 'NewSecureP@ss123!');
+      await expect(
+        service.resetPassword('valid-reset-token', 'AnotherP@ss123!'),
+      ).rejects.toThrow('TOKEN_INVALID');
+    });
+
     it('should throw USER_NOT_FOUND if user not found in db during reset', async () => {
-      redisMock.get.mockResolvedValue('missing-user-id');
+      redisMock.getdel.mockResolvedValue('missing-user-id');
       userRepositoryMock.findById.mockResolvedValue(null);
 
       await expect(
@@ -477,6 +530,24 @@ describe('AuthService', () => {
         });
 
         expect(result).toEqual(mockUser);
+      });
+
+      it('should rethrow the P2002 error when the fallback lookup finds no user', async () => {
+        const p2002Error = new Prisma.PrismaClientKnownRequestError('P2002', {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        });
+        userRepositoryMock.findByGoogleId.mockResolvedValue(null);
+        userRepositoryMock.findByEmail.mockResolvedValue(null);
+        userRepositoryMock.createGoogleUser.mockRejectedValue(p2002Error);
+
+        await expect(
+          service.findOrCreateGoogleUser({
+            googleId: 'g-1',
+            email: 'vanishing@example.com',
+            displayName: 'Ghost',
+          }),
+        ).rejects.toBe(p2002Error);
       });
     });
 
