@@ -10,6 +10,7 @@ import { ListController } from './controllers/list.controller';
 import { CardController } from './controllers/card.controller';
 import { CardCommentController } from './controllers/card-comment.controller';
 import { CardAttachmentController } from './controllers/card-attachment.controller';
+import { ChecklistController } from './checklist/controllers/checklist.controller';
 
 // Gateways
 import { BoardGateway } from './gateways/board.gateway';
@@ -23,6 +24,7 @@ import { CardCommentService } from './services/card-comment.service';
 import { CardAttachmentService } from './services/card-attachment.service';
 import { PresenceService } from './services/presence.service';
 import { WsRateLimiterService } from './services/ws-rate-limiter.service';
+import { ChecklistService } from './checklist/services/checklist.service';
 
 // Repositories
 import { BoardRepository } from './repositories/board.repository';
@@ -32,6 +34,7 @@ import { LabelRepository } from './repositories/label.repository';
 import { CardCommentRepository } from './repositories/card-comment.repository';
 import { CardAttachmentRepository } from './repositories/card-attachment.repository';
 import { ActivityRepository } from './repositories/activity.repository';
+import { ChecklistRepository } from './checklist/repositories/checklist.repository';
 
 // Listeners
 import { ActivityListener } from './listeners/activity.listener';
@@ -52,6 +55,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     CardController,
     CardCommentController,
     CardAttachmentController,
+    ChecklistController,
   ],
   providers: [
     // Services
@@ -63,6 +67,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     CardAttachmentService,
     PresenceService,
     WsRateLimiterService,
+    ChecklistService,
 
     // Repositories
     BoardRepository,
@@ -72,6 +77,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     CardCommentRepository,
     CardAttachmentRepository,
     ActivityRepository,
+    ChecklistRepository,
 
     // Listeners
     ActivityListener,

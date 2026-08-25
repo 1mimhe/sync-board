@@ -66,6 +66,12 @@ import type {
   AuthenticatedSocketData,
   PresenceEntry,
 } from '../../../common/interfaces/ws.interface';
+import {
+  CHECKLIST_EVENTS,
+  ChecklistCreatedEvent,
+  ChecklistUpdatedEvent,
+  ChecklistDeletedEvent,
+} from '../checklist/events/checklist.events';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 
 /**
@@ -681,6 +687,43 @@ export class BoardGateway
       .emit(WS_EVENTS.CARD_ATTACHMENT_DELETED, {
         cardId: event.cardId,
         attachmentId: event.attachmentId,
+        deletedBy: { id: event.deletedBy },
+      });
+  }
+
+  // --- Checklist Events ---
+
+  @OnEvent(CHECKLIST_EVENTS.created)
+  broadcastChecklistCreated(event: ChecklistCreatedEvent): void {
+    if (!this.server) return;
+    this.server
+      .to(`board:${event.boardId}`)
+      .emit(WS_EVENTS.CHECKLIST_CREATED, {
+        checklist: event.checklist,
+        createdBy: { id: event.createdBy },
+      });
+  }
+
+  @OnEvent(CHECKLIST_EVENTS.updated)
+  broadcastChecklistUpdated(event: ChecklistUpdatedEvent): void {
+    if (!this.server) return;
+    this.server
+      .to(`board:${event.boardId}`)
+      .emit(WS_EVENTS.CHECKLIST_UPDATED, {
+        checklistId: event.checklistId,
+        cardId: event.cardId,
+        updatedBy: { id: event.updatedBy },
+      });
+  }
+
+  @OnEvent(CHECKLIST_EVENTS.deleted)
+  broadcastChecklistDeleted(event: ChecklistDeletedEvent): void {
+    if (!this.server) return;
+    this.server
+      .to(`board:${event.boardId}`)
+      .emit(WS_EVENTS.CHECKLIST_DELETED, {
+        checklistId: event.checklistId,
+        cardId: event.cardId,
         deletedBy: { id: event.deletedBy },
       });
   }
