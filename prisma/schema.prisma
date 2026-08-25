@@ -246,6 +246,7 @@ model Card {
   labels      CardLabel[]
   comments    CardComment[]
   attachments CardAttachment[]
+  checklists  CardChecklist[]
 
   @@map("cards")
 }
@@ -328,4 +329,34 @@ model Activity {
 
   @@index([boardId], map: "idx_activities_board")
   @@map("activities")
+}
+
+model CardChecklist {
+  id        String   @id @default(uuid()) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  title     String   @db.VarChar(200)
+  rank      String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  card  Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  items ChecklistItem[]
+
+  @@index([cardId], map: "idx_checklists_card")
+  @@map("card_checklists")
+}
+
+model ChecklistItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  checklistId String   @map("checklist_id") @db.Uuid
+  content     String   @db.VarChar(500)
+  isDone      Boolean  @default(false) @map("is_done")
+  rank        String   @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  checklist CardChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId], map: "idx_checklist_items_checklist")
+  @@map("checklist_items")
 }

@@ -45,6 +45,11 @@ export const WS_EVENTS = {
   CARD_ATTACHMENT_ADDED: 'card:attachment-added',
   CARD_ATTACHMENT_DELETED: 'card:attachment-deleted',
 
+  // Checklists
+  CHECKLIST_CREATED: 'checklist:created',
+  CHECKLIST_UPDATED: 'checklist:updated',
+  CHECKLIST_DELETED: 'checklist:deleted',
+
   // Label Broadcasts
   LABEL_CREATED: 'label:created',
   LABEL_UPDATED: 'label:updated',
@@ -83,7 +88,7 @@ export const PRESENCE_CONFIG = {
  */
 export const WS_RATE_LIMITS = {
   BOARD_EVENTS: { category: 'board', limit: 60, windowMs: 60_000 },
-  PRESENCE_CURSOR: { category: 'cursor', limit: 20, windowMs: 60_000, silent: true },
+  PRESENCE_CURSOR: { category: 'cursor', limit: 600, windowMs: 60_000, silent: true },
   ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
 } as const;
 

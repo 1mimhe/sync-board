@@ -2,24 +2,26 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CardCommentResponseDto } from './card-comment-response.dto';
 
 /**
- * Response DTO representing pagination metadata for comment lists.
+ * Response DTO representing cursor pagination metadata.
  */
-export class PaginationMetaDto {
-  @ApiProperty({ description: 'Current page (1-based)', example: 1 })
-  page!: number;
+export class CursorPaginationMetaDto {
+  /** Last item id of the current page; null when no further pages */
+  @ApiProperty({
+    description: "Cursor: last item's id of this page (null when no more)",
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    nullable: true,
+    oneOf: [{ type: 'string' }, { type: 'null' }],
+  })
+  cursor!: string | null;
 
-  @ApiProperty({ description: 'Items per page', example: 20 })
-  pageSize!: number;
-
-  @ApiProperty({ description: 'Total items', example: 45 })
-  total!: number;
-
-  @ApiProperty({ description: 'Total pages', example: 3 })
-  totalPages!: number;
+  /** Whether further pages exist */
+  @ApiProperty({ description: 'Whether more items exist', example: true })
+  hasMore!: boolean;
 }
 
 /**
- * Response DTO representing a paginated list of card comments.
+ * Response DTO representing a cursor-paginated list of card comments:
+ * `{ items, pagination }`.
  */
 export class PaginatedCommentsResponseDto {
   @ApiProperty({
@@ -29,8 +31,8 @@ export class PaginatedCommentsResponseDto {
   items!: CardCommentResponseDto[];
 
   @ApiProperty({
-    description: 'Pagination metadata',
-    type: PaginationMetaDto,
+    description: 'Cursor pagination metadata',
+    type: CursorPaginationMetaDto,
   })
-  meta!: PaginationMetaDto;
+  pagination!: CursorPaginationMetaDto;
 }

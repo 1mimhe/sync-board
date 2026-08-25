@@ -6,15 +6,14 @@ import { BoardRepository } from '../repositories/board.repository';
 import {
   CreateCommentDto,
   UpdateCommentDto,
-  PaginationQueryDto,
+  CursorPaginationQueryDto,
 } from '../dto';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
+import { buildCursorPagination } from '../../../common/utils/pagination.util';
+import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { CommentCreatedEvent } from '../events/board.events';
 import { COMMENT_EVENTS } from '../events/board-events.constants';
-import type {
-  CardCommentWithAuthor,
-  PaginatedComments,
-} from '../interfaces/board.interfaces';
+import type { CardCommentWithAuthor } from '../interfaces/board.interfaces';
 
 /**
  * Service handling business logic for card comments (creation, pagination, author-only editing, soft deletion).
@@ -100,45 +99,31 @@ export class CardCommentService {
   }
 
   /**
-   * Retrieves paginated comments for a card.
+   * Retrieves a cursor-paginated list of active comments for a card.
    *
    * @param boardId - Board UUID
    * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
-   * @param query - Page and page size parameters
-   * @returns Paginated list of comments with metadata
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with `items` and `pagination.cursor/hasMore`
    * @throws {EntityNotFoundException} If board or card is not found
    */
   async getCardComments(
     boardId: string,
     workspaceId: string,
     cardId: string,
-    query: PaginationQueryDto = {},
-  ): Promise<PaginatedComments> {
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<CardCommentWithAuthor>> {
     await this.verifyBoardInWorkspace(boardId, workspaceId);
     await this.verifyCardInBoard(boardId, cardId);
 
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 50;
-
-    const [items, total] = await Promise.all([
-      this.commentRepo.findCardComments(
-        cardId,
-        (page - 1) * pageSize,
-        pageSize,
-      ),
-      this.commentRepo.countByCardId(cardId),
-    ]);
-
-    return {
-      items,
-      meta: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.max(1, Math.ceil(total / pageSize)),
-      },
-    };
+    const limit = query.limit ?? 20;
+    const rows = await this.commentRepo.findCardCommentsPage(
+      cardId,
+      query.cursor,
+      limit,
+    );
+    return buildCursorPagination(rows, limit);
   }
 
   /**

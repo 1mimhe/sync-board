@@ -67,18 +67,28 @@ describe('CardCommentController', () => {
   });
 
   describe('list', () => {
-    it('should list comments with pagination metadata', async () => {
+    it('should pass parsed cursor query through and return { items, pagination }', async () => {
       const mockResult = {
         items: [mockComment],
-        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        pagination: { cursor: 'comm-1', hasMore: false },
       };
       commentService.getCardComments.mockResolvedValue(mockResult as any);
 
-      const result = await controller.list('ws-1', 'board-1', 'card-1', { page: 1, limit: 10 });
+      const result = await controller.list(
+        'ws-1',
+        'board-1',
+        'card-1',
+        { cursor: 'cursor-uuid', limit: 20 },
+      );
 
-      expect(commentService.getCardComments).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', { page: 1, limit: 10 });
+      expect(commentService.getCardComments).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        { cursor: 'cursor-uuid', limit: 20 },
+      );
       expect(result.items).toHaveLength(1);
-      expect(result.meta.total).toBe(1);
+      expect(result.pagination).toEqual({ cursor: 'comm-1', hasMore: false });
     });
   });
 

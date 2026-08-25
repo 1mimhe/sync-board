@@ -32,6 +32,11 @@ import {
   AttachmentDeletedEvent,
 } from '../../events/board.events';
 import type { Server, Socket } from 'socket.io';
+import {
+  ChecklistCreatedEvent,
+  ChecklistUpdatedEvent,
+  ChecklistDeletedEvent,
+} from '../../checklist/events/checklist.events';
 
 describe('BoardGateway', () => {
   let gateway: BoardGateway;
@@ -522,7 +527,7 @@ describe('BoardGateway', () => {
       expect(rateLimit).toEqual(
         expect.objectContaining({
           category: 'cursor',
-          limit: 20,
+          limit: 600,
           silent: true,
         }),
       );
@@ -814,6 +819,48 @@ describe('BoardGateway', () => {
       });
     });
 
+    it('should broadcast checklist:created on ChecklistCreatedEvent', () => {
+      const event = new ChecklistCreatedEvent(
+        { id: 'cl-1', cardId: 'card-1' } as any,
+        '123e4567-e89b-42d3-a456-426614174000',
+        'user-1',
+      );
+
+      gateway.broadcastChecklistCreated(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:123e4567-e89b-42d3-a456-426614174000');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CHECKLIST_CREATED, {
+        checklist: event.checklist,
+        createdBy: { id: 'user-1' },
+      });
+    });
+
+    it('should broadcast checklist:updated on ChecklistUpdatedEvent', () => {
+      const event = new ChecklistUpdatedEvent('cl-1', 'card-1', '123e4567-e89b-42d3-a456-426614174000', 'user-1');
+
+      gateway.broadcastChecklistUpdated(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:123e4567-e89b-42d3-a456-426614174000');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CHECKLIST_UPDATED, {
+        checklistId: 'cl-1',
+        cardId: 'card-1',
+        updatedBy: { id: 'user-1' },
+      });
+    });
+
+    it('should broadcast checklist:deleted on ChecklistDeletedEvent', () => {
+      const event = new ChecklistDeletedEvent('cl-1', 'card-1', '123e4567-e89b-42d3-a456-426614174000', 'user-1');
+
+      gateway.broadcastChecklistDeleted(event);
+
+      expect(mockServer.to).toHaveBeenCalledWith('board:123e4567-e89b-42d3-a456-426614174000');
+      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CHECKLIST_DELETED, {
+        checklistId: 'cl-1',
+        cardId: 'card-1',
+        deletedBy: { id: 'user-1' },
+      });
+    });
+
     it('should gracefully return when server is undefined across all broadcaster methods', () => {
       (gateway as any).server = undefined;
 
@@ -835,6 +882,9 @@ describe('BoardGateway', () => {
         gateway.broadcastCommentCreated(new CommentCreatedEvent({} as any, 'b-1', 'u-1'));
         gateway.broadcastAttachmentCreated(new AttachmentCreatedEvent({} as any, 'b-1', 'u-1'));
         gateway.broadcastAttachmentDeleted(new AttachmentDeletedEvent('att-1', 'c-1', 'b-1', 'u-1'));
+        gateway.broadcastChecklistCreated(new ChecklistCreatedEvent({} as any, 'b-1', 'u-1'));
+        gateway.broadcastChecklistUpdated(new ChecklistUpdatedEvent('cl-1', 'c-1', 'b-1', 'u-1'));
+        gateway.broadcastChecklistDeleted(new ChecklistDeletedEvent('cl-1', 'c-1', 'b-1', 'u-1'));
       }).not.toThrow();
     });
   });
