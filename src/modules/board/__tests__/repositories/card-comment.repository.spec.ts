@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { CardCommentRepository } from '../../repositories/card-comment.repository';
 import { PrismaService } from '../../../../common/database/prisma.service';
 
@@ -68,32 +69,67 @@ describe('CardCommentRepository', () => {
     });
   });
 
-  describe('findCardComments and countByCardId', () => {
-    it('should find paginated card comments with author details', async () => {
+  describe('findCardCommentsPage', () => {
+    it('should fetch first page without cursor/skip and take limit + 1', async () => {
       const mockComments = [{ id: 'comm-1', content: 'comment 1' }];
       prismaService.cardComment.findMany.mockResolvedValue(mockComments);
 
-      const result = await repository.findCardComments('c-1', 5, 10);
+      const result = await repository.findCardCommentsPage('c-1', undefined, 20);
 
       expect(prismaService.cardComment.findMany).toHaveBeenCalledWith({
         where: { cardId: 'c-1', deletedAt: null },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 21,
         include: { author: { select: expect.any(Object) } },
-        orderBy: { createdAt: 'asc' },
-        skip: 5,
-        take: 10,
       });
       expect(result).toEqual(mockComments);
     });
 
-    it('should count total active comments on a card', async () => {
-      prismaService.cardComment.count.mockResolvedValue(7);
+    it('should include cursor and skip 1 when a cursor is provided', async () => {
+      prismaService.cardComment.findMany.mockResolvedValue([]);
 
-      const count = await repository.countByCardId('c-1');
+      await repository.findCardCommentsPage('c-1', 'cursor-uuid', 10);
 
-      expect(prismaService.cardComment.count).toHaveBeenCalledWith({
-        where: { cardId: 'c-1', deletedAt: null },
+      expect(prismaService.cardComment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 11,
+          cursor: { id: 'cursor-uuid' },
+          skip: 1,
+        }),
+      );
+    });
+
+    it('should retry without cursor when the cursor row is unknown (P2025)', async () => {
+      const p2025 = new Prisma.PrismaClientKnownRequestError('P2025', {
+        code: 'P2025',
+        clientVersion: '7.0.0',
       });
-      expect(count).toBe(7);
+      const fallbackRows = [{ id: 'comm-0', content: 'newest' }];
+      prismaService.cardComment.findMany
+        .mockRejectedValueOnce(p2025)
+        .mockResolvedValueOnce(fallbackRows);
+
+      const result = await repository.findCardCommentsPage(
+        'c-1',
+        'stale-cursor-uuid',
+        20,
+      );
+
+      expect(prismaService.cardComment.findMany).toHaveBeenCalledTimes(2);
+      expect(prismaService.cardComment.findMany).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ cursor: expect.anything() }),
+      );
+      expect(result).toEqual(fallbackRows);
+    });
+
+    it('should rethrow non-P2025 errors', async () => {
+      prismaService.cardComment.findMany.mockRejectedValue(
+        new Error('connection lost'),
+      );
+
+      await expect(
+        repository.findCardCommentsPage('c-1', undefined, 20),
+      ).rejects.toThrow('connection lost');
     });
   });
 
