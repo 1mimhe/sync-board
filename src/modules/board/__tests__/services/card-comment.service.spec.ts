@@ -82,50 +82,74 @@ describe('CardCommentService', () => {
   });
 
   describe('getCardComments', () => {
-    it('should return paginated comments with meta', async () => {
-      const mockComment = {
-        id: 'comment-uuid',
-        cardId: 'card-uuid',
-        authorId: 'user-uuid',
-        content: 'Looking good',
-        author: { id: 'user-uuid', displayName: 'John', avatarUrl: null },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      };
+    const baseComment = {
+      id: 'comment-uuid',
+      cardId: 'card-uuid',
+      authorId: 'user-uuid',
+      content: 'Looking good',
+      author: { id: 'user-uuid', displayName: 'John', avatarUrl: null },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
 
+    function makeComment(id: string) {
+      return { ...baseComment, id };
+    }
+
+    beforeEach(() => {
       cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
-      commentRepo.findCardComments.mockResolvedValue([mockComment]);
-      commentRepo.countByCardId.mockResolvedValue(1);
+    });
+
+    it('should return first page with hasMore true and cursor of last item when repo returns limit + 1 rows', async () => {
+      const rows = Array.from({ length: 21 }, (_, i) => makeComment(`c-${i}`));
+      commentRepo.findCardCommentsPage.mockResolvedValue(rows);
 
       const result = await service.getCardComments(
         'board-uuid',
         'ws-uuid',
         'card-uuid',
-        {
-          page: 1,
-          pageSize: 20,
-        },
+        { limit: 20 },
       );
 
-      expect(result.items).toEqual([mockComment]);
-      expect(result.meta).toEqual({
-        page: 1,
-        pageSize: 20,
-        total: 1,
-        totalPages: 1,
+      expect(result.items).toHaveLength(20);
+      expect(result.items[19]).toEqual(rows[19]);
+      expect(result.pagination).toEqual({
+        cursor: 'c-19',
+        hasMore: true,
       });
-      expect(commentRepo.findCardComments).toHaveBeenCalledWith(
+      expect(commentRepo.findCardCommentsPage).toHaveBeenCalledWith(
         'card-uuid',
-        0,
+        undefined,
         20,
       );
     });
 
-    it('should apply default pagination when no query is provided', async () => {
-      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
-      commentRepo.findCardComments.mockResolvedValue([]);
-      commentRepo.countByCardId.mockResolvedValue(0);
+    it('should return last page with hasMore false and null cursor when repo returns fewer than limit rows', async () => {
+      const rows = [makeComment('c-1'), makeComment('c-2')];
+      commentRepo.findCardCommentsPage.mockResolvedValue(rows);
+
+      const result = await service.getCardComments(
+        'board-uuid',
+        'ws-uuid',
+        'card-uuid',
+        { cursor: 'c-0', limit: 20 },
+      );
+
+      expect(result.items).toEqual(rows);
+      expect(result.pagination).toEqual({
+        cursor: null,
+        hasMore: false,
+      });
+      expect(commentRepo.findCardCommentsPage).toHaveBeenCalledWith(
+        'card-uuid',
+        'c-0',
+        20,
+      );
+    });
+
+    it('should apply default limit of 20 when query is omitted', async () => {
+      commentRepo.findCardCommentsPage.mockResolvedValue([]);
 
       const result = await service.getCardComments(
         'board-uuid',
@@ -133,17 +157,13 @@ describe('CardCommentService', () => {
         'card-uuid',
       );
 
-      expect(commentRepo.findCardComments).toHaveBeenCalledWith(
+      expect(commentRepo.findCardCommentsPage).toHaveBeenCalledWith(
         'card-uuid',
-        0,
-        50,
+        undefined,
+        20,
       );
-      expect(result.meta).toEqual({
-        page: 1,
-        pageSize: 50,
-        total: 0,
-        totalPages: 1,
-      });
+      expect(result.items).toEqual([]);
+      expect(result.pagination).toEqual({ cursor: null, hasMore: false });
     });
 
     it('should throw EntityNotFoundException when card does not exist', async () => {
