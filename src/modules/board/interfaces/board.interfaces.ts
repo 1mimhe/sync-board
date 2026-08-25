@@ -78,24 +78,6 @@ export interface BoardWithFullContent extends Board {
 }
 
 /**
- * Standard pagination metadata for offset/page-based queries.
- */
-export interface PaginationMeta {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
-
-/**
- * Paginated list of card comments with metadata.
- */
-export interface PaginatedComments {
-  items: CardCommentWithAuthor[];
-  meta: PaginationMeta;
-}
-
-/**
  * Card comment entity with author profile details.
  */
 export interface CardCommentWithAuthor extends CardComment {
