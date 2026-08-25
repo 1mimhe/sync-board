@@ -13,10 +13,12 @@ export class RefreshTokenRepository {
 
   /**
    * Create a new refresh token record in DB for an active session.
+   * The familyId groups all tokens belonging to the same login session chain.
    */
   async create(data: {
     userId: string;
     tokenHash: string;
+    familyId: string;
     ipAddress?: string;
     userAgent?: string;
     expiresAt: Date;
@@ -25,6 +27,7 @@ export class RefreshTokenRepository {
       data: {
         userId: data.userId,
         tokenHash: data.tokenHash,
+        familyId: data.familyId,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
         expiresAt: data.expiresAt,
@@ -54,27 +57,52 @@ export class RefreshTokenRepository {
   }
 
   /**
-   * Update / rotate an active refresh token in-place on refresh.
+   * Rotate an active refresh token to a successor within the same family.
+   * Atomically: creates the successor row, revokes the predecessor and links it
+   * via replacedBy. Returns the newly created token row.
    */
-  async updateToken(
-    tokenId: string,
+  async rotate(
+    previousTokenId: string,
     data: {
+      userId: string;
+      familyId: string;
       tokenHash: string;
-      expiresAt: Date;
       ipAddress?: string;
       userAgent?: string;
+      expiresAt: Date;
     },
   ): Promise<RefreshToken> {
-    return this.prisma.refreshToken.update({
-      where: { id: tokenId },
-      data: {
-        tokenHash: data.tokenHash,
-        expiresAt: data.expiresAt,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
-        revokedAt: null,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const successor = await tx.refreshToken.create({
+        data: {
+          userId: data.userId,
+          familyId: data.familyId,
+          tokenHash: data.tokenHash,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          expiresAt: data.expiresAt,
+        },
+      });
+
+      await tx.refreshToken.update({
+        where: { id: previousTokenId },
+        data: { revokedAt: new Date(), replacedBy: successor.id },
+      });
+
+      return successor;
     });
+  }
+
+  /**
+   * Reuse-detection response: revoke every non-revoked token in a family.
+   * @returns number of tokens revoked
+   */
+  async revokeFamily(familyId: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
   }
 
   /**

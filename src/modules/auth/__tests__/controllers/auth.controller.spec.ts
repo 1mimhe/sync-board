@@ -145,6 +145,28 @@ describe('AuthController', () => {
         expect.any(Object),
       );
     });
+
+    it('should throw TOKEN_INVALID when the refresh cookie is missing', async () => {
+      const req = { cookies: {}, ip: '127.0.0.1', headers: {} } as any;
+
+      await expect(controller.refresh(req, mockRes as Response)).rejects.toThrow(
+        'TOKEN_INVALID',
+      );
+      expect(authService.refreshTokens).not.toHaveBeenCalled();
+    });
+
+    it('should throw TOKEN_INVALID when the cookie value is not a string', async () => {
+      const req = {
+        cookies: { [REFRESH_TOKEN_COOKIE_NAME]: 12345 },
+        ip: '127.0.0.1',
+        headers: {},
+      } as any;
+
+      await expect(controller.refresh(req, mockRes as Response)).rejects.toThrow(
+        'TOKEN_INVALID',
+      );
+      expect(authService.refreshTokens).not.toHaveBeenCalled();
+    });
   });
 
   describe('logout', () => {
@@ -165,6 +187,52 @@ describe('AuthController', () => {
         REFRESH_TOKEN_COOKIE_NAME,
         expect.any(Object),
       );
+    });
+
+    it('should skip token revocation but still clear cookie when no refresh cookie is present', async () => {
+      const req = { cookies: {} } as any;
+      const user = { sub: 'user-uuid-1', jti: 'jti-1', exp: 1700000000 };
+
+      await controller.logout(req, mockRes as Response, user as any);
+
+      expect(authService.logout).not.toHaveBeenCalled();
+      expect(mockRes.clearCookie).toHaveBeenCalledWith(
+        REFRESH_TOKEN_COOKIE_NAME,
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should revoke all device sessions and clear cookie', async () => {
+      const user = { sub: 'user-uuid-1', jti: 'jti-1', exp: 1700000000 };
+
+      await controller.logoutAll(mockRes as Response, user as any);
+
+      expect(authService.logoutAllDevices).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'jti-1',
+        expect.any(Date),
+      );
+      expect(mockRes.clearCookie).toHaveBeenCalledWith(
+        REFRESH_TOKEN_COOKIE_NAME,
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should delegate to service and return a generic message', async () => {
+      authService.forgotPassword.mockResolvedValue();
+
+      const result = await controller.forgotPassword({
+        email: 'test@example.com',
+      });
+
+      expect(authService.forgotPassword).toHaveBeenCalledWith(
+        'test@example.com',
+      );
+      expect(result.message).toContain('password reset link has been sent');
     });
   });
 
@@ -244,6 +312,35 @@ describe('AuthController', () => {
       expect(result).toEqual({
         url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=123',
       });
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return the authenticated user profile', async () => {
+      authService.getProfile.mockResolvedValue(mockUser as any);
+
+      const result = await controller.getProfile({
+        sub: mockUser.id,
+      } as any);
+
+      expect(authService.getProfile).toHaveBeenCalledWith(mockUser.id);
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should delegate profile update for the authenticated user', async () => {
+      const updated = { ...mockUser, displayName: 'New Name' };
+      authService.updateProfile.mockResolvedValue(updated as any);
+      const dto = { displayName: 'New Name' };
+
+      const result = await controller.updateProfile(
+        { sub: mockUser.id } as any,
+        dto,
+      );
+
+      expect(authService.updateProfile).toHaveBeenCalledWith(mockUser.id, dto);
+      expect(result).toEqual(updated);
     });
   });
 

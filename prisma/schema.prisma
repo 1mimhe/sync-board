@@ -83,19 +83,24 @@ model User {
 }
 
 model RefreshToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
-  ipAddress String?   @map("ip_address") @db.VarChar(45)
-  userAgent String?   @map("user_agent") @db.Text
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(255)
+  familyId   String    @map("family_id") @db.Uuid
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
+  userAgent  String?   @map("user_agent") @db.Text
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedToken    RefreshToken?  @relation("TokenRotation", fields: [replacedBy], references: [id])
+  replacedByTokens RefreshToken[] @relation("TokenRotation")
 
   @@index([expiresAt], map: "idx_refresh_tokens_expires")
   @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@index([familyId], map: "idx_refresh_tokens_family")
   @@map("refresh_tokens")
 }
 

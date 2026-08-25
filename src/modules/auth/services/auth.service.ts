@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, User } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PasswordService } from './password.service';
 import { JwtTokenService } from './jwt-token.service';
@@ -25,7 +25,7 @@ import {
   UserLoggedInEvent,
   PasswordResetRequestedEvent,
 } from '../events/auth.events';
-import { AUTH_CONFIG } from '../auth.constants';
+import { AUTH_CONFIG, PASSWORD_RESET_KEY_PREFIX } from '../auth.constants';
 
 /**
  * Core authentication service handling registration, login, token rotation,
@@ -111,8 +111,16 @@ export class AuthService {
   }
 
   /**
-   * Rotate refresh token in-place and issue a new access token.
-   * @throws UnauthorizedException REFRESH_TOKEN_EXPIRED or TOKEN_INVALID
+   * Rotate refresh token using a rotation chain and issue a new access token.
+   *
+   * Chain semantics:
+   * - Unknown hash            -> TOKEN_INVALID
+   * - Expired                 -> REFRESH_TOKEN_EXPIRED
+   * - Already revoked (REUSE) -> revoke entire family, TOKEN_REUSE_DETECTED
+   * - Valid                   -> old row revoked + linked via replacedBy,
+   *                              new row inserted in the same family
+   *
+   * @throws UnauthorizedException TOKEN_INVALID, REFRESH_TOKEN_EXPIRED or TOKEN_REUSE_DETECTED
    */
   async refreshTokens(
     refreshToken: string,
@@ -123,11 +131,22 @@ export class AuthService {
     const existingToken =
       await this.tokenRepository.findByTokenHashWithUser(tokenHash);
 
-    if (!existingToken || existingToken.revokedAt) {
+    if (!existingToken) {
       throw new UnauthorizedException('TOKEN_INVALID');
     }
     if (existingToken.expiresAt < new Date()) {
       throw new UnauthorizedException('REFRESH_TOKEN_EXPIRED');
+    }
+
+    // Reuse detection: a revoked token being replayed proves theft.
+    if (existingToken.revokedAt) {
+      const revokedCount = await this.tokenRepository.revokeFamily(
+        existingToken.familyId,
+      );
+      this.logger.warn(
+        `Refresh token reuse detected — revoked family ${existingToken.familyId} (${revokedCount} tokens) for user ${existingToken.userId}`,
+      );
+      throw new UnauthorizedException('TOKEN_REUSE_DETECTED');
     }
 
     const newRawToken = randomBytes(32).toString('base64url');
@@ -136,17 +155,21 @@ export class AuthService {
       Date.now() + AUTH_CONFIG.refreshToken.expiresInDays * 24 * 60 * 60 * 1000,
     );
 
-    await this.tokenRepository.updateToken(existingToken.id, {
+    const successor = await this.tokenRepository.rotate(existingToken.id, {
+      userId: existingToken.userId,
+      familyId: existingToken.familyId,
       tokenHash: newTokenHash,
-      expiresAt,
       ipAddress,
       userAgent,
+      expiresAt,
     });
 
     const accessToken = this.jwtTokenService.generateAccessToken(
       existingToken.user,
     );
-    this.logger.debug(`Tokens refreshed for user: ${existingToken.userId}`);
+    this.logger.debug(
+      `Tokens rotated for user ${existingToken.userId} (family ${successor.familyId})`,
+    );
 
     return {
       accessToken,
@@ -205,8 +228,8 @@ export class AuthService {
     const resetToken = randomBytes(32).toString('base64url');
     const tokenHash = this.hashToken(resetToken);
 
-    // Store reset token in Redis with key password_reset:<tokenHash> and TTL from config
-    const redisKey = `password_reset:${tokenHash}`;
+    // Store reset token in Redis with TTL from config
+    const redisKey = `${PASSWORD_RESET_KEY_PREFIX}${tokenHash}`;
     await this.redis.set(
       redisKey,
       user.id,
@@ -225,8 +248,10 @@ export class AuthService {
   }
 
   /**
-   * Reset user password using valid token from Redis, revoke previous sessions, and issue fresh token pair.
-   * @throws UnauthorizedException TOKEN_INVALID or TOKEN_EXPIRED
+   * Reset user password using valid single-use token from Redis, revoke previous sessions, and issue fresh token pair.
+   * The token is consumed atomically via GETDEL — delete-before-use wins races,
+   * so a replayed token always fails.
+   * @throws UnauthorizedException TOKEN_INVALID or USER_NOT_FOUND
    */
   async resetPassword(
     token: string,
@@ -235,8 +260,8 @@ export class AuthService {
     userAgent?: string,
   ): Promise<TokenPair> {
     const tokenHash = this.hashToken(token);
-    const redisKey = `password_reset:${tokenHash}`;
-    const userId = await this.redis.get(redisKey);
+    const redisKey = `${PASSWORD_RESET_KEY_PREFIX}${tokenHash}`;
+    const userId = await this.redis.getdel(redisKey);
 
     if (!userId) {
       throw new UnauthorizedException('TOKEN_INVALID');
@@ -250,7 +275,6 @@ export class AuthService {
     const passwordHash = await this.passwordService.hash(newPassword);
     await this.userRepository.updatePassword(userId, passwordHash);
     await this.tokenRepository.revokeAllByUserId(userId);
-    await this.redis.del(redisKey);
 
     const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
 
@@ -481,6 +505,7 @@ export class AuthService {
     await this.tokenRepository.create({
       userId: user.id,
       tokenHash,
+      familyId: randomUUID(), // each login starts a NEW rotation family
       ipAddress,
       userAgent,
       expiresAt,

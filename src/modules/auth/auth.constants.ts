@@ -10,6 +10,7 @@ export const AUTH_CONFIG = {
   },
   refreshToken: {
     expiresInDays: 7,
+    reuseDetection: true, // replayed revoked token revokes its whole family
   },
   passwordReset: {
     expiresInSeconds: 3600,
@@ -28,6 +29,8 @@ export const AUTH_CONFIG = {
 } as const;
 
 export const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken';
+
+export const PASSWORD_RESET_KEY_PREFIX = 'password_reset:';
 
 /**
  * Throttling threshold configurations for authentication controller endpoints.
