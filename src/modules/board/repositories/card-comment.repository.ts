@@ -4,6 +4,13 @@ import { PrismaService } from '../../../common/database/prisma.service';
 import type { CardCommentWithAuthor } from '../interfaces/board.interfaces';
 
 /**
+ * Author summary fields included with every comment (response mapping contract).
+ */
+export const AUTHOR_SUMMARY_SELECT = {
+  select: { id: true, displayName: true, avatarUrl: true },
+} as const;
+
+/**
  * Repository handling database operations for card comments.
  */
 @Injectable()
@@ -24,9 +31,7 @@ export class CardCommentRepository {
     return this.prisma.cardComment.findUniqueOrThrow({
       where: { id: comment.id },
       include: {
-        author: {
-          select: { id: true, displayName: true, avatarUrl: true },
-        },
+        author: AUTHOR_SUMMARY_SELECT,
       },
     });
   }
@@ -49,49 +54,52 @@ export class CardCommentRepository {
         ...(cardId && { cardId }),
       },
       include: {
-        author: {
-          select: { id: true, displayName: true, avatarUrl: true },
-        },
+        author: AUTHOR_SUMMARY_SELECT,
       },
     });
   }
 
   /**
-   * Finds active comments on a card with pagination and author details.
+   * Fetch a cursor page of active comments for a card, newest first.
+   * Fetches limit + 1 rows so callers can compute hasMore.
+   *
+   * Unknown/stale cursors are tolerated: when Prisma cannot locate the cursor row,
+   * the query is retried without it, returning the newest page.
    *
    * @param cardId - Card UUID
-   * @param skip - Number of items to skip
-   * @param take - Number of items to take
-   * @returns Array of comments with author details
+   * @param cursor - Last item id of the previous page (optional)
+   * @param limit - Page size; one extra row is fetched to detect the next page
+   * @returns Array of comments with author details (length up to limit + 1)
    */
-  async findCardComments(
+  async findCardCommentsPage(
     cardId: string,
-    skip: number = 0,
-    take?: number,
+    cursor: string | undefined,
+    limit: number,
   ): Promise<CardCommentWithAuthor[]> {
-    return this.prisma.cardComment.findMany({
-      where: { cardId, deletedAt: null },
-      include: {
-        author: {
-          select: { id: true, displayName: true, avatarUrl: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-      skip,
-      take,
-    });
-  }
-
-  /**
-   * Counts total active (non-deleted) comments on a card.
-   *
-   * @param cardId - Card UUID
-   * @returns Total active comment count
-   */
-  async countByCardId(cardId: string): Promise<number> {
-    return this.prisma.cardComment.count({
-      where: { cardId, deletedAt: null },
-    });
+    try {
+      return await this.prisma.cardComment.findMany({
+        where: { cardId, deletedAt: null },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        include: { author: AUTHOR_SUMMARY_SELECT },
+      });
+    } catch (error) {
+      if (
+        cursor &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        // Unknown/stale cursor — degrade gracefully to the newest page
+        return this.prisma.cardComment.findMany({
+          where: { cardId, deletedAt: null },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: limit + 1,
+          include: { author: AUTHOR_SUMMARY_SELECT },
+        });
+      }
+      throw error;
+    }
   }
 
   /**
@@ -110,9 +118,7 @@ export class CardCommentRepository {
     return this.prisma.cardComment.findUniqueOrThrow({
       where: { id },
       include: {
-        author: {
-          select: { id: true, displayName: true, avatarUrl: true },
-        },
+        author: AUTHOR_SUMMARY_SELECT,
       },
     });
   }
