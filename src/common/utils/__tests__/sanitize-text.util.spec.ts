@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { sanitizePlainText } from '../sanitize-text.util';
-import { CreateCommentDto } from '../../../modules/board/dto/comment/create-comment.dto';
-import { UpdateCommentDto } from '../../../modules/board/dto/comment/update-comment.dto';
+import { CreateCommentDto } from '../../../modules/board/comment/dto/create-comment.dto';
+import { UpdateCommentDto } from '../../../modules/board/comment/dto/update-comment.dto';
 
 describe('sanitizePlainText', () => {
   it('should strip script tags but keep their inner text', () => {

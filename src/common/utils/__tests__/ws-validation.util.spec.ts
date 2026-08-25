@@ -1,5 +1,5 @@
 import { validateWsPayload } from '../ws-validation.util';
-import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/dto/ws-messages.dto';
+import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/realtime/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
 import * as classValidator from 'class-validator';
 
