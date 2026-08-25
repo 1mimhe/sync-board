@@ -26,7 +26,7 @@ import {
   UpdateCommentDto,
   CardCommentResponseDto,
   PaginatedCommentsResponseDto,
-  PaginationQueryDto,
+  CursorPaginationQueryDto,
 } from '../dto';
 import { toCardCommentResponseDto } from '../mappers/board.mapper';
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
@@ -114,7 +114,7 @@ export class CardCommentController {
     description: 'Card UUID',
   })
   @ApiOkResponse({
-    description: 'Paginated list of card comments',
+    description: 'Paginated comments: { items, pagination }',
     type: PaginatedCommentsResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Card not found' })
@@ -122,7 +122,7 @@ export class CardCommentController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
-    @Query() query: PaginationQueryDto,
+    @Query() query: CursorPaginationQueryDto,
   ): Promise<PaginatedCommentsResponseDto> {
     const result = await this.commentService.getCardComments(
       boardId,
@@ -132,7 +132,7 @@ export class CardCommentController {
     );
     return {
       items: result.items.map(toCardCommentResponseDto),
-      meta: result.meta,
+      pagination: result.pagination,
     };
   }
 
