@@ -56,7 +56,10 @@ describe('WsBoardAccessGuard', () => {
     const result = await guard.canActivate(mockContext);
     expect(result).toBe(true);
     expect(boardRepo.findById).toHaveBeenCalledWith(validBoardId);
-    expect(workspaceMemberRepo.findMember).toHaveBeenCalledWith(validWorkspaceId, validUserId);
+    expect(workspaceMemberRepo.findMember).toHaveBeenCalledWith(
+      validWorkspaceId,
+      validUserId,
+    );
   });
 
   it('should throw BOARD_NOT_FOUND when board does not exist or is archived', async () => {
@@ -68,7 +71,10 @@ describe('WsBoardAccessGuard', () => {
       await guard.canActivate(mockContext);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('BOARD_NOT_FOUND');
     }
   });
@@ -86,7 +92,10 @@ describe('WsBoardAccessGuard', () => {
       await guard.canActivate(mockContext);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('BOARD_ACCESS_DENIED');
     }
   });
