@@ -25,7 +25,9 @@ describe('WorkspaceInvitationRepository', () => {
       ],
     }).compile();
 
-    repository = module.get<WorkspaceInvitationRepository>(WorkspaceInvitationRepository);
+    repository = module.get<WorkspaceInvitationRepository>(
+      WorkspaceInvitationRepository,
+    );
   });
 
   afterEach(() => {
@@ -43,7 +45,11 @@ describe('WorkspaceInvitationRepository', () => {
         expiresAt: new Date(Date.now() + 86400000),
       };
 
-      const mockResult = { id: 'inv-1', ...inviteData, status: InvitationStatus.pending };
+      const mockResult = {
+        id: 'inv-1',
+        ...inviteData,
+        status: InvitationStatus.pending,
+      };
       prismaService.workspaceInvitation.create.mockResolvedValue(mockResult);
 
       const result = await repository.createInvitation(inviteData);
@@ -63,25 +69,34 @@ describe('WorkspaceInvitationRepository', () => {
       const mockResult = {
         id: 'inv-1',
         token: 'token-123',
-        inviter: { id: 'u-1', displayName: 'Inviter', email: 'inviter@test.com', avatarUrl: null },
+        inviter: {
+          id: 'u-1',
+          displayName: 'Inviter',
+          email: 'inviter@test.com',
+          avatarUrl: null,
+        },
       };
-      prismaService.workspaceInvitation.findUnique.mockResolvedValue(mockResult);
+      prismaService.workspaceInvitation.findUnique.mockResolvedValue(
+        mockResult,
+      );
 
       const result = await repository.findByToken('token-123');
 
-      expect(prismaService.workspaceInvitation.findUnique).toHaveBeenCalledWith({
-        where: { token: 'token-123' },
-        include: {
-          inviter: {
-            select: {
-              id: true,
-              displayName: true,
-              email: true,
-              avatarUrl: true,
+      expect(prismaService.workspaceInvitation.findUnique).toHaveBeenCalledWith(
+        {
+          where: { token: 'token-123' },
+          include: {
+            inviter: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+                avatarUrl: true,
+              },
             },
           },
         },
-      });
+      );
       expect(result).toEqual(mockResult);
     });
   });
@@ -89,23 +104,34 @@ describe('WorkspaceInvitationRepository', () => {
   describe('findById', () => {
     it('should find invitation by id', async () => {
       const mockResult = { id: 'inv-1', email: 'test@example.com' };
-      prismaService.workspaceInvitation.findUnique.mockResolvedValue(mockResult);
+      prismaService.workspaceInvitation.findUnique.mockResolvedValue(
+        mockResult,
+      );
 
       const result = await repository.findById('inv-1');
 
-      expect(prismaService.workspaceInvitation.findUnique).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
-      });
+      expect(prismaService.workspaceInvitation.findUnique).toHaveBeenCalledWith(
+        {
+          where: { id: 'inv-1' },
+        },
+      );
       expect(result).toEqual(mockResult);
     });
   });
 
   describe('findPendingByEmailAndWorkspace', () => {
     it('should find active pending invitation', async () => {
-      const mockResult = { id: 'inv-1', email: 'test@example.com', workspaceId: 'ws-1' };
+      const mockResult = {
+        id: 'inv-1',
+        email: 'test@example.com',
+        workspaceId: 'ws-1',
+      };
       prismaService.workspaceInvitation.findFirst.mockResolvedValue(mockResult);
 
-      const result = await repository.findPendingByEmailAndWorkspace('test@example.com', 'ws-1');
+      const result = await repository.findPendingByEmailAndWorkspace(
+        'test@example.com',
+        'ws-1',
+      );
 
       expect(prismaService.workspaceInvitation.findFirst).toHaveBeenCalledWith({
         where: {
@@ -125,7 +151,12 @@ describe('WorkspaceInvitationRepository', () => {
         {
           id: 'inv-1',
           workspaceId: 'ws-1',
-          inviter: { id: 'u-1', displayName: 'Inviter', email: 'inv@test.com', avatarUrl: null },
+          inviter: {
+            id: 'u-1',
+            displayName: 'Inviter',
+            email: 'inv@test.com',
+            avatarUrl: null,
+          },
         },
       ];
       prismaService.workspaceInvitation.findMany.mockResolvedValue(mockInvites);
@@ -155,7 +186,10 @@ describe('WorkspaceInvitationRepository', () => {
       const mockResult = { id: 'inv-1', status: InvitationStatus.revoked };
       prismaService.workspaceInvitation.update.mockResolvedValue(mockResult);
 
-      const result = await repository.updateStatus('inv-1', InvitationStatus.revoked);
+      const result = await repository.updateStatus(
+        'inv-1',
+        InvitationStatus.revoked,
+      );
 
       expect(prismaService.workspaceInvitation.update).toHaveBeenCalledWith({
         where: { id: 'inv-1' },
@@ -166,10 +200,18 @@ describe('WorkspaceInvitationRepository', () => {
 
     it('should update status with acceptedAt date', async () => {
       const now = new Date();
-      const mockResult = { id: 'inv-1', status: InvitationStatus.accepted, acceptedAt: now };
+      const mockResult = {
+        id: 'inv-1',
+        status: InvitationStatus.accepted,
+        acceptedAt: now,
+      };
       prismaService.workspaceInvitation.update.mockResolvedValue(mockResult);
 
-      const result = await repository.updateStatus('inv-1', InvitationStatus.accepted, now);
+      const result = await repository.updateStatus(
+        'inv-1',
+        InvitationStatus.accepted,
+        now,
+      );
 
       expect(prismaService.workspaceInvitation.update).toHaveBeenCalledWith({
         where: { id: 'inv-1' },
