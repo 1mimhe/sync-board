@@ -38,6 +38,8 @@ import {
   WorkspaceInvitationResponseDto,
 } from '../dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { EmailVerifiedGuard } from '../../../common/guards/email-verified.guard';
+import { SkipEmailVerification } from '../../../common/decorators/skip-email-verification.decorator';
 import { WorkspaceAuth } from '../decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
@@ -57,7 +59,7 @@ export class WorkspaceController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new workspace' })
@@ -67,6 +69,11 @@ export class WorkspaceController {
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Forbidden — email not verified (EMAIL_NOT_VERIFIED) or already authenticated',
+  })
   async create(
     @Body() dto: CreateWorkspaceDto,
     @CurrentUser() user: JwtPayload,
@@ -115,6 +122,7 @@ export class WorkspaceController {
 
   @Post('invitations/accept')
   @UseGuards(JwtAuthGuard)
+  @SkipEmailVerification()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a workspace invitation using token' })

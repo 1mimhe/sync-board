@@ -10,6 +10,7 @@ import { RefreshTokenRepository } from './repositories/refresh-token.repository'
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AnonymousGuard } from '../../common/guards/anonymous.guard';
+import { EmailVerifiedGuard } from '../../common/guards/email-verified.guard';
 import { TokenCleanupTask } from './tasks/token-cleanup.task';
 
 @Module({
@@ -25,6 +26,7 @@ import { TokenCleanupTask } from './tasks/token-cleanup.task';
     GoogleStrategy,
     JwtAuthGuard,
     AnonymousGuard,
+    EmailVerifiedGuard,
     TokenCleanupTask,
   ],
   exports: [
@@ -32,6 +34,7 @@ import { TokenCleanupTask } from './tasks/token-cleanup.task';
     JwtTokenService,
     JwtAuthGuard,
     AnonymousGuard,
+    EmailVerifiedGuard,
     TokenBlacklistService,
     UserRepository,
     RefreshTokenRepository,
