@@ -309,8 +309,10 @@ export class PresenceService {
         const { boardId } = boardsWithStale[i];
         const offset = i * 4;
 
-        const rawMetas = pruneResults[offset]?.[1] as (string | null)[] | undefined;
-        const remainingCount = pruneResults[offset + 3]?.[1] as number | undefined;
+        const rawMetas = pruneResults[offset]?.[1] as
+          (string | null)[] | undefined;
+        const remainingCount = pruneResults[offset + 3]?.[1] as
+          number | undefined;
 
         if (remainingCount === 0) {
           emptyBoardIds.push(boardId);
