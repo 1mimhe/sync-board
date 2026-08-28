@@ -19,7 +19,11 @@ describe('BoardMapper Functions', () => {
 
   describe('toCommentAuthorDto', () => {
     it('should map author object to DTO', () => {
-      const author = { id: 'u-1', displayName: 'Jane Doe', avatarUrl: 'https://example.com/avatar.png' };
+      const author = {
+        id: 'u-1',
+        displayName: 'Jane Doe',
+        avatarUrl: 'https://example.com/avatar.png',
+      };
       expect(toCommentAuthorDto(author)).toEqual(author);
     });
   });
@@ -151,16 +155,42 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
         updatedAt: now,
         archivedAt: null,
-        assignees: [{ user: { id: 'u-1', displayName: 'Jane', avatarUrl: null } }],
-        labels: [{ label: { id: 'lbl-1', name: 'Bug', color: '#f00', workspaceId: 'ws-1', boardId: 'b-1', createdAt: now } }],
+        assignees: [
+          { user: { id: 'u-1', displayName: 'Jane', avatarUrl: null } },
+        ],
+        labels: [
+          {
+            label: {
+              id: 'lbl-1',
+              name: 'Bug',
+              color: '#f00',
+              workspaceId: 'ws-1',
+              boardId: 'b-1',
+              createdAt: now,
+            },
+          },
+        ],
         attachments: [],
       };
 
       const result = toCardWithDetailsResponseDto(cardWithDetails);
 
       expect(result.id).toBe('c-1');
-      expect(result.assignees).toEqual([{ user: { id: 'u-1', displayName: 'Jane', avatarUrl: null } }]);
-      expect(result.labels).toEqual([{ label: { id: 'lbl-1', name: 'Bug', color: '#f00', workspaceId: 'ws-1', boardId: 'b-1', createdAt: now } }]);
+      expect(result.assignees).toEqual([
+        { user: { id: 'u-1', displayName: 'Jane', avatarUrl: null } },
+      ]);
+      expect(result.labels).toEqual([
+        {
+          label: {
+            id: 'lbl-1',
+            name: 'Bug',
+            color: '#f00',
+            workspaceId: 'ws-1',
+            boardId: 'b-1',
+            createdAt: now,
+          },
+        },
+      ]);
       expect(result.attachments).toEqual([]);
     });
 
