@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import {
   InvitationStatus,
   WorkspaceMember,
@@ -24,6 +20,7 @@ import {
   WorkspaceInvitationCreatedEvent,
   WorkspaceMemberAddedEvent,
 } from '../events/workspace.events';
+import { WORKSPACE_EVENTS } from '../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
@@ -117,7 +114,7 @@ export class InvitationService {
     });
 
     this.eventEmitter.emit(
-      'workspace.invitation_created',
+      WORKSPACE_EVENTS.invitationCreated,
       new WorkspaceInvitationCreatedEvent(
         workspaceId,
         dto.email,
@@ -224,7 +221,7 @@ export class InvitationService {
     });
 
     this.eventEmitter.emit(
-      'workspace.member_added',
+      WORKSPACE_EVENTS.memberAdded,
       new WorkspaceMemberAddedEvent(
         invitation.workspaceId,
         userId,

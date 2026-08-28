@@ -10,6 +10,7 @@ import { WorkspaceRepository } from '../../repositories/workspace.repository';
 import { WorkspaceMemberRepository } from '../../repositories/workspace-member.repository';
 import { WorkspaceInvitationRepository } from '../../repositories/workspace-invitation.repository';
 import { PrismaService } from '../../../../common/database/prisma.service';
+import { WORKSPACE_EVENTS } from '../../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
@@ -70,10 +71,16 @@ describe('InvitationService', () => {
   describe('inviteMember', () => {
     it('should throw ForbiddenException if admin attempts to invite owner or admin', async () => {
       membershipService.requireWorkspace.mockResolvedValue(undefined);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
       await expect(
-        service.inviteMember('ws-1', { email: 'test@test.com', role: WorkspaceRole.owner }, 'admin-1'),
+        service.inviteMember(
+          'ws-1',
+          { email: 'test@test.com', role: WorkspaceRole.owner },
+          'admin-1',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -82,16 +89,24 @@ describe('InvitationService', () => {
       memberRepo.findMember
         .mockResolvedValueOnce({ role: WorkspaceRole.owner } as any)
         .mockResolvedValueOnce({ id: 'm-existing' } as any);
-      authService.findUserSummaryByEmail.mockResolvedValue({ id: 'u-existing' } as any);
+      authService.findUserSummaryByEmail.mockResolvedValue({
+        id: 'u-existing',
+      } as any);
 
       await expect(
-        service.inviteMember('ws-1', { email: 'existing@test.com', role: WorkspaceRole.member }, 'owner-1'),
+        service.inviteMember(
+          'ws-1',
+          { email: 'existing@test.com', role: WorkspaceRole.member },
+          'owner-1',
+        ),
       ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should allow admin to invite member or viewer roles', async () => {
       membershipService.requireWorkspace.mockResolvedValue(undefined);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
       authService.findUserSummaryByEmail.mockResolvedValue(null);
       invitationRepo.findPendingByEmailAndWorkspace.mockResolvedValue(null);
       invitationRepo.createInvitation.mockResolvedValue({
@@ -120,7 +135,9 @@ describe('InvitationService', () => {
       memberRepo.findMember
         .mockResolvedValueOnce({ role: WorkspaceRole.owner } as any)
         .mockResolvedValueOnce(null);
-      authService.findUserSummaryByEmail.mockResolvedValue({ id: 'u-new' } as any);
+      authService.findUserSummaryByEmail.mockResolvedValue({
+        id: 'u-new',
+      } as any);
       invitationRepo.findPendingByEmailAndWorkspace.mockResolvedValue(null);
       invitationRepo.createInvitation.mockResolvedValue({
         id: 'inv-3',
@@ -146,18 +163,28 @@ describe('InvitationService', () => {
 
     it('should throw BusinessRuleException INVITATION_ALREADY_SENT if active pending invitation already exists', async () => {
       membershipService.requireWorkspace.mockResolvedValue(undefined);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.owner } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.owner,
+      } as any);
       authService.findUserSummaryByEmail.mockResolvedValue(null);
-      invitationRepo.findPendingByEmailAndWorkspace.mockResolvedValue({ id: 'inv-active' } as any);
+      invitationRepo.findPendingByEmailAndWorkspace.mockResolvedValue({
+        id: 'inv-active',
+      } as any);
 
       await expect(
-        service.inviteMember('ws-1', { email: 'pending@test.com', role: WorkspaceRole.member }, 'owner-1'),
+        service.inviteMember(
+          'ws-1',
+          { email: 'pending@test.com', role: WorkspaceRole.member },
+          'owner-1',
+        ),
       ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should store hashed token (not raw) and emit invitation_created with raw token', async () => {
       membershipService.requireWorkspace.mockResolvedValue(undefined);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.owner } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.owner,
+      } as any);
       authService.findUserSummaryByEmail.mockResolvedValue(null);
       invitationRepo.findPendingByEmailAndWorkspace.mockResolvedValue(null);
       const mockInvitation = {
@@ -194,7 +221,7 @@ describe('InvitationService', () => {
         },
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'workspace.invitation_created',
+        WORKSPACE_EVENTS.invitationCreated,
         expect.anything(),
       );
     });
@@ -203,7 +230,9 @@ describe('InvitationService', () => {
   describe('getInvitations', () => {
     it('should return pending workspace invitations', async () => {
       membershipService.requireWorkspace.mockResolvedValue(undefined);
-      invitationRepo.findWorkspaceInvitations.mockResolvedValue([{ id: 'inv-1' }] as any);
+      invitationRepo.findWorkspaceInvitations.mockResolvedValue([
+        { id: 'inv-1' },
+      ] as any);
 
       const result = await service.getInvitations('ws-1');
 
@@ -216,7 +245,9 @@ describe('InvitationService', () => {
         new EntityNotFoundException('Workspace', 'ws-x'),
       );
 
-      await expect(service.getInvitations('ws-x')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.getInvitations('ws-x')).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
   });
 
@@ -224,9 +255,9 @@ describe('InvitationService', () => {
     it('should throw BusinessRuleException INVITATION_EXPIRED when token unknown or not pending', async () => {
       invitationRepo.findByToken.mockResolvedValue(null);
 
-      await expect(service.acceptInvitation({ token: 'invalid' }, 'u-1')).rejects.toThrow(
-        BusinessRuleException,
-      );
+      await expect(
+        service.acceptInvitation({ token: 'invalid' }, 'u-1'),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should throw BusinessRuleException when target workspace is archived / not found', async () => {
@@ -238,9 +269,9 @@ describe('InvitationService', () => {
       } as any);
       workspaceRepo.findById.mockResolvedValue(null);
 
-      await expect(service.acceptInvitation({ token: 'valid' }, 'u-1')).rejects.toThrow(
-        BusinessRuleException,
-      );
+      await expect(
+        service.acceptInvitation({ token: 'valid' }, 'u-1'),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should throw BusinessRuleException if user email does not match invitation email', async () => {
@@ -252,11 +283,13 @@ describe('InvitationService', () => {
         email: 'intended@example.com',
       } as any);
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      authService.getProfile.mockResolvedValue({ email: 'different@example.com' } as any);
+      authService.getProfile.mockResolvedValue({
+        email: 'different@example.com',
+      } as any);
 
-      await expect(service.acceptInvitation({ token: 'valid' }, 'u-1')).rejects.toThrow(
-        BusinessRuleException,
-      );
+      await expect(
+        service.acceptInvitation({ token: 'valid' }, 'u-1'),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should throw BusinessRuleException ALREADY_A_MEMBER if user is already a member of the workspace', async () => {
@@ -268,12 +301,14 @@ describe('InvitationService', () => {
         email: 'user@example.com',
       } as any);
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      authService.getProfile.mockResolvedValue({ email: 'user@example.com' } as any);
+      authService.getProfile.mockResolvedValue({
+        email: 'user@example.com',
+      } as any);
       memberRepo.findMember.mockResolvedValue({ id: 'm-1' } as any);
 
-      await expect(service.acceptInvitation({ token: 'valid' }, 'u-1')).rejects.toThrow(
-        BusinessRuleException,
-      );
+      await expect(
+        service.acceptInvitation({ token: 'valid' }, 'u-1'),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should accept invitation in transaction and emit member_added', async () => {
@@ -286,10 +321,17 @@ describe('InvitationService', () => {
         role: WorkspaceRole.member,
       } as any);
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      authService.getProfile.mockResolvedValue({ email: 'user@example.com' } as any);
+      authService.getProfile.mockResolvedValue({
+        email: 'user@example.com',
+      } as any);
       memberRepo.findMember.mockResolvedValue(null);
 
-      const mockMember = { id: 'm-new', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-new',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.member,
+      };
       prismaMock.workspaceMember.create.mockResolvedValue(mockMember);
 
       const result = await service.acceptInvitation({ token: 'valid' }, 'u-1');
@@ -300,7 +342,7 @@ describe('InvitationService', () => {
       });
       expect(result).toEqual(mockMember);
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'workspace.member_added',
+        WORKSPACE_EVENTS.memberAdded,
         expect.anything(),
       );
     });
@@ -310,7 +352,9 @@ describe('InvitationService', () => {
     it('should throw EntityNotFoundException if invitation not found, wrong workspace, or not pending', async () => {
       invitationRepo.findById.mockResolvedValue(null);
 
-      await expect(service.revokeInvitation('ws-1', 'inv-99')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.revokeInvitation('ws-1', 'inv-99')).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
 
     it('should update status to revoked when valid', async () => {
@@ -322,7 +366,10 @@ describe('InvitationService', () => {
 
       await service.revokeInvitation('ws-1', 'inv-1');
 
-      expect(invitationRepo.updateStatus).toHaveBeenCalledWith('inv-1', InvitationStatus.revoked);
+      expect(invitationRepo.updateStatus).toHaveBeenCalledWith(
+        'inv-1',
+        InvitationStatus.revoked,
+      );
     });
   });
 });

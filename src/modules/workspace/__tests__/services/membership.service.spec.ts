@@ -7,6 +7,7 @@ import { MembershipService } from '../../services/membership.service';
 import { WorkspaceRepository } from '../../repositories/workspace.repository';
 import { WorkspaceMemberRepository } from '../../repositories/workspace-member.repository';
 import { PrismaService } from '../../../../common/database/prisma.service';
+import { WORKSPACE_EVENTS } from '../../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
@@ -74,7 +75,9 @@ describe('MembershipService', () => {
   describe('getMembers', () => {
     it('should return members with user summary', async () => {
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      const mockMembers = [{ id: 'm-1', userId: 'u-1', role: WorkspaceRole.owner }];
+      const mockMembers = [
+        { id: 'm-1', userId: 'u-1', role: WorkspaceRole.owner },
+      ];
       memberRepo.findMembersWithUser.mockResolvedValue(mockMembers as any);
 
       const result = await service.getMembers('ws-1');
@@ -102,30 +105,64 @@ describe('MembershipService', () => {
     });
 
     it('should throw ForbiddenException if admin attempts to modify owner role', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-owner', role: WorkspaceRole.owner };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-owner',
+        role: WorkspaceRole.owner,
+      };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
       await expect(
-        service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.member }, 'u-admin'),
+        service.updateMemberRole(
+          'ws-1',
+          'm-1',
+          { role: WorkspaceRole.member },
+          'u-admin',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException if admin attempts to promote member to owner', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-member', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-member',
+        role: WorkspaceRole.member,
+      };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
       await expect(
-        service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.owner }, 'u-admin'),
+        service.updateMemberRole(
+          'ws-1',
+          'm-1',
+          { role: WorkspaceRole.owner },
+          'u-admin',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should allow owner to change roles without admin gating', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-member', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-member',
+        role: WorkspaceRole.member,
+      };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.owner } as any);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.owner,
+      } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.admin,
+      } as any);
 
       const res = await service.updateMemberRole(
         'ws-1',
@@ -138,10 +175,20 @@ describe('MembershipService', () => {
     });
 
     it('should allow admin to change a regular member role', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-member', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-member',
+        role: WorkspaceRole.member,
+      };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.viewer } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.viewer,
+      } as any);
 
       const res = await service.updateMemberRole(
         'ws-1',
@@ -162,10 +209,18 @@ describe('MembershipService', () => {
       };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'someone-else' } as any);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.admin } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'someone-else',
+      } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.admin,
+      } as any);
 
-      await service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.admin });
+      await service.updateMemberRole('ws-1', 'm-1', {
+        role: WorkspaceRole.admin,
+      });
 
       expect(workspaceRepo.update).not.toHaveBeenCalled();
       expect(memberRepo.findOtherOwner).not.toHaveBeenCalled();
@@ -180,11 +235,19 @@ describe('MembershipService', () => {
       };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'user-1' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'user-1',
+      } as any);
       memberRepo.findOtherOwner.mockResolvedValue(null);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.admin } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.admin,
+      } as any);
 
-      await service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.admin });
+      await service.updateMemberRole('ws-1', 'm-1', {
+        role: WorkspaceRole.admin,
+      });
 
       expect(workspaceRepo.update).not.toHaveBeenCalled();
     });
@@ -221,31 +284,49 @@ describe('MembershipService', () => {
 
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'user-1' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'user-1',
+      } as any);
       memberRepo.findOtherOwner.mockResolvedValue(otherOwner as any);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.admin } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.admin,
+      } as any);
 
-      const res = await service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.admin });
+      const res = await service.updateMemberRole('ws-1', 'm-1', {
+        role: WorkspaceRole.admin,
+      });
 
       expect(workspaceRepo.update).toHaveBeenCalledWith('ws-1', {
         owner: { connect: { id: 'user-2' } },
       });
       expect(res.role).toBe(WorkspaceRole.admin);
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'workspace.member_role_changed',
+        WORKSPACE_EVENTS.memberRoleChanged,
         expect.anything(),
       );
     });
 
     it('should emit member_role_changed with old and new roles', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.member,
+      };
       memberRepo.findMemberById.mockResolvedValue(mockMember as any);
-      memberRepo.updateRole.mockResolvedValue({ ...mockMember, role: WorkspaceRole.admin } as any);
+      memberRepo.updateRole.mockResolvedValue({
+        ...mockMember,
+        role: WorkspaceRole.admin,
+      } as any);
 
-      await service.updateMemberRole('ws-1', 'm-1', { role: WorkspaceRole.admin });
+      await service.updateMemberRole('ws-1', 'm-1', {
+        role: WorkspaceRole.admin,
+      });
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'workspace.member_role_changed',
+        WORKSPACE_EVENTS.memberRoleChanged,
         expect.anything(),
       );
     });
@@ -253,29 +334,56 @@ describe('MembershipService', () => {
 
   describe('removeMember', () => {
     it('should throw EntityNotFoundException if member not found or wrong workspace', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-other' } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-other',
+      } as any);
 
-      await expect(service.removeMember('ws-1', 'm-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.removeMember('ws-1', 'm-1')).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
 
     it('should throw ForbiddenException if admin attempts to remove an owner', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', role: WorkspaceRole.owner } as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        role: WorkspaceRole.owner,
+      } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
-      await expect(service.removeMember('ws-1', 'm-1', 'admin-id')).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.removeMember('ws-1', 'm-1', 'admin-id'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BusinessRuleException if attempting to remove sole owner', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', role: WorkspaceRole.owner } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        role: WorkspaceRole.owner,
+      } as any);
       memberRepo.countOwners.mockResolvedValue(1);
 
-      await expect(service.removeMember('ws-1', 'm-1')).rejects.toThrow(BusinessRuleException);
+      await expect(service.removeMember('ws-1', 'm-1')).rejects.toThrow(
+        BusinessRuleException,
+      );
     });
 
     it('should remove owner and reassign ownerId if other owner exists', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.owner } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.owner,
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'u-1' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'u-1',
+      } as any);
       memberRepo.findOtherOwner.mockResolvedValue({ userId: 'u-2' } as any);
 
       await service.removeMember('ws-1', 'm-1');
@@ -284,12 +392,22 @@ describe('MembershipService', () => {
         owner: { connect: { id: 'u-2' } },
       });
       expect(memberRepo.removeMember).toHaveBeenCalledWith('m-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('workspace.member_removed', expect.anything());
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        WORKSPACE_EVENTS.memberRemoved,
+        expect.anything(),
+      );
     });
 
     it('should allow admin to remove a regular member', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.member } as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.member,
+      } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
       await service.removeMember('ws-1', 'm-1', 'admin-id');
 
@@ -297,9 +415,17 @@ describe('MembershipService', () => {
     });
 
     it('should skip ownerId reassignment when removed owner is not the workspace ownerId', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.owner } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.owner,
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'u-other' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'u-other',
+      } as any);
 
       await service.removeMember('ws-1', 'm-1');
 
@@ -308,9 +434,17 @@ describe('MembershipService', () => {
     });
 
     it('should not reassign ownerId when no other owner candidate exists during removal', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.owner } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.owner,
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'u-1' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'u-1',
+      } as any);
       memberRepo.findOtherOwner.mockResolvedValue(null);
 
       await service.removeMember('ws-1', 'm-1');
@@ -320,13 +454,21 @@ describe('MembershipService', () => {
     });
 
     it('should remove a regular member without owner reassignment', async () => {
-      memberRepo.findMemberById.mockResolvedValue({ id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.member } as any);
+      memberRepo.findMemberById.mockResolvedValue({
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.member,
+      } as any);
 
       await service.removeMember('ws-1', 'm-1');
 
       expect(workspaceRepo.update).not.toHaveBeenCalled();
       expect(memberRepo.removeMember).toHaveBeenCalledWith('m-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('workspace.member_removed', expect.anything());
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        WORKSPACE_EVENTS.memberRemoved,
+        expect.anything(),
+      );
     });
   });
 
@@ -334,21 +476,37 @@ describe('MembershipService', () => {
     it('should throw EntityNotFoundException if user is not a member', async () => {
       memberRepo.findMember.mockResolvedValue(null);
 
-      await expect(service.leaveWorkspace('ws-1', 'u-stranger')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.leaveWorkspace('ws-1', 'u-stranger'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
 
     it('should throw BusinessRuleException if sole owner attempts to leave', async () => {
-      memberRepo.findMember.mockResolvedValue({ id: 'm-1', role: WorkspaceRole.owner } as any);
+      memberRepo.findMember.mockResolvedValue({
+        id: 'm-1',
+        role: WorkspaceRole.owner,
+      } as any);
       memberRepo.countOwners.mockResolvedValue(1);
 
-      await expect(service.leaveWorkspace('ws-1', 'u-owner')).rejects.toThrow(BusinessRuleException);
+      await expect(service.leaveWorkspace('ws-1', 'u-owner')).rejects.toThrow(
+        BusinessRuleException,
+      );
     });
 
     it('should allow owner to leave if other owner exists and reassign ownerId', async () => {
-      memberRepo.findMember.mockResolvedValue({ id: 'm-1', role: WorkspaceRole.owner, userId: 'u-owner' } as any);
+      memberRepo.findMember.mockResolvedValue({
+        id: 'm-1',
+        role: WorkspaceRole.owner,
+        userId: 'u-owner',
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'u-owner' } as any);
-      memberRepo.findOtherOwner.mockResolvedValue({ userId: 'u-other-owner' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'u-owner',
+      } as any);
+      memberRepo.findOtherOwner.mockResolvedValue({
+        userId: 'u-other-owner',
+      } as any);
 
       await service.leaveWorkspace('ws-1', 'u-owner');
 
@@ -356,13 +514,23 @@ describe('MembershipService', () => {
         owner: { connect: { id: 'u-other-owner' } },
       });
       expect(memberRepo.removeMember).toHaveBeenCalledWith('m-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('workspace.member_removed', expect.anything());
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        WORKSPACE_EVENTS.memberLeft,
+        expect.anything(),
+      );
     });
 
     it('should skip ownerId reassignment when leaving owner is not the workspace ownerId', async () => {
-      memberRepo.findMember.mockResolvedValue({ id: 'm-1', role: WorkspaceRole.owner, userId: 'u-owner' } as any);
+      memberRepo.findMember.mockResolvedValue({
+        id: 'm-1',
+        role: WorkspaceRole.owner,
+        userId: 'u-owner',
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'someone-else' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'someone-else',
+      } as any);
 
       await service.leaveWorkspace('ws-1', 'u-owner');
 
@@ -371,9 +539,16 @@ describe('MembershipService', () => {
     });
 
     it('should not reassign ownerId when no other owner candidate exists during leave', async () => {
-      memberRepo.findMember.mockResolvedValue({ id: 'm-1', role: WorkspaceRole.owner, userId: 'u-owner' } as any);
+      memberRepo.findMember.mockResolvedValue({
+        id: 'm-1',
+        role: WorkspaceRole.owner,
+        userId: 'u-owner',
+      } as any);
       memberRepo.countOwners.mockResolvedValue(2);
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', ownerId: 'u-owner' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        ownerId: 'u-owner',
+      } as any);
       memberRepo.findOtherOwner.mockResolvedValue(null);
 
       await service.leaveWorkspace('ws-1', 'u-owner');
@@ -383,20 +558,32 @@ describe('MembershipService', () => {
     });
 
     it('should remove a regular member who leaves', async () => {
-      memberRepo.findMember.mockResolvedValue({ id: 'm-1', role: WorkspaceRole.member, userId: 'u-member' } as any);
+      memberRepo.findMember.mockResolvedValue({
+        id: 'm-1',
+        role: WorkspaceRole.member,
+        userId: 'u-member',
+      } as any);
 
       await service.leaveWorkspace('ws-1', 'u-member');
 
       expect(memberRepo.removeMember).toHaveBeenCalledWith('m-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('workspace.member_removed', expect.anything());
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        WORKSPACE_EVENTS.memberLeft,
+        expect.anything(),
+      );
     });
   });
 
   describe('transferOwnership', () => {
     it('should throw ForbiddenException if current user is not owner', async () => {
-      memberRepo.findMember.mockResolvedValueOnce({ id: 'm-1', role: WorkspaceRole.admin } as any);
+      memberRepo.findMember.mockResolvedValueOnce({
+        id: 'm-1',
+        role: WorkspaceRole.admin,
+      } as any);
 
-      await expect(service.transferOwnership('ws-1', 'u-admin', 'u-target')).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.transferOwnership('ws-1', 'u-admin', 'u-target'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BusinessRuleException if target user is not a member', async () => {
@@ -404,7 +591,9 @@ describe('MembershipService', () => {
         .mockResolvedValueOnce({ id: 'm-1', role: WorkspaceRole.owner } as any)
         .mockResolvedValueOnce(null);
 
-      await expect(service.transferOwnership('ws-1', 'u-owner', 'u-stranger')).rejects.toThrow(BusinessRuleException);
+      await expect(
+        service.transferOwnership('ws-1', 'u-owner', 'u-stranger'),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should transfer ownership in transaction', async () => {
@@ -419,13 +608,21 @@ describe('MembershipService', () => {
         .mockResolvedValueOnce({ ...ownerMember, role: WorkspaceRole.admin })
         .mockResolvedValueOnce({ ...targetMember, role: WorkspaceRole.owner });
 
-      const result = await service.transferOwnership('ws-1', 'u-owner', 'u-target');
+      const result = await service.transferOwnership(
+        'ws-1',
+        'u-owner',
+        'u-target',
+      );
 
       expect(result.role).toBe(WorkspaceRole.owner);
       expect(prismaMock.workspace.update).toHaveBeenCalledWith({
         where: { id: 'ws-1' },
         data: { owner: { connect: { id: 'u-target' } } },
       });
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        WORKSPACE_EVENTS.ownershipTransferred,
+        expect.anything(),
+      );
     });
   });
 });
