@@ -5,6 +5,7 @@ describe('LabelController', () => {
   let controller: LabelController;
   let labelService: jest.Mocked<LabelService>;
 
+  const mockUser = { sub: 'user-1' } as any;
   const mockLabel = {
     id: 'label-1',
     name: 'Bug',
@@ -29,9 +30,19 @@ describe('LabelController', () => {
   it('should create board label', async () => {
     labelService.createLabel.mockResolvedValue(mockLabel as any);
 
-    const result = await controller.createLabel('ws-1', 'board-1', { name: 'Bug', color: '#ff0000' });
+    const result = await controller.createLabel(
+      'ws-1',
+      'board-1',
+      { name: 'Bug', color: '#ff0000' },
+      mockUser,
+    );
 
-    expect(labelService.createLabel).toHaveBeenCalledWith('board-1', 'ws-1', { name: 'Bug', color: '#ff0000' });
+    expect(labelService.createLabel).toHaveBeenCalledWith(
+      'board-1',
+      'ws-1',
+      { name: 'Bug', color: '#ff0000' },
+      'user-1',
+    );
     expect(result.name).toBe('Bug');
   });
 
@@ -40,22 +51,45 @@ describe('LabelController', () => {
 
     const result = await controller.getLabelsForBoard('ws-1', 'board-1');
 
-    expect(labelService.getLabelsForBoard).toHaveBeenCalledWith('board-1', 'ws-1');
+    expect(labelService.getLabelsForBoard).toHaveBeenCalledWith(
+      'board-1',
+      'ws-1',
+    );
     expect(result).toHaveLength(1);
   });
 
   it('should update label', async () => {
-    labelService.updateLabel.mockResolvedValue({ ...mockLabel, name: 'Critical' } as any);
+    labelService.updateLabel.mockResolvedValue({
+      ...mockLabel,
+      name: 'Critical',
+    } as any);
 
-    const result = await controller.updateLabel('ws-1', 'board-1', 'label-1', { name: 'Critical' });
+    const result = await controller.updateLabel(
+      'ws-1',
+      'board-1',
+      'label-1',
+      { name: 'Critical' },
+      mockUser,
+    );
 
-    expect(labelService.updateLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'label-1', { name: 'Critical' });
+    expect(labelService.updateLabel).toHaveBeenCalledWith(
+      'board-1',
+      'ws-1',
+      'label-1',
+      { name: 'Critical' },
+      'user-1',
+    );
     expect(result.name).toBe('Critical');
   });
 
   it('should delete label', async () => {
-    await controller.deleteLabel('ws-1', 'board-1', 'label-1');
+    await controller.deleteLabel('ws-1', 'board-1', 'label-1', mockUser);
 
-    expect(labelService.deleteLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'label-1');
+    expect(labelService.deleteLabel).toHaveBeenCalledWith(
+      'board-1',
+      'ws-1',
+      'label-1',
+      'user-1',
+    );
   });
 });

@@ -33,7 +33,7 @@ describe('CardCommentController', () => {
       getCardComments: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-    } as unknown as jest.Mocked<CardCommentService>;
+    };
 
     controller = new CardCommentController(commentService);
   });
@@ -74,12 +74,10 @@ describe('CardCommentController', () => {
       };
       commentService.getCardComments.mockResolvedValue(mockResult as any);
 
-      const result = await controller.list(
-        'ws-1',
-        'board-1',
-        'card-1',
-        { cursor: 'cursor-uuid', limit: 20 },
-      );
+      const result = await controller.list('ws-1', 'board-1', 'card-1', {
+        cursor: 'cursor-uuid',
+        limit: 20,
+      });
 
       expect(commentService.getCardComments).toHaveBeenCalledWith(
         'board-1',
@@ -94,7 +92,10 @@ describe('CardCommentController', () => {
 
   describe('update', () => {
     it('should update comment text', async () => {
-      commentService.update.mockResolvedValue({ ...mockComment, content: 'Updated comment' } as any);
+      commentService.update.mockResolvedValue({
+        ...mockComment,
+        content: 'Updated comment',
+      } as any);
 
       const result = await controller.update(
         'ws-1',

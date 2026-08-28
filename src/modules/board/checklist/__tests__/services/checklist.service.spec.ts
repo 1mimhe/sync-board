@@ -77,17 +77,17 @@ describe('ChecklistService', () => {
   it('should throw EntityNotFoundException when board does not exist', async () => {
     boardRepo.findById.mockResolvedValue(null);
 
-    await expect(
-      service.getChecklists(...ARGS),
-    ).rejects.toThrow(EntityNotFoundException);
+    await expect(service.getChecklists(...ARGS)).rejects.toThrow(
+      EntityNotFoundException,
+    );
   });
 
   it('should throw EntityNotFoundException when card does not exist', async () => {
     cardRepo.findActiveById.mockResolvedValue(null);
 
-    await expect(
-      service.getChecklists(...ARGS),
-    ).rejects.toThrow(EntityNotFoundException);
+    await expect(service.getChecklists(...ARGS)).rejects.toThrow(
+      EntityNotFoundException,
+    );
   });
 
   describe('createChecklist', () => {
@@ -234,7 +234,11 @@ describe('ChecklistService', () => {
 
   describe('addItem', () => {
     it('should create item appended after last and emit checklist.updated', async () => {
-      const lastItem = { ...mockItem, id: 'last-item', rank: lexorank.getInitialRank() };
+      const lastItem = {
+        ...mockItem,
+        id: 'last-item',
+        rank: lexorank.getInitialRank(),
+      };
       checklistRepo.findActiveChecklist.mockResolvedValue({
         ...mockChecklist,
         items: [lastItem],
@@ -331,12 +335,7 @@ describe('ChecklistService', () => {
     it('should delete the item and emit checklist.updated', async () => {
       checklistRepo.findItem.mockResolvedValue(mockItem);
 
-      await service.removeItem(
-        ...ARGS,
-        'checklist-uuid',
-        'item-uuid',
-        USER,
-      );
+      await service.removeItem(...ARGS, 'checklist-uuid', 'item-uuid', USER);
 
       expect(checklistRepo.deleteItem).toHaveBeenCalledWith('item-uuid');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
