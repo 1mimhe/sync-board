@@ -8,6 +8,7 @@ import { CreateWorkspaceDto } from '../dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from '../dto/update-workspace.dto';
 import type { WorkspaceWithRole } from '../interfaces/workspace.interfaces';
 import { WorkspaceCreatedEvent } from '../events/workspace.events';
+import { WORKSPACE_EVENTS } from '../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
@@ -49,7 +50,7 @@ export class WorkspaceService {
         );
 
         this.eventEmitter.emit(
-          'workspace.created',
+          WORKSPACE_EVENTS.created,
           new WorkspaceCreatedEvent(workspace, userId),
         );
 
