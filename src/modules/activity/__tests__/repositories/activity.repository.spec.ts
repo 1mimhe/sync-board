@@ -65,7 +65,12 @@ describe('ActivityRepository', () => {
 
   describe('findByBoardId', () => {
     it('should find recent board activities with default limit 50 and author profile details', async () => {
-      const mockList = [{ id: 'act-1', user: { id: 'u-1', displayName: 'Jane', avatarUrl: null } }];
+      const mockList = [
+        {
+          id: 'act-1',
+          user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
+        },
+      ];
       prismaService.activity.findMany.mockResolvedValue(mockList);
 
       const result = await repository.findByBoardId('b-1');

@@ -18,7 +18,7 @@ describe('WorkspaceRepository', () => {
       },
     };
 
-    repository = new WorkspaceRepository(prisma as unknown as PrismaService);
+    repository = new WorkspaceRepository(prisma);
   });
 
   describe('createWorkspaceWithOwner', () => {
