@@ -57,7 +57,12 @@ describe('WsRateLimitGuard', () => {
 
     const result = await guard.canActivate(mockContext);
     expect(result).toBe(true);
-    expect(rateLimiter.checkRateLimit).toHaveBeenCalledWith('user-uuid-123', 'join', 10, 60000);
+    expect(rateLimiter.checkRateLimit).toHaveBeenCalledWith(
+      'user-uuid-123',
+      'join',
+      10,
+      60000,
+    );
   });
 
   it('should throw WsException with RATE_LIMIT_EXCEEDED when limit is breached and silent is false', async () => {
@@ -75,7 +80,10 @@ describe('WsRateLimitGuard', () => {
       await guard.canActivate(mockContext);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('RATE_LIMIT_EXCEEDED');
     }
   });

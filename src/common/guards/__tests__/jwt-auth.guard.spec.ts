@@ -10,7 +10,9 @@ describe('JwtAuthGuard', () => {
   let jwtTokenService: jest.Mocked<JwtTokenService>;
   let blacklistService: jest.Mocked<TokenBlacklistService>;
 
-  const createMockContext = (authHeader?: string): { context: ExecutionContext; request: any } => {
+  const createMockContext = (
+    authHeader?: string,
+  ): { context: ExecutionContext; request: any } => {
     const request: any = {
       headers: {
         ...(authHeader !== undefined ? { authorization: authHeader } : {}),
@@ -96,7 +98,9 @@ describe('JwtAuthGuard', () => {
       await expect(guard.canActivate(context)).rejects.toThrow(
         new UnauthorizedException('TOKEN_EXPIRED'),
       );
-      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith('invalid.jwt.token');
+      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith(
+        'invalid.jwt.token',
+      );
     });
 
     it('should throw UnauthorizedException("TOKEN_REVOKED") when token is blacklisted', async () => {
@@ -129,7 +133,9 @@ describe('JwtAuthGuard', () => {
 
       expect(result).toBe(true);
       expect(request.user).toEqual(mockPayload);
-      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith('valid.jwt.token');
+      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith(
+        'valid.jwt.token',
+      );
       expect(blacklistService.isBlacklisted).toHaveBeenCalledWith('jti-123');
     });
   });
