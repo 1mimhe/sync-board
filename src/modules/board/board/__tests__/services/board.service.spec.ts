@@ -155,14 +155,22 @@ describe('BoardService', () => {
   });
 
   describe('listWorkspaceBoards', () => {
-    it('should list all workspace boards for user', async () => {
+    it('should list workspace boards with cursor pagination', async () => {
       const mockBoards = [{ id: 'b-1' }];
-      boardRepo.findWorkspaceBoards.mockResolvedValue(mockBoards as any);
+      boardRepo.findWorkspaceBoardsPage.mockResolvedValue(mockBoards as any);
 
-      const result = await service.listWorkspaceBoards('ws-1', 'u-1');
+      const result = await service.listWorkspaceBoards('ws-1', 'u-1', {
+        limit: 20,
+      });
 
-      expect(result).toEqual(mockBoards);
-      expect(boardRepo.findWorkspaceBoards).toHaveBeenCalledWith('ws-1', 'u-1');
+      expect(result.items).toEqual(mockBoards);
+      expect(result.pagination).toEqual({ cursor: null, hasMore: false });
+      expect(boardRepo.findWorkspaceBoardsPage).toHaveBeenCalledWith(
+        'ws-1',
+        'u-1',
+        undefined,
+        20,
+      );
     });
   });
 
@@ -305,14 +313,23 @@ describe('BoardService', () => {
   });
 
   describe('Activities', () => {
-    it('should get board activities if board found', async () => {
+    it('should get board activities with cursor pagination if board found', async () => {
       boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
-      activityRepo.findByBoardId.mockResolvedValue([{ id: 'act-1' }] as any);
+      activityRepo.findByBoardIdPage.mockResolvedValue([
+        { id: 'act-1' },
+      ] as any);
 
-      const result = await service.getBoardActivities('b-1', 'ws-1', 25);
+      const result = await service.getBoardActivities('b-1', 'ws-1', {
+        limit: 20,
+      });
 
-      expect(activityRepo.findByBoardId).toHaveBeenCalledWith('b-1', 25);
-      expect(result).toEqual([{ id: 'act-1' }]);
+      expect(activityRepo.findByBoardIdPage).toHaveBeenCalledWith(
+        'b-1',
+        undefined,
+        20,
+      );
+      expect(result.items).toEqual([{ id: 'act-1' }]);
+      expect(result.pagination).toEqual({ cursor: null, hasMore: false });
     });
 
     it('should throw EntityNotFoundException if board not found when getting activities', async () => {

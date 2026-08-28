@@ -146,19 +146,37 @@ describe('BoardRepository', () => {
     });
   });
 
-  describe('findWorkspaceBoards', () => {
-    it('should find all active workspace boards for user', async () => {
+  describe('findWorkspaceBoardsPage', () => {
+    it('should find a page of active workspace boards for user', async () => {
       const mockBoards = [{ id: 'b-1', title: 'Board 1' }];
       prismaService.board.findMany.mockResolvedValue(mockBoards);
 
-      const result = await repository.findWorkspaceBoards('ws-1', 'u-1');
+      const result = await repository.findWorkspaceBoardsPage(
+        'ws-1',
+        'u-1',
+        'prev-1',
+        20,
+      );
 
       expect(prismaService.board.findMany).toHaveBeenCalledWith({
         where: { workspaceId: 'ws-1', archivedAt: null },
         include: { starredBy: { where: { userId: 'u-1' } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 21,
+        cursor: { id: 'prev-1' },
+        skip: 1,
       });
       expect(result).toEqual(mockBoards);
+    });
+
+    it('should omit cursor when not provided', async () => {
+      prismaService.board.findMany.mockResolvedValue([]);
+
+      await repository.findWorkspaceBoardsPage('ws-1', 'u-1', undefined, 20);
+
+      expect(prismaService.board.findMany).toHaveBeenCalledWith(
+        expect.not.objectContaining({ cursor: expect.anything() }),
+      );
     });
   });
 

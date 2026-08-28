@@ -107,17 +107,26 @@ describe('BoardController', () => {
   });
 
   describe('listWorkspaceBoards', () => {
-    it('should list all workspace boards for user', async () => {
-      boardService.listWorkspaceBoards.mockResolvedValue([mockBoard]);
+    it('should list workspace boards with pagination mapping', async () => {
+      const paginated = {
+        items: [mockBoard],
+        pagination: { cursor: 'board-1', hasMore: false },
+      };
+      boardService.listWorkspaceBoards.mockResolvedValue(paginated);
 
-      const result = await controller.listWorkspaceBoards('ws-1', mockUser);
+      const result = await controller.listWorkspaceBoards('ws-1', mockUser, {
+        cursor: 'board-1',
+        limit: 20,
+      });
 
       expect(boardService.listWorkspaceBoards).toHaveBeenCalledWith(
         'ws-1',
         'user-uuid-1',
+        { cursor: 'board-1', limit: 20 },
       );
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('board-1');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('board-1');
+      expect(result.pagination).toEqual({ cursor: 'board-1', hasMore: false });
     });
   });
 
@@ -216,17 +225,25 @@ describe('BoardController', () => {
   });
 
   describe('activities', () => {
-    it('should get board activities and map them', async () => {
-      boardService.getBoardActivities.mockResolvedValue([mockActivity as any]);
+    it('should get board activities and map them with pagination', async () => {
+      const paginated = {
+        items: [mockActivity as any],
+        pagination: { cursor: 'act-1', hasMore: false },
+      };
+      boardService.getBoardActivities.mockResolvedValue(paginated);
 
-      const result = await controller.getActivities('ws-1', 'board-1');
+      const result = await controller.getActivities('ws-1', 'board-1', {
+        limit: 20,
+      });
 
       expect(boardService.getBoardActivities).toHaveBeenCalledWith(
         'board-1',
         'ws-1',
+        { limit: 20 },
       );
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('act-1');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('act-1');
+      expect(result.pagination).toEqual({ cursor: 'act-1', hasMore: false });
     });
   });
 });

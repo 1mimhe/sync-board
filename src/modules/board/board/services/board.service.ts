@@ -4,8 +4,15 @@ import type { Board } from '@prisma/client';
 import { BoardRepository } from '../repositories/board.repository';
 import { LabelRepository } from '../../label/repositories/label.repository';
 import { ActivityRepository } from '../../../activity/repositories/activity.repository';
-import { CreateBoardDto, UpdateBoardDto, BoardContentQueryDto } from '../dto';
+import {
+  CreateBoardDto,
+  UpdateBoardDto,
+  BoardContentQueryDto,
+  CursorPaginationQueryDto,
+} from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import { buildCursorPagination } from '../../../../common/utils/pagination.util';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import {
   BoardCreatedEvent,
   BoardUpdatedEvent,
@@ -128,17 +135,27 @@ export class BoardService {
   }
 
   /**
-   * Lists all active boards within a workspace for the requesting user.
+   * Lists active boards within a workspace for the requesting user,
+   * using cursor-based pagination (newest first).
    *
    * @param workspaceId - Workspace UUID
    * @param userId - Requesting user UUID
-   * @returns Array of boards
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with `items` and `pagination.cursor/hasMore`
    */
   async listWorkspaceBoards(
     workspaceId: string,
     userId: string,
-  ): Promise<Board[]> {
-    return this.boardRepo.findWorkspaceBoards(workspaceId, userId);
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<Board>> {
+    const limit = query.limit ?? 20;
+    const rows = await this.boardRepo.findWorkspaceBoardsPage(
+      workspaceId,
+      userId,
+      query.cursor,
+      limit,
+    );
+    return buildCursorPagination(rows, limit);
   }
 
   /**
@@ -289,23 +306,29 @@ export class BoardService {
   // ============================================================
 
   /**
-   * Retrieves recent activities (audit log) for a board.
+   * Retrieves a cursor page of activities (audit log) for a board.
    *
    * @param boardId - Board UUID
    * @param workspaceId - Workspace UUID
-   * @param limit - Optional maximum number of activities
-   * @returns Array of activity log items
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with `items` and `pagination.cursor/hasMore`
    * @throws {EntityNotFoundException} If board is not found
    */
   async getBoardActivities(
     boardId: string,
     workspaceId: string,
-    limit?: number,
-  ): Promise<ActivityWithAuthor[]> {
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<ActivityWithAuthor>> {
     const board = await this.boardRepo.findById(boardId, workspaceId);
     if (!board) {
       throw new EntityNotFoundException('Board', boardId);
     }
-    return this.activityRepo.findByBoardId(boardId, limit);
+    const limit = query.limit ?? 20;
+    const rows = await this.activityRepo.findByBoardIdPage(
+      boardId,
+      query.cursor,
+      limit,
+    );
+    return buildCursorPagination(rows, limit);
   }
 }

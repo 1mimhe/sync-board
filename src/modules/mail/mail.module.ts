@@ -5,12 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { MailListener } from './listeners/mail.listener';
 
-/**
- * Transactional email. Transport is plain SMTP (MailHog locally). Templates
- * are Handlebars `.hbs` files under src/modules/mail/templates/. Phase 6 moves
- * sending behind the RabbitMQ email consumer; the listener then becomes a
- * publisher.
- */
 @Module({
   imports: [
     MailerModule.forRootAsync({
