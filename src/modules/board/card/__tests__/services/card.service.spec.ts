@@ -10,6 +10,7 @@ import { WorkspaceService } from '../../../../workspace/services/workspace.servi
 import { LexorankService } from '../../../lexorank/services/lexorank.service';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { BadRequestException } from '@nestjs/common';
+import { CARD_EVENTS } from '../../../card/events/card-events.constants';
 
 describe('CardService', () => {
   let service: CardService;
@@ -228,14 +229,20 @@ describe('CardService', () => {
       const mockCard = { id: 'c-1', title: 'Task' };
       cardRepo.findActiveById.mockResolvedValue(mockCard as any);
 
-      const result = await service.getCardDetails('board-uuid', 'ws-uuid', 'c-1');
+      const result = await service.getCardDetails(
+        'board-uuid',
+        'ws-uuid',
+        'c-1',
+      );
       expect(result).toEqual(mockCard);
     });
 
     it('should throw EntityNotFoundException if card not found', async () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
-      await expect(service.getCardDetails('board-uuid', 'ws-uuid', 'c-99')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.getCardDetails('board-uuid', 'ws-uuid', 'c-99'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -260,18 +267,30 @@ describe('CardService', () => {
       );
 
       expect(result).toEqual(updatedCard);
-      expect(cardRepo.update).toHaveBeenCalledWith('c-1', expect.objectContaining({
-        title: 'Updated Title',
-        isComplete: true,
-      }));
-      expect(eventEmitter.emit).toHaveBeenCalledWith('card.updated', expect.any(Object));
+      expect(cardRepo.update).toHaveBeenCalledWith(
+        'c-1',
+        expect.objectContaining({
+          title: 'Updated Title',
+          isComplete: true,
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'card.updated',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if card not found during update', async () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.update('board-uuid', 'ws-uuid', 'c-99', { title: 'New' }, 'user-uuid'),
+        service.update(
+          'board-uuid',
+          'ws-uuid',
+          'c-99',
+          { title: 'New' },
+          'user-uuid',
+        ),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });
@@ -360,29 +379,50 @@ describe('CardService', () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.move('board-uuid', 'ws-uuid', 'c-99', { targetListId: 'list-2' }, 'user-uuid'),
+        service.move(
+          'board-uuid',
+          'ws-uuid',
+          'c-99',
+          { targetListId: 'list-2' },
+          'user-uuid',
+        ),
       ).rejects.toThrow(EntityNotFoundException);
     });
 
     it('should throw BadRequestException if target list does not belong to board', async () => {
-      cardRepo.findActiveById.mockResolvedValue({ id: 'c-1', listId: 'list-1' } as any);
+      cardRepo.findActiveById.mockResolvedValue({
+        id: 'c-1',
+        listId: 'list-1',
+      } as any);
       listRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.move('board-uuid', 'ws-uuid', 'c-1', { targetListId: 'list-other' }, 'user-uuid'),
+        service.move(
+          'board-uuid',
+          'ws-uuid',
+          'c-1',
+          { targetListId: 'list-other' },
+          'user-uuid',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('archive and unarchive', () => {
     it('should archive card and emit card.archived', async () => {
-      cardRepo.findActiveById.mockResolvedValue({ id: 'c-1', listId: 'l-1' } as any);
+      cardRepo.findActiveById.mockResolvedValue({
+        id: 'c-1',
+        listId: 'l-1',
+      } as any);
       cardRepo.archive.mockResolvedValue({ id: 'c-1' } as any);
 
       await service.archive('board-uuid', 'ws-uuid', 'c-1', 'user-uuid');
 
       expect(cardRepo.archive).toHaveBeenCalledWith('c-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('card.archived', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'card.archived',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if card not found during archive', async () => {
@@ -434,14 +474,24 @@ describe('CardService', () => {
   });
 
   describe('Assignees', () => {
-    it('should add assignee to card', async () => {
+    it('should add assignee to card and emit card.assignee_added', async () => {
       cardRepo.findActiveById.mockResolvedValue({ id: 'c-1' } as any);
       workspaceService.isUserMember.mockResolvedValue(true);
       cardRepo.addAssignee.mockResolvedValue();
 
-      await service.addAssignee('board-uuid', 'ws-uuid', 'c-1', 'u-2');
+      await service.addAssignee(
+        'board-uuid',
+        'ws-uuid',
+        'c-1',
+        'u-2',
+        'actor-1',
+      );
 
       expect(cardRepo.addAssignee).toHaveBeenCalledWith('c-1', 'u-2');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        CARD_EVENTS.assigneeAdded,
+        expect.anything(),
+      );
     });
 
     it('should throw BadRequestException if user is not member when adding assignee', async () => {
@@ -449,7 +499,13 @@ describe('CardService', () => {
       workspaceService.isUserMember.mockResolvedValue(false);
 
       await expect(
-        service.addAssignee('board-uuid', 'ws-uuid', 'c-1', 'u-stranger'),
+        service.addAssignee(
+          'board-uuid',
+          'ws-uuid',
+          'c-1',
+          'u-stranger',
+          'actor-1',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -457,24 +513,40 @@ describe('CardService', () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.addAssignee('board-uuid', 'ws-uuid', 'c-99', 'u-2'),
+        service.addAssignee('board-uuid', 'ws-uuid', 'c-99', 'u-2', 'actor-1'),
       ).rejects.toThrow(EntityNotFoundException);
     });
 
-    it('should remove assignee from card', async () => {
+    it('should remove assignee from card and emit card.assignee_removed', async () => {
       cardRepo.findActiveById.mockResolvedValue({ id: 'c-1' } as any);
       cardRepo.removeAssignee.mockResolvedValue();
 
-      await service.removeAssignee('board-uuid', 'ws-uuid', 'c-1', 'u-2');
+      await service.removeAssignee(
+        'board-uuid',
+        'ws-uuid',
+        'c-1',
+        'u-2',
+        'actor-1',
+      );
 
       expect(cardRepo.removeAssignee).toHaveBeenCalledWith('c-1', 'u-2');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        CARD_EVENTS.assigneeRemoved,
+        expect.anything(),
+      );
     });
 
     it('should throw EntityNotFoundException if card not found when removing assignee', async () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.removeAssignee('board-uuid', 'ws-uuid', 'c-99', 'u-2'),
+        service.removeAssignee(
+          'board-uuid',
+          'ws-uuid',
+          'c-99',
+          'u-2',
+          'actor-1',
+        ),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });
@@ -489,12 +561,7 @@ describe('CardService', () => {
       } as any);
       cardRepo.addLabel.mockResolvedValue();
 
-      await service.addLabel(
-        'board-uuid',
-        'ws-uuid',
-        'card-uuid',
-        'label-1',
-      );
+      await service.addLabel('board-uuid', 'ws-uuid', 'card-uuid', 'label-1');
 
       expect(cardRepo.addLabel).toHaveBeenCalledWith('card-uuid', 'label-1');
     });
@@ -508,12 +575,7 @@ describe('CardService', () => {
       } as any);
       cardRepo.addLabel.mockResolvedValue();
 
-      await service.addLabel(
-        'board-uuid',
-        'ws-uuid',
-        'card-uuid',
-        'label-2',
-      );
+      await service.addLabel('board-uuid', 'ws-uuid', 'card-uuid', 'label-2');
 
       expect(cardRepo.addLabel).toHaveBeenCalledWith('card-uuid', 'label-2');
     });

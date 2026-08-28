@@ -15,6 +15,8 @@ import {
   CardUpdatedEvent,
   CardArchivedEvent,
   CardUnarchivedEvent,
+  CardAssigneeAddedEvent,
+  CardAssigneeRemovedEvent,
 } from '../events/card.events';
 import { CARD_EVENTS } from '../events/card-events.constants';
 import type { CardWithDetails } from '../../board/interfaces/board.interfaces';
@@ -375,6 +377,7 @@ export class CardService {
    * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param assigneeUserId - Target user UUID to assign
+   * @param addedBy - UUID of the acting user
    * @throws {EntityNotFoundException} If card is not found
    * @throws {BadRequestException} If assigned user is not a member of the workspace
    */
@@ -383,6 +386,7 @@ export class CardService {
     workspaceId: string,
     cardId: string,
     assigneeUserId: string,
+    addedBy: string,
   ): Promise<void> {
     const card = await this.cardRepo.findActiveById(cardId, boardId);
     if (!card) {
@@ -400,6 +404,11 @@ export class CardService {
     }
 
     await this.cardRepo.addAssignee(cardId, assigneeUserId);
+
+    this.eventEmitter.emit(
+      CARD_EVENTS.assigneeAdded,
+      new CardAssigneeAddedEvent(cardId, boardId, assigneeUserId, addedBy),
+    );
   }
 
   /**
@@ -409,6 +418,7 @@ export class CardService {
    * @param workspaceId - Workspace UUID
    * @param cardId - Card UUID
    * @param assigneeUserId - User UUID to remove from card
+   * @param removedBy - UUID of the acting user
    * @throws {EntityNotFoundException} If board or card is not found
    */
   async removeAssignee(
@@ -416,6 +426,7 @@ export class CardService {
     workspaceId: string,
     cardId: string,
     assigneeUserId: string,
+    removedBy: string,
   ): Promise<void> {
     await this.verifyBoardInWorkspace(boardId, workspaceId);
 
@@ -425,6 +436,11 @@ export class CardService {
     }
 
     await this.cardRepo.removeAssignee(cardId, assigneeUserId);
+
+    this.eventEmitter.emit(
+      CARD_EVENTS.assigneeRemoved,
+      new CardAssigneeRemovedEvent(cardId, boardId, assigneeUserId, removedBy),
+    );
   }
 
   /**
