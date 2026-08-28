@@ -23,10 +23,24 @@ import type {
   CardUnarchivedEvent,
 } from '../../board/card/events/card.events';
 import type { CommentCreatedEvent } from '../../board/comment/events/comment.events';
+import type {
+  CommentUpdatedEvent,
+  CommentDeletedEvent,
+} from '../../board/comment/events/comment.events';
+import type {
+  LabelCreatedEvent,
+  LabelUpdatedEvent,
+  LabelDeletedEvent,
+} from '../../board/label/events/label.events';
+import type {
+  CardAssigneeAddedEvent,
+  CardAssigneeRemovedEvent,
+} from '../../board/card/events/card.events';
 import { BOARD_EVENTS } from '../../board/board/events/board-events.constants';
 import { CARD_EVENTS } from '../../board/card/events/card-events.constants';
 import { COMMENT_EVENTS } from '../../board/comment/events/comment-events.constants';
 import { LIST_EVENTS } from '../../board/list/events/list-events.constants';
+import { LABEL_EVENTS } from '../../board/label/events/label-events.constants';
 
 /**
  * Event listener handling board domain events and persisting structured activity audit logs.
@@ -335,6 +349,150 @@ export class ActivityListener {
       });
     } catch (error) {
       this.logger.error('Failed to log comment.created activity', error);
+    }
+  }
+
+  /**
+   * Logs card comment edit activity.
+   */
+  @OnEvent(COMMENT_EVENTS.updated)
+  async handleCommentUpdatedEvent(event: CommentUpdatedEvent): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.updatedBy,
+        action: ActionType.updated,
+        entityType: EntityType.comment,
+        entityId: event.comment.id,
+        entityTitle: 'Comment Updated',
+      });
+    } catch (error) {
+      this.logger.error('Failed to log comment.updated activity', error);
+    }
+  }
+
+  /**
+   * Logs card comment deletion activity.
+   */
+  @OnEvent(COMMENT_EVENTS.deleted)
+  async handleCommentDeletedEvent(event: CommentDeletedEvent): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.deletedBy,
+        action: ActionType.deleted,
+        entityType: EntityType.comment,
+        entityId: event.commentId,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log comment.deleted activity', error);
+    }
+  }
+
+  // =========================================================================
+  // LABEL EVENTS
+  // =========================================================================
+
+  /**
+   * Logs label creation activity.
+   */
+  @OnEvent(LABEL_EVENTS.created)
+  async handleLabelCreatedEvent(event: LabelCreatedEvent): Promise<void> {
+    if (event.boardId === null) return;
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.createdBy,
+        action: ActionType.created,
+        entityType: EntityType.label,
+        entityId: event.label.id,
+        entityTitle: event.label.name ?? undefined,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log label.created activity', error);
+    }
+  }
+
+  /**
+   * Logs label update activity.
+   */
+  @OnEvent(LABEL_EVENTS.updated)
+  async handleLabelUpdatedEvent(event: LabelUpdatedEvent): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.updatedBy,
+        action: ActionType.updated,
+        entityType: EntityType.label,
+        entityId: event.label.id,
+        entityTitle: event.label.name ?? undefined,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log label.updated activity', error);
+    }
+  }
+
+  /**
+   * Logs label deletion activity.
+   */
+  @OnEvent(LABEL_EVENTS.deleted)
+  async handleLabelDeletedEvent(event: LabelDeletedEvent): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.deletedBy,
+        action: ActionType.deleted,
+        entityType: EntityType.label,
+        entityId: event.labelId,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log label.deleted activity', error);
+    }
+  }
+
+  // =========================================================================
+  // CARD ASSIGNEE EVENTS
+  // =========================================================================
+
+  /**
+   * Logs card assignee addition activity.
+   */
+  @OnEvent(CARD_EVENTS.assigneeAdded)
+  async handleCardAssigneeAddedEvent(
+    event: CardAssigneeAddedEvent,
+  ): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.addedBy,
+        action: ActionType.created,
+        entityType: EntityType.assignee,
+        entityId: event.cardId,
+        entityTitle: event.userId,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log card.assignee_added activity', error);
+    }
+  }
+
+  /**
+   * Logs card assignee removal activity.
+   */
+  @OnEvent(CARD_EVENTS.assigneeRemoved)
+  async handleCardAssigneeRemovedEvent(
+    event: CardAssigneeRemovedEvent,
+  ): Promise<void> {
+    try {
+      await this.activityRepo.create({
+        boardId: event.boardId,
+        userId: event.removedBy,
+        action: ActionType.deleted,
+        entityType: EntityType.assignee,
+        entityId: event.cardId,
+        entityTitle: event.userId,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log card.assignee_removed activity', error);
     }
   }
 }
