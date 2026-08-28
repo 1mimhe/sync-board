@@ -12,12 +12,14 @@ describe('RedisHealthIndicator', () => {
   beforeEach(async () => {
     mockCheckIndicator = {
       up: jest.fn().mockReturnValue({ redis: { status: 'up' } }),
-      down: jest.fn().mockImplementation((msg) => ({ redis: { status: 'down', message: msg } })),
+      down: jest.fn().mockImplementation((msg) => ({
+        redis: { status: 'down', message: msg },
+      })),
     };
 
     healthIndicatorService = {
       check: jest.fn().mockReturnValue(mockCheckIndicator),
-    } as unknown as jest.Mocked<HealthIndicatorService>;
+    };
 
     redisService = {
       ping: jest.fn(),
@@ -54,8 +56,12 @@ describe('RedisHealthIndicator', () => {
 
       const result = await indicator.pingCheck('redis');
 
-      expect(mockCheckIndicator.down).toHaveBeenCalledWith('Connection refused');
-      expect(result).toEqual({ redis: { status: 'down', message: 'Connection refused' } });
+      expect(mockCheckIndicator.down).toHaveBeenCalledWith(
+        'Connection refused',
+      );
+      expect(result).toEqual({
+        redis: { status: 'down', message: 'Connection refused' },
+      });
     });
 
     it('should return down status with fallback message when non-Error thrown', async () => {
@@ -64,7 +70,9 @@ describe('RedisHealthIndicator', () => {
       const result = await indicator.pingCheck('redis');
 
       expect(mockCheckIndicator.down).toHaveBeenCalledWith('Redis ping failed');
-      expect(result).toEqual({ redis: { status: 'down', message: 'Redis ping failed' } });
+      expect(result).toEqual({
+        redis: { status: 'down', message: 'Redis ping failed' },
+      });
     });
   });
 });

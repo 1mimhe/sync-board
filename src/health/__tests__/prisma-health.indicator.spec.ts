@@ -12,12 +12,14 @@ describe('PrismaHealthIndicator', () => {
   beforeEach(async () => {
     mockCheckIndicator = {
       up: jest.fn().mockReturnValue({ database: { status: 'up' } }),
-      down: jest.fn().mockImplementation((msg) => ({ database: { status: 'down', message: msg } })),
+      down: jest.fn().mockImplementation((msg) => ({
+        database: { status: 'down', message: msg },
+      })),
     };
 
     healthIndicatorService = {
       check: jest.fn().mockReturnValue(mockCheckIndicator),
-    } as unknown as jest.Mocked<HealthIndicatorService>;
+    };
 
     prismaService = {
       $queryRaw: jest.fn(),
@@ -50,12 +52,18 @@ describe('PrismaHealthIndicator', () => {
     });
 
     it('should return down status when $queryRaw throws Error', async () => {
-      prismaService.$queryRaw.mockRejectedValue(new Error('Connection timeout'));
+      prismaService.$queryRaw.mockRejectedValue(
+        new Error('Connection timeout'),
+      );
 
       const result = await indicator.pingCheck('database');
 
-      expect(mockCheckIndicator.down).toHaveBeenCalledWith('Connection timeout');
-      expect(result).toEqual({ database: { status: 'down', message: 'Connection timeout' } });
+      expect(mockCheckIndicator.down).toHaveBeenCalledWith(
+        'Connection timeout',
+      );
+      expect(result).toEqual({
+        database: { status: 'down', message: 'Connection timeout' },
+      });
     });
 
     it('should return down status with fallback message when non-Error thrown', async () => {
@@ -63,8 +71,12 @@ describe('PrismaHealthIndicator', () => {
 
       const result = await indicator.pingCheck('database');
 
-      expect(mockCheckIndicator.down).toHaveBeenCalledWith('Database ping failed');
-      expect(result).toEqual({ database: { status: 'down', message: 'Database ping failed' } });
+      expect(mockCheckIndicator.down).toHaveBeenCalledWith(
+        'Database ping failed',
+      );
+      expect(result).toEqual({
+        database: { status: 'down', message: 'Database ping failed' },
+      });
     });
   });
 });
