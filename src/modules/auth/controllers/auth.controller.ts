@@ -36,6 +36,7 @@ import {
   LoginDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  VerifyEmailDto,
   UpdateProfileDto,
   ChangePasswordDto,
   AuthResponseDto,
@@ -277,6 +278,42 @@ export class AuthController {
       accessToken: tokens.accessToken,
       expiresIn: tokens.expiresIn,
     };
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(AUTH_THROTTLE_CONFIG.resetPassword)
+  @ApiOperation({ summary: 'Verify email address using single-use token' })
+  @ApiOkResponse({
+    type: MessageResponseDto,
+    description: 'Email verified successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error — invalid request body',
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired token' })
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
+    await this.authService.verifyEmail(dto.token);
+    return { message: 'Email verified successfully.' };
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle(AUTH_THROTTLE_CONFIG.forgotPassword)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Resend the email verification link to the current user',
+  })
+  @ApiNoContentResponse({
+    description: 'Verification email queued if not already verified',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Access token missing or invalid',
+  })
+  @ApiConflictResponse({ description: 'Email is already verified' })
+  async resendVerification(@CurrentUser() user: JwtPayload): Promise<void> {
+    await this.authService.requestEmailVerification(user.sub);
   }
 
   @Get('google')
