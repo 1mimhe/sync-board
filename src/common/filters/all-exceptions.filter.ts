@@ -41,6 +41,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
     },
   };
 
+  /**
+   * Known 403 error codes thrown by guards as
+   * `ForbiddenException('<CODE>')` — mirrors `unauthorizedErrorMap` so
+   * specific guard codes survive the filter instead of collapsing to
+   * generic `FORBIDDEN`.
+   */
+  private readonly forbiddenErrorMap: Record<
+    string,
+    { code: string; message: string }
+  > = {
+    EMAIL_NOT_VERIFIED: {
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Email verification required before performing this action',
+    },
+  };
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -149,7 +165,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       return 'UNAUTHORIZED';
     }
-    if (statusCode === HttpStatus.FORBIDDEN) return 'FORBIDDEN';
+    if (statusCode === HttpStatus.FORBIDDEN) {
+      if (rawMessage && this.forbiddenErrorMap[rawMessage]) {
+        return this.forbiddenErrorMap[rawMessage].code;
+      }
+      return 'FORBIDDEN';
+    }
     if (statusCode === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
     if (statusCode === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
     if (statusCode === HttpStatus.CONFLICT) return 'CONFLICT';
@@ -167,6 +188,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       if (rawMessage === 'Unauthorized') {
         return 'Authentication required';
+      }
+    }
+    if (statusCode === HttpStatus.FORBIDDEN) {
+      if (this.forbiddenErrorMap[rawMessage]) {
+        return this.forbiddenErrorMap[rawMessage].message;
       }
     }
     return rawMessage;
