@@ -6,6 +6,7 @@ import { BOARD_EVENTS } from '../../board/events/board-events.constants';
 import { LIST_EVENTS } from '../../list/events/list-events.constants';
 import { CARD_EVENTS } from '../../card/events/card-events.constants';
 import { COMMENT_EVENTS } from '../../comment/events/comment-events.constants';
+import { LABEL_EVENTS } from '../../label/events/label-events.constants';
 import { ATTACHMENT_EVENTS } from '../../attachment/events/attachment-events.constants';
 import { CHECKLIST_EVENTS } from '../../checklist/events/checklist.events';
 import type {
@@ -29,6 +30,19 @@ import type {
   CardUnarchivedEvent,
 } from '../../card/events/card.events';
 import type { CommentCreatedEvent } from '../../comment/events/comment.events';
+import type {
+  CommentUpdatedEvent,
+  CommentDeletedEvent,
+} from '../../comment/events/comment.events';
+import type {
+  LabelCreatedEvent,
+  LabelUpdatedEvent,
+  LabelDeletedEvent,
+} from '../../label/events/label.events';
+import type {
+  CardAssigneeAddedEvent,
+  CardAssigneeRemovedEvent,
+} from '../../card/events/card.events';
 import type {
   AttachmentCreatedEvent,
   AttachmentDeletedEvent,
@@ -229,6 +243,71 @@ export class BroadcastRelayService {
       cardId: event.comment.cardId,
       comment: event.comment,
       authorId: event.authorId,
+    });
+  }
+
+  @OnEvent(COMMENT_EVENTS.updated)
+  broadcastCommentUpdated(event: CommentUpdatedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_COMMENT_UPDATED, {
+      cardId: event.comment.cardId,
+      comment: event.comment,
+      updatedBy: { id: event.updatedBy },
+    });
+  }
+
+  @OnEvent(COMMENT_EVENTS.deleted)
+  broadcastCommentDeleted(event: CommentDeletedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_COMMENT_DELETED, {
+      cardId: event.cardId,
+      commentId: event.commentId,
+      deletedBy: { id: event.deletedBy },
+    });
+  }
+
+  // --- Label Events ---
+
+  @OnEvent(LABEL_EVENTS.created)
+  broadcastLabelCreated(event: LabelCreatedEvent): void {
+    if (event.boardId === null) return;
+    this.toBoard(event.boardId, WS_EVENTS.LABEL_CREATED, {
+      label: event.label,
+      createdBy: { id: event.createdBy },
+    });
+  }
+
+  @OnEvent(LABEL_EVENTS.updated)
+  broadcastLabelUpdated(event: LabelUpdatedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.LABEL_UPDATED, {
+      label: event.label,
+      updatedBy: { id: event.updatedBy },
+    });
+  }
+
+  @OnEvent(LABEL_EVENTS.deleted)
+  broadcastLabelDeleted(event: LabelDeletedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.LABEL_DELETED, {
+      labelId: event.labelId,
+      deletedBy: { id: event.deletedBy },
+    });
+  }
+
+  // --- Card Assignee Events ---
+
+  @OnEvent(CARD_EVENTS.assigneeAdded)
+  broadcastCardAssigneeAdded(event: CardAssigneeAddedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_ASSIGNEE_ADDED, {
+      cardId: event.cardId,
+      user: { id: event.userId },
+      addedBy: { id: event.addedBy },
+    });
+  }
+
+  @OnEvent(CARD_EVENTS.assigneeRemoved)
+  broadcastCardAssigneeRemoved(event: CardAssigneeRemovedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_ASSIGNEE_REMOVED, {
+      cardId: event.cardId,
+      user: { id: event.userId },
+      removedBy: { id: event.removedBy },
     });
   }
 
