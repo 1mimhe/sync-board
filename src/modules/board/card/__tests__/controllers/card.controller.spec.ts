@@ -57,7 +57,7 @@ describe('CardController', () => {
 
   describe('create', () => {
     it('should create card with details and map response', async () => {
-      cardService.create.mockResolvedValue(mockCardWithDetails as any);
+      cardService.create.mockResolvedValue(mockCardWithDetails);
 
       const result = await controller.create(
         'ws-1',
@@ -81,18 +81,25 @@ describe('CardController', () => {
 
   describe('getOne', () => {
     it('should retrieve full card details', async () => {
-      cardService.getCardDetails.mockResolvedValue(mockCardWithDetails as any);
+      cardService.getCardDetails.mockResolvedValue(mockCardWithDetails);
 
       const result = await controller.getOne('ws-1', 'board-1', 'card-1');
 
-      expect(cardService.getCardDetails).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1');
+      expect(cardService.getCardDetails).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+      );
       expect(result.id).toBe('card-1');
     });
   });
 
   describe('update', () => {
     it('should update card fields', async () => {
-      cardService.update.mockResolvedValue({ ...mockCard, title: 'Updated Card' } as any);
+      cardService.update.mockResolvedValue({
+        ...mockCard,
+        title: 'Updated Card',
+      });
 
       const result = await controller.update(
         'ws-1',
@@ -115,7 +122,7 @@ describe('CardController', () => {
 
   describe('move', () => {
     it('should move/reorder card', async () => {
-      cardService.move.mockResolvedValue({ ...mockCard, rank: '0|i:' } as any);
+      cardService.move.mockResolvedValue({ ...mockCard, rank: '0|i:' });
 
       const result = await controller.move(
         'ws-1',
@@ -138,56 +145,105 @@ describe('CardController', () => {
 
   describe('archive and unarchive', () => {
     it('should archive card', async () => {
-      cardService.archive.mockResolvedValue(undefined as any);
+      cardService.archive.mockResolvedValue(undefined);
 
       await controller.archive('ws-1', 'board-1', 'card-1', mockUser);
 
-      expect(cardService.archive).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'user-uuid-1');
+      expect(cardService.archive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'user-uuid-1',
+      );
     });
 
     it('should unarchive card', async () => {
-      cardService.unarchive.mockResolvedValue(mockCard as any);
+      cardService.unarchive.mockResolvedValue(mockCard);
 
-      const result = await controller.unarchive('ws-1', 'board-1', 'card-1', mockUser);
+      const result = await controller.unarchive(
+        'ws-1',
+        'board-1',
+        'card-1',
+        mockUser,
+      );
 
-      expect(cardService.unarchive).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'user-uuid-1');
+      expect(cardService.unarchive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'user-uuid-1',
+      );
       expect(result.id).toBe('card-1');
     });
   });
 
   describe('assignees', () => {
     it('should add assignee', async () => {
-      cardService.addAssignee.mockResolvedValue(undefined as any);
+      cardService.addAssignee.mockResolvedValue(undefined);
 
-      await controller.addAssignee('ws-1', 'board-1', 'card-1', 'user-2');
+      await controller.addAssignee(
+        'ws-1',
+        'board-1',
+        'card-1',
+        'user-2',
+        mockUser,
+      );
 
-      expect(cardService.addAssignee).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'user-2');
+      expect(cardService.addAssignee).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'user-2',
+        'user-uuid-1',
+      );
     });
 
     it('should remove assignee', async () => {
-      cardService.removeAssignee.mockResolvedValue(undefined as any);
+      cardService.removeAssignee.mockResolvedValue(undefined);
 
-      await controller.removeAssignee('ws-1', 'board-1', 'card-1', 'user-2');
+      await controller.removeAssignee(
+        'ws-1',
+        'board-1',
+        'card-1',
+        'user-2',
+        mockUser,
+      );
 
-      expect(cardService.removeAssignee).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'user-2');
+      expect(cardService.removeAssignee).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'user-2',
+        'user-uuid-1',
+      );
     });
   });
 
   describe('labels', () => {
     it('should add label to card', async () => {
-      cardService.addLabel.mockResolvedValue(undefined as any);
+      cardService.addLabel.mockResolvedValue(undefined);
 
       await controller.addLabel('ws-1', 'board-1', 'card-1', 'label-1');
 
-      expect(cardService.addLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'label-1');
+      expect(cardService.addLabel).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'label-1',
+      );
     });
 
     it('should remove label from card', async () => {
-      cardService.removeLabel.mockResolvedValue(undefined as any);
+      cardService.removeLabel.mockResolvedValue(undefined);
 
       await controller.removeLabel('ws-1', 'board-1', 'card-1', 'label-1');
 
-      expect(cardService.removeLabel).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1', 'label-1');
+      expect(cardService.removeLabel).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'label-1',
+      );
     });
   });
 });
