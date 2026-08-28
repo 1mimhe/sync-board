@@ -90,6 +90,16 @@ export class UserRepository {
   }
 
   /**
+   * Mark a user's email address as verified.
+   */
+  async setEmailVerified(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isEmailVerified: true },
+    });
+  }
+
+  /**
    * Update user profile attributes (displayName and/or avatarUrl).
    * The password hash is omitted so the returned record is safe for API responses.
    */

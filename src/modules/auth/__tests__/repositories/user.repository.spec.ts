@@ -141,6 +141,22 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('setEmailVerified', () => {
+    it('should set isEmailVerified to true', async () => {
+      prismaMock.user.update.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: true,
+      });
+
+      await repository.setEmailVerified('user-uuid-1');
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        data: { isEmailVerified: true },
+      });
+    });
+  });
+
   describe('createGoogleUser', () => {
     it('should create a new google user record', async () => {
       prismaMock.user.create.mockResolvedValue({
@@ -196,7 +212,8 @@ describe('UserRepository', () => {
       };
       prismaMock.user.findUnique.mockResolvedValue(summary as any);
 
-      const result = await repository.findUserSummaryByEmail('user@example.com');
+      const result =
+        await repository.findUserSummaryByEmail('user@example.com');
       expect(result).toEqual(summary);
       expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
         where: { email: 'user@example.com' },
@@ -214,7 +231,9 @@ describe('UserRepository', () => {
     it('should update user with google login payload', async () => {
       prismaMock.user.update.mockResolvedValue(mockUser);
 
-      const result = await repository.updateGoogleLogin('user-1', { googleId: 'g-1' });
+      const result = await repository.updateGoogleLogin('user-1', {
+        googleId: 'g-1',
+      });
 
       expect(result).toEqual(mockUser);
       expect(prismaMock.user.update).toHaveBeenCalledWith({

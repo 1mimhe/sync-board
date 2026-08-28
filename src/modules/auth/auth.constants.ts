@@ -15,6 +15,9 @@ export const AUTH_CONFIG = {
   passwordReset: {
     expiresInSeconds: 3600,
   },
+  emailVerification: {
+    expiresInSeconds: 86_400,
+  },
   password: {
     bcryptRounds: 12,
     minLength: 8,
@@ -31,6 +34,8 @@ export const AUTH_CONFIG = {
 export const REFRESH_TOKEN_COOKIE_NAME = 'refreshToken';
 
 export const PASSWORD_RESET_KEY_PREFIX = 'password_reset:';
+
+export const EMAIL_VERIFY_KEY_PREFIX = 'email_verification:';
 
 /**
  * Throttling threshold configurations for authentication controller endpoints.
