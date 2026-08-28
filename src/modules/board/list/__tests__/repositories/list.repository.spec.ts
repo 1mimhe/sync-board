@@ -32,10 +32,19 @@ describe('ListRepository', () => {
 
   describe('create', () => {
     it('should create a list record', async () => {
-      const mockList = { id: 'l-1', title: 'To Do', boardId: 'b-1', rank: '0|hzzzzz:' };
+      const mockList = {
+        id: 'l-1',
+        title: 'To Do',
+        boardId: 'b-1',
+        rank: '0|hzzzzz:',
+      };
       prismaService.list.create.mockResolvedValue(mockList);
 
-      const result = await repository.create({ title: 'To Do', boardId: 'b-1', rank: '0|hzzzzz:' });
+      const result = await repository.create({
+        title: 'To Do',
+        boardId: 'b-1',
+        rank: '0|hzzzzz:',
+      });
 
       expect(prismaService.list.create).toHaveBeenCalledWith({
         data: { title: 'To Do', boardId: 'b-1', rank: '0|hzzzzz:' },
@@ -85,7 +94,10 @@ describe('ListRepository', () => {
     });
 
     it('should find all active lists in a board ordered by rank', async () => {
-      const lists = [{ id: 'l-1', rank: '0|a:' }, { id: 'l-2', rank: '0|b:' }];
+      const lists = [
+        { id: 'l-1', rank: '0|a:' },
+        { id: 'l-2', rank: '0|b:' },
+      ];
       prismaService.list.findMany.mockResolvedValue(lists);
 
       const result = await repository.findBoardLists('b-1');
