@@ -67,6 +67,7 @@ describe('JwtTokenService', () => {
     expect(payload.email).toEqual(userWithAvatar.email);
     expect(payload.displayName).toEqual(userWithAvatar.displayName);
     expect(payload.avatarUrl).toEqual('https://example.com/avatar.png');
+    expect(payload.isEmailVerified).toEqual(userWithAvatar.isEmailVerified);
     expect(payload.iss).toEqual('syncboard');
     expect(payload.jti).toBeDefined();
   });
@@ -102,7 +103,10 @@ describe('JwtTokenService', () => {
     const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
       modulusLength: 2048,
     });
-    const privPem = privateKey.export({ type: 'pkcs1', format: 'pem' }) as string;
+    const privPem = privateKey.export({
+      type: 'pkcs1',
+      format: 'pem',
+    }) as string;
     const pubPem = publicKey.export({ type: 'pkcs1', format: 'pem' }) as string;
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jwt-test-'));
