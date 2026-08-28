@@ -126,9 +126,7 @@ describe('RefreshTokenRepository', () => {
   describe('findByTokenHashWithUser', () => {
     it('should find a token by hash including the user relation', async () => {
       const tokenWithUser = { ...mockToken, user: { id: 'user-uuid-1' } };
-      prismaMock.refreshToken.findUnique.mockResolvedValue(
-        tokenWithUser as never,
-      );
+      prismaMock.refreshToken.findUnique.mockResolvedValue(tokenWithUser);
 
       const result = await repository.findByTokenHashWithUser('hashedtoken');
 

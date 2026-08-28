@@ -10,6 +10,7 @@ import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../../common/exceptions/app.exception';
+import { WORKSPACE_EVENTS } from '../../events/workspace-events.constants';
 
 describe('WorkspaceService', () => {
   let service: WorkspaceService;
@@ -47,22 +48,27 @@ describe('WorkspaceService', () => {
         slug: 'engineering',
         ownerId: 'user-1',
       };
-      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue(mockWorkspace as any);
+      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue(
+        mockWorkspace as any,
+      );
 
       const result = await service.create({ name: 'Engineering' }, 'user-1');
 
       expect(result).toEqual(mockWorkspace);
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'workspace.created',
+        WORKSPACE_EVENTS.created,
         expect.anything(),
       );
     });
 
     it('should retry on P2002 error during create and succeed on second attempt', async () => {
-      const p2002Error = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.0.0',
-      });
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        },
+      );
       workspaceRepo.existsBySlug.mockResolvedValue(false);
       const mockWorkspace = { id: 'ws-1', name: 'Eng', slug: 'eng' };
       workspaceRepo.createWorkspaceWithOwner
@@ -74,31 +80,61 @@ describe('WorkspaceService', () => {
     });
 
     it('should throw BusinessRuleException SLUG_COLLISION if create fails 3 times with P2002', async () => {
-      const p2002Error = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.0.0',
-      });
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        },
+      );
       workspaceRepo.existsBySlug.mockResolvedValue(false);
       workspaceRepo.createWorkspaceWithOwner.mockRejectedValue(p2002Error);
 
-      await expect(service.create({ name: 'Eng' }, 'u-1')).rejects.toThrow(BusinessRuleException);
+      await expect(service.create({ name: 'Eng' }, 'u-1')).rejects.toThrow(
+        BusinessRuleException,
+      );
     });
 
     it('should rethrow non-P2002 errors during create', async () => {
       workspaceRepo.existsBySlug.mockResolvedValue(false);
-      workspaceRepo.createWorkspaceWithOwner.mockRejectedValue(new Error('DB failure'));
+      workspaceRepo.createWorkspaceWithOwner.mockRejectedValue(
+        new Error('DB failure'),
+      );
 
-      await expect(service.create({ name: 'Eng' }, 'u-1')).rejects.toThrow('DB failure');
+      await expect(service.create({ name: 'Eng' }, 'u-1')).rejects.toThrow(
+        'DB failure',
+      );
     });
   });
 
   describe('findAllForUser', () => {
-    it('should return workspaces for user', async () => {
-      const mockList = [{ id: 'ws-1', name: 'WS 1', role: WorkspaceRole.owner }];
-      workspaceRepo.findUserWorkspaces.mockResolvedValue(mockList as any);
+    it('should return cursor-paginated workspaces for user', async () => {
+      const mockList = [
+        { id: 'ws-1', name: 'WS 1', role: WorkspaceRole.owner },
+      ];
+      workspaceRepo.findUserWorkspacesPage.mockResolvedValue(mockList as any);
 
-      const res = await service.findAllForUser('user-1');
-      expect(res).toEqual(mockList);
+      const res = await service.findAllForUser('user-1', { limit: 20 });
+
+      expect(res.items).toEqual(mockList);
+      expect(res.pagination).toEqual({ cursor: null, hasMore: false });
+      expect(workspaceRepo.findUserWorkspacesPage).toHaveBeenCalledWith(
+        'user-1',
+        undefined,
+        20,
+      );
+    });
+
+    it('should default limit to 20 when not provided', async () => {
+      workspaceRepo.findUserWorkspacesPage.mockResolvedValue([]);
+
+      await service.findAllForUser('user-1', {});
+
+      expect(workspaceRepo.findUserWorkspacesPage).toHaveBeenCalledWith(
+        'user-1',
+        undefined,
+        20,
+      );
     });
   });
 
@@ -112,18 +148,32 @@ describe('WorkspaceService', () => {
     });
 
     it('should throw ForbiddenException if user is not member', async () => {
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'WS 1' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'WS 1',
+      } as any);
       memberRepo.findMember.mockResolvedValue(null);
 
-      await expect(service.findByIdWithRole('ws-1', 'user-1')).rejects.toThrow(ForbiddenException);
+      await expect(service.findByIdWithRole('ws-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should return workspace with user role', async () => {
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'WS 1' } as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.admin } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'WS 1',
+      } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.admin,
+      } as any);
 
       const res = await service.findByIdWithRole('ws-1', 'user-1');
-      expect(res).toEqual({ id: 'ws-1', name: 'WS 1', role: WorkspaceRole.admin });
+      expect(res).toEqual({
+        id: 'ws-1',
+        name: 'WS 1',
+        role: WorkspaceRole.admin,
+      });
     });
   });
 
@@ -131,31 +181,52 @@ describe('WorkspaceService', () => {
     it('should throw EntityNotFoundException when slug not found', async () => {
       workspaceRepo.findBySlug.mockResolvedValue(null);
 
-      await expect(service.findBySlug('invalid-slug', 'user-1')).rejects.toThrow(
-        EntityNotFoundException,
-      );
+      await expect(
+        service.findBySlug('invalid-slug', 'user-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
 
     it('should throw ForbiddenException if user is not member of slug workspace', async () => {
-      workspaceRepo.findBySlug.mockResolvedValue({ id: 'ws-1', slug: 'my-slug' } as any);
+      workspaceRepo.findBySlug.mockResolvedValue({
+        id: 'ws-1',
+        slug: 'my-slug',
+      } as any);
       memberRepo.findMember.mockResolvedValue(null);
 
-      await expect(service.findBySlug('my-slug', 'user-1')).rejects.toThrow(ForbiddenException);
+      await expect(service.findBySlug('my-slug', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should return workspace and role when found', async () => {
-      workspaceRepo.findBySlug.mockResolvedValue({ id: 'ws-1', slug: 'my-slug' } as any);
-      memberRepo.findMember.mockResolvedValue({ role: WorkspaceRole.owner } as any);
+      workspaceRepo.findBySlug.mockResolvedValue({
+        id: 'ws-1',
+        slug: 'my-slug',
+      } as any);
+      memberRepo.findMember.mockResolvedValue({
+        role: WorkspaceRole.owner,
+      } as any);
 
       const res = await service.findBySlug('my-slug', 'user-1');
-      expect(res).toEqual({ id: 'ws-1', slug: 'my-slug', role: WorkspaceRole.owner });
+      expect(res).toEqual({
+        id: 'ws-1',
+        slug: 'my-slug',
+        role: WorkspaceRole.owner,
+      });
     });
   });
 
   describe('update', () => {
     it('should update workspace without changing name', async () => {
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'Old' } as any);
-      const updatedWs = { id: 'ws-1', name: 'Old', description: 'Updated desc' };
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'Old',
+      } as any);
+      const updatedWs = {
+        id: 'ws-1',
+        name: 'Old',
+        description: 'Updated desc',
+      };
       workspaceRepo.update.mockResolvedValue(updatedWs as any);
 
       const res = await service.update('ws-1', {
@@ -165,7 +236,10 @@ describe('WorkspaceService', () => {
     });
 
     it('should update workspace with new name and new slug', async () => {
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'Old Name' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'Old Name',
+      } as any);
       workspaceRepo.existsBySlug.mockResolvedValue(false);
       const updatedWs = { id: 'ws-1', name: 'New Name', slug: 'new-name' };
       workspaceRepo.update.mockResolvedValue(updatedWs as any);
@@ -175,30 +249,43 @@ describe('WorkspaceService', () => {
     });
 
     it('should retry on P2002 during update and throw BusinessRuleException on 3 failures', async () => {
-      const p2002Error = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.0.0',
-      });
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'Old Name' } as any);
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        },
+      );
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'Old Name',
+      } as any);
       workspaceRepo.existsBySlug.mockResolvedValue(false);
       workspaceRepo.update.mockRejectedValue(p2002Error);
 
-      await expect(service.update('ws-1', { name: 'New Name' })).rejects.toThrow(BusinessRuleException);
+      await expect(
+        service.update('ws-1', { name: 'New Name' }),
+      ).rejects.toThrow(BusinessRuleException);
     });
 
     it('should rethrow non-P2002 errors during update with new name', async () => {
-      workspaceRepo.findById.mockResolvedValue({ id: 'ws-1', name: 'Old Name' } as any);
+      workspaceRepo.findById.mockResolvedValue({
+        id: 'ws-1',
+        name: 'Old Name',
+      } as any);
       workspaceRepo.existsBySlug.mockResolvedValue(false);
       workspaceRepo.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(service.update('ws-1', { name: 'New Name' })).rejects.toThrow('Update failed');
+      await expect(
+        service.update('ws-1', { name: 'New Name' }),
+      ).rejects.toThrow('Update failed');
     });
   });
 
   describe('archive', () => {
     it('should archive workspace when found', async () => {
       workspaceRepo.findById.mockResolvedValue({ id: 'ws-1' } as any);
-      workspaceRepo.archive.mockResolvedValue(undefined as any);
+      workspaceRepo.archive.mockResolvedValue(undefined);
 
       await service.archive('ws-1');
 
@@ -208,7 +295,9 @@ describe('WorkspaceService', () => {
     it('should throw EntityNotFoundException when workspace does not exist', async () => {
       workspaceRepo.findById.mockResolvedValue(null);
 
-      await expect(service.archive('ws-missing')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.archive('ws-missing')).rejects.toThrow(
+        EntityNotFoundException,
+      );
       expect(workspaceRepo.archive).not.toHaveBeenCalled();
     });
   });
@@ -230,7 +319,9 @@ describe('WorkspaceService', () => {
       workspaceRepo.existsBySlug
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false);
-      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue({ id: 'ws-1' } as any);
+      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue({
+        id: 'ws-1',
+      } as any);
 
       await service.create({ name: 'Duplicate Name' }, 'u-1');
 
@@ -239,7 +330,9 @@ describe('WorkspaceService', () => {
 
     it('should fallback to "workspace" if name has no alphanumeric characters', async () => {
       workspaceRepo.existsBySlug.mockResolvedValue(false);
-      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue({ id: 'ws-1' } as any);
+      workspaceRepo.createWorkspaceWithOwner.mockResolvedValue({
+        id: 'ws-1',
+      } as any);
 
       await service.create({ name: '!@#$%' }, 'u-1');
 

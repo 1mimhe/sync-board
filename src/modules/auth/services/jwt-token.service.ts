@@ -32,8 +32,8 @@ export class JwtTokenService {
     const jwtSecret = this.config.get<string>('JWT_SECRET');
 
     if (hasKeyFiles) {
-      this.privateKey = fs.readFileSync(privatePath!, 'utf-8');
-      this.publicKey = fs.readFileSync(publicPath!, 'utf-8');
+      this.privateKey = fs.readFileSync(privatePath, 'utf-8');
+      this.publicKey = fs.readFileSync(publicPath, 'utf-8');
       this.algorithm = 'RS256';
       this.secret = '';
       this.logger.log('JWT configured with RS256 (asymmetric keys)');
@@ -68,6 +68,7 @@ export class JwtTokenService {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      isEmailVerified: user.isEmailVerified,
     };
     const signingKey = this.privateKey || this.secret;
     return jwt.sign(payload, signingKey, {

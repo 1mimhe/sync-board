@@ -53,7 +53,11 @@ describe('CardAttachmentController', () => {
         'ws-1',
         'board-1',
         'card-1',
-        { name: 'document.pdf', url: 'https://example.com/file.pdf', type: 'file' as any },
+        {
+          name: 'document.pdf',
+          url: 'https://example.com/file.pdf',
+          type: 'file',
+        },
         mockUser,
       );
 
@@ -61,7 +65,11 @@ describe('CardAttachmentController', () => {
         'board-1',
         'ws-1',
         'card-1',
-        { name: 'document.pdf', url: 'https://example.com/file.pdf', type: 'file' },
+        {
+          name: 'document.pdf',
+          url: 'https://example.com/file.pdf',
+          type: 'file',
+        },
         'user-uuid-1',
       );
       expect(result.id).toBe('att-1');
@@ -71,11 +79,17 @@ describe('CardAttachmentController', () => {
 
   describe('list', () => {
     it('should list attachments on card', async () => {
-      attachmentService.getAttachments.mockResolvedValue([mockAttachment as any]);
+      attachmentService.getAttachments.mockResolvedValue([
+        mockAttachment as any,
+      ]);
 
       const result = await controller.list('ws-1', 'board-1', 'card-1');
 
-      expect(attachmentService.getAttachments).toHaveBeenCalledWith('board-1', 'ws-1', 'card-1');
+      expect(attachmentService.getAttachments).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+      );
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('att-1');
     });
@@ -83,7 +97,10 @@ describe('CardAttachmentController', () => {
 
   describe('update', () => {
     it('should update attachment metadata', async () => {
-      attachmentService.updateAttachment.mockResolvedValue({ ...mockAttachment, name: 'renamed.pdf' } as any);
+      attachmentService.updateAttachment.mockResolvedValue({
+        ...mockAttachment,
+        name: 'renamed.pdf',
+      } as any);
 
       const result = await controller.update(
         'ws-1',
@@ -106,7 +123,7 @@ describe('CardAttachmentController', () => {
 
   describe('delete', () => {
     it('should delete attachment', async () => {
-      attachmentService.deleteAttachment.mockResolvedValue(undefined as any);
+      attachmentService.deleteAttachment.mockResolvedValue(undefined);
 
       await controller.delete('ws-1', 'board-1', 'card-1', 'att-1', mockUser);
 

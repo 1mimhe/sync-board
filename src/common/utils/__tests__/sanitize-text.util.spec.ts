@@ -11,9 +11,9 @@ describe('sanitizePlainText', () => {
   });
 
   it('should strip nested and mixed tags', () => {
-    expect(
-      sanitizePlainText('<div><b>bold</b> and <i>italic</i></div>'),
-    ).toBe('bold and italic');
+    expect(sanitizePlainText('<div><b>bold</b> and <i>italic</i></div>')).toBe(
+      'bold and italic',
+    );
   });
 
   it('should strip tags that arrive via entity decoding', () => {

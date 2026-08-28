@@ -11,7 +11,11 @@ import {
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
 import { buildCursorPagination } from '../../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
-import { CommentCreatedEvent } from '../events/comment.events';
+import {
+  CommentCreatedEvent,
+  CommentUpdatedEvent,
+  CommentDeletedEvent,
+} from '../events/comment.events';
 import { COMMENT_EVENTS } from '../events/comment-events.constants';
 import type { CardCommentWithAuthor } from '../../board/interfaces/board.interfaces';
 
@@ -159,7 +163,17 @@ export class CardCommentService {
       throw new ForbiddenException('You can only edit your own comments');
     }
 
-    return this.commentRepo.update(commentId, dto.content ?? comment.content);
+    const updated = await this.commentRepo.update(
+      commentId,
+      dto.content ?? comment.content,
+    );
+
+    this.eventEmitter.emit(
+      COMMENT_EVENTS.updated,
+      new CommentUpdatedEvent(updated, boardId, userId),
+    );
+
+    return updated;
   }
 
   /**
@@ -193,5 +207,10 @@ export class CardCommentService {
     }
 
     await this.commentRepo.softDelete(commentId);
+
+    this.eventEmitter.emit(
+      COMMENT_EVENTS.deleted,
+      new CommentDeletedEvent(commentId, cardId, boardId, userId),
+    );
   }
 }

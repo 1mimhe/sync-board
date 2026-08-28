@@ -46,7 +46,11 @@ describe('BoardRepository', () => {
       const mockBoard = { id: 'b-1', title: 'New Board', workspaceId: 'ws-1' };
       prismaService.board.create.mockResolvedValue(mockBoard);
 
-      const result = await repository.create({ title: 'New Board', workspaceId: 'ws-1', createdBy: 'u-1' });
+      const result = await repository.create({
+        title: 'New Board',
+        workspaceId: 'ws-1',
+        createdBy: 'u-1',
+      });
 
       expect(prismaService.board.create).toHaveBeenCalledWith({
         data: { title: 'New Board', workspaceId: 'ws-1', createdBy: 'u-1' },
@@ -107,7 +111,10 @@ describe('BoardRepository', () => {
       };
       prismaService.board.findFirst.mockResolvedValue(mockDbBoard);
 
-      const result = await repository.findByIdWithContent('b-1', 'u-1', { listSkip: 0, listTake: 10 });
+      const result = await repository.findByIdWithContent('b-1', 'u-1', {
+        listSkip: 0,
+        listTake: 10,
+      });
 
       expect(result).toBeDefined();
       expect(result?.isStarred).toBe(true);
@@ -139,19 +146,37 @@ describe('BoardRepository', () => {
     });
   });
 
-  describe('findWorkspaceBoards', () => {
-    it('should find all active workspace boards for user', async () => {
+  describe('findWorkspaceBoardsPage', () => {
+    it('should find a page of active workspace boards for user', async () => {
       const mockBoards = [{ id: 'b-1', title: 'Board 1' }];
       prismaService.board.findMany.mockResolvedValue(mockBoards);
 
-      const result = await repository.findWorkspaceBoards('ws-1', 'u-1');
+      const result = await repository.findWorkspaceBoardsPage(
+        'ws-1',
+        'u-1',
+        'prev-1',
+        20,
+      );
 
       expect(prismaService.board.findMany).toHaveBeenCalledWith({
         where: { workspaceId: 'ws-1', archivedAt: null },
         include: { starredBy: { where: { userId: 'u-1' } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 21,
+        cursor: { id: 'prev-1' },
+        skip: 1,
       });
       expect(result).toEqual(mockBoards);
+    });
+
+    it('should omit cursor when not provided', async () => {
+      prismaService.board.findMany.mockResolvedValue([]);
+
+      await repository.findWorkspaceBoardsPage('ws-1', 'u-1', undefined, 20);
+
+      expect(prismaService.board.findMany).toHaveBeenCalledWith(
+        expect.not.objectContaining({ cursor: expect.anything() }),
+      );
     });
   });
 
@@ -220,7 +245,10 @@ describe('BoardRepository', () => {
     });
 
     it('should return true when board is starred by user', async () => {
-      prismaService.userStarredBoard.findUnique.mockResolvedValue({ userId: 'u-1', boardId: 'b-1' });
+      prismaService.userStarredBoard.findUnique.mockResolvedValue({
+        userId: 'u-1',
+        boardId: 'b-1',
+      });
 
       const result = await repository.isStarredByUser('u-1', 'b-1');
 

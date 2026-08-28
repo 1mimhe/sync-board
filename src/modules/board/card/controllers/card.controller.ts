@@ -265,12 +265,7 @@ export class CardController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.cardService.archive(
-      boardId,
-      workspaceId,
-      cardId,
-      user.sub,
-    );
+    await this.cardService.archive(boardId, workspaceId, cardId, user.sub);
   }
 
   /**
@@ -351,12 +346,14 @@ export class CardController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('targetUserId', ParseUUIDPipe) targetUserId: string,
+    @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     await this.cardService.addAssignee(
       boardId,
       workspaceId,
       cardId,
       targetUserId,
+      user.sub,
     );
   }
 
@@ -397,12 +394,14 @@ export class CardController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('targetUserId', ParseUUIDPipe) targetUserId: string,
+    @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     await this.cardService.removeAssignee(
       boardId,
       workspaceId,
       cardId,
       targetUserId,
+      user.sub,
     );
   }
 
@@ -444,12 +443,7 @@ export class CardController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
   ): Promise<void> {
-    await this.cardService.addLabel(
-      boardId,
-      workspaceId,
-      cardId,
-      labelId,
-    );
+    await this.cardService.addLabel(boardId, workspaceId, cardId, labelId);
   }
 
   /**
@@ -490,11 +484,6 @@ export class CardController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
   ): Promise<void> {
-    await this.cardService.removeLabel(
-      boardId,
-      workspaceId,
-      cardId,
-      labelId,
-    );
+    await this.cardService.removeLabel(boardId, workspaceId, cardId, labelId);
   }
 }

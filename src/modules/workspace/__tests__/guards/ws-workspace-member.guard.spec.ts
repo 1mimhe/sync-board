@@ -47,7 +47,10 @@ describe('WsWorkspaceMemberGuard', () => {
 
     const result = await guard.canActivate(mockContext);
     expect(result).toBe(true);
-    expect(memberRepo.findMember).toHaveBeenCalledWith(validWorkspaceId, validUserId);
+    expect(memberRepo.findMember).toHaveBeenCalledWith(
+      validWorkspaceId,
+      validUserId,
+    );
   });
 
   it('should throw BOARD_ACCESS_DENIED WsException when user is not a member', async () => {
@@ -59,7 +62,10 @@ describe('WsWorkspaceMemberGuard', () => {
       await guard.canActivate(mockContext);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('BOARD_ACCESS_DENIED');
       expect(wsErr.message).toContain('not a member of this workspace');
     }

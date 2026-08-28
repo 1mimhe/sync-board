@@ -96,7 +96,10 @@ describe('RedisService', () => {
 
     it('should handle ECONNREFUSED error event', () => {
       expect(() => {
-        (service as any).emit('error', new Error('ECONNREFUSED connection failed'));
+        (service as any).emit(
+          'error',
+          new Error('ECONNREFUSED connection failed'),
+        );
       }).not.toThrow();
     });
 

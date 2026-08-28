@@ -52,7 +52,7 @@ describe('ChecklistController', () => {
 
   describe('create', () => {
     it('should delegate to service with route params and map to response DTO', async () => {
-      checklistService.createChecklist.mockResolvedValue(mockChecklist as any);
+      checklistService.createChecklist.mockResolvedValue(mockChecklist);
 
       const result = await controller.create(
         'ws-1',
@@ -76,7 +76,7 @@ describe('ChecklistController', () => {
 
   describe('list', () => {
     it('should return mapped checklists', async () => {
-      checklistService.getChecklists.mockResolvedValue([mockChecklist] as any);
+      checklistService.getChecklists.mockResolvedValue([mockChecklist]);
 
       const result = await controller.list('ws-1', 'board-1', 'card-1');
 
@@ -95,7 +95,7 @@ describe('ChecklistController', () => {
       checklistService.renameChecklist.mockResolvedValue({
         ...mockChecklist,
         title: 'Renamed',
-      } as any);
+      });
 
       const result = await controller.rename(
         'ws-1',
@@ -140,7 +140,7 @@ describe('ChecklistController', () => {
 
   describe('addItem', () => {
     it('should delegate item creation and map to item DTO', async () => {
-      checklistService.addItem.mockResolvedValue(mockItem as any);
+      checklistService.addItem.mockResolvedValue(mockItem);
 
       const result = await controller.addItem(
         'ws-1',
@@ -169,7 +169,7 @@ describe('ChecklistController', () => {
       checklistService.updateItem.mockResolvedValue({
         ...mockItem,
         isDone: true,
-      } as any);
+      });
 
       const result = await controller.updateItem(
         'ws-1',
@@ -241,9 +241,7 @@ describe('ChecklistController', () => {
           // Nest 11 @HttpCode stores under '__httpCode__' on the handler function
           expect(Reflect.getMetadata('__httpCode__', method)).toBe(status);
         } else {
-          expect(
-            Reflect.getMetadata('__httpCode__', method),
-          ).toBeUndefined();
+          expect(Reflect.getMetadata('__httpCode__', method)).toBeUndefined();
         }
 
         // All checklist routes allow owner/admin/member — viewer writes are rejected

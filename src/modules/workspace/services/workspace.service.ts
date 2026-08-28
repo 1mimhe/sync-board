@@ -8,10 +8,14 @@ import { CreateWorkspaceDto } from '../dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from '../dto/update-workspace.dto';
 import type { WorkspaceWithRole } from '../interfaces/workspace.interfaces';
 import { WorkspaceCreatedEvent } from '../events/workspace.events';
+import { WORKSPACE_EVENTS } from '../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../common/exceptions/app.exception';
+import { buildCursorPagination } from '../../../common/utils/pagination.util';
+import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
+import { CursorPaginationQueryDto } from '../../../common/dto/cursor-pagination-query.dto';
 
 /**
  * Core workspace lifecycle: creation with unique-slug handling, member-scoped
@@ -49,7 +53,7 @@ export class WorkspaceService {
         );
 
         this.eventEmitter.emit(
-          'workspace.created',
+          WORKSPACE_EVENTS.created,
           new WorkspaceCreatedEvent(workspace, userId),
         );
 
@@ -75,9 +79,23 @@ export class WorkspaceService {
 
   /**
    * List all non-archived workspaces for a given user, including their role in each.
+   * Uses cursor-based pagination (newest first).
+   *
+   * @param userId - User UUID
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with `items` and `pagination.cursor/hasMore`
    */
-  async findAllForUser(userId: string): Promise<WorkspaceWithRole[]> {
-    return this.workspaceRepo.findUserWorkspaces(userId);
+  async findAllForUser(
+    userId: string,
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<WorkspaceWithRole>> {
+    const limit = query.limit ?? 20;
+    const rows = await this.workspaceRepo.findUserWorkspacesPage(
+      userId,
+      query.cursor,
+      limit,
+    );
+    return buildCursorPagination(rows, limit);
   }
 
   /**

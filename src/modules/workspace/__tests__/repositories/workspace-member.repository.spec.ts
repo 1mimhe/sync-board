@@ -27,7 +27,9 @@ describe('WorkspaceMemberRepository', () => {
       ],
     }).compile();
 
-    repository = module.get<WorkspaceMemberRepository>(WorkspaceMemberRepository);
+    repository = module.get<WorkspaceMemberRepository>(
+      WorkspaceMemberRepository,
+    );
   });
 
   afterEach(() => {
@@ -36,7 +38,12 @@ describe('WorkspaceMemberRepository', () => {
 
   describe('findMember', () => {
     it('should find member by compound unique key workspaceId_userId', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.owner };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.owner,
+      };
       prismaService.workspaceMember.findUnique.mockResolvedValue(mockMember);
 
       const result = await repository.findMember('ws-1', 'u-1');
@@ -50,7 +57,12 @@ describe('WorkspaceMemberRepository', () => {
 
   describe('findMemberById', () => {
     it('should find member by member id', async () => {
-      const mockMember = { id: 'm-1', workspaceId: 'ws-1', userId: 'u-1', role: WorkspaceRole.member };
+      const mockMember = {
+        id: 'm-1',
+        workspaceId: 'ws-1',
+        userId: 'u-1',
+        role: WorkspaceRole.member,
+      };
       prismaService.workspaceMember.findUnique.mockResolvedValue(mockMember);
 
       const result = await repository.findMemberById('m-1');
@@ -70,7 +82,12 @@ describe('WorkspaceMemberRepository', () => {
           workspaceId: 'ws-1',
           userId: 'u-1',
           role: WorkspaceRole.owner,
-          user: { id: 'u-1', displayName: 'Owner', email: 'owner@test.com', avatarUrl: null },
+          user: {
+            id: 'u-1',
+            displayName: 'Owner',
+            email: 'owner@test.com',
+            avatarUrl: null,
+          },
         },
       ];
       prismaService.workspaceMember.findMany.mockResolvedValue(mockMembers);
@@ -110,7 +127,12 @@ describe('WorkspaceMemberRepository', () => {
 
   describe('findOtherOwner', () => {
     it('should find other owner excluding specified user id', async () => {
-      const otherOwner = { id: 'm-2', workspaceId: 'ws-1', userId: 'u-2', role: WorkspaceRole.owner };
+      const otherOwner = {
+        id: 'm-2',
+        workspaceId: 'ws-1',
+        userId: 'u-2',
+        role: WorkspaceRole.owner,
+      };
       prismaService.workspaceMember.findFirst.mockResolvedValue(otherOwner);
 
       const result = await repository.findOtherOwner('ws-1', 'u-1');
@@ -128,10 +150,19 @@ describe('WorkspaceMemberRepository', () => {
 
   describe('createMember', () => {
     it('should create new member with role', async () => {
-      const createdMember = { id: 'm-new', workspaceId: 'ws-1', userId: 'u-3', role: WorkspaceRole.admin };
+      const createdMember = {
+        id: 'm-new',
+        workspaceId: 'ws-1',
+        userId: 'u-3',
+        role: WorkspaceRole.admin,
+      };
       prismaService.workspaceMember.create.mockResolvedValue(createdMember);
 
-      const result = await repository.createMember('ws-1', 'u-3', WorkspaceRole.admin);
+      const result = await repository.createMember(
+        'ws-1',
+        'u-3',
+        WorkspaceRole.admin,
+      );
 
       expect(prismaService.workspaceMember.create).toHaveBeenCalledWith({
         data: { workspaceId: 'ws-1', userId: 'u-3', role: WorkspaceRole.admin },

@@ -36,12 +36,20 @@ describe('CardCommentRepository', () => {
   describe('create', () => {
     it('should create comment and return with author relation', async () => {
       const mockCreated = { id: 'comm-1', content: 'hello' };
-      const mockResult = { id: 'comm-1', content: 'hello', author: { id: 'u-1', displayName: 'User', avatarUrl: null } };
+      const mockResult = {
+        id: 'comm-1',
+        content: 'hello',
+        author: { id: 'u-1', displayName: 'User', avatarUrl: null },
+      };
 
       prismaService.cardComment.create.mockResolvedValue(mockCreated);
       prismaService.cardComment.findUniqueOrThrow.mockResolvedValue(mockResult);
 
-      const result = await repository.create({ cardId: 'c-1', authorId: 'u-1', content: 'hello' });
+      const result = await repository.create({
+        cardId: 'c-1',
+        authorId: 'u-1',
+        content: 'hello',
+      });
 
       expect(prismaService.cardComment.create).toHaveBeenCalledWith({
         data: { cardId: 'c-1', authorId: 'u-1', content: 'hello' },
@@ -74,7 +82,11 @@ describe('CardCommentRepository', () => {
       const mockComments = [{ id: 'comm-1', content: 'comment 1' }];
       prismaService.cardComment.findMany.mockResolvedValue(mockComments);
 
-      const result = await repository.findCardCommentsPage('c-1', undefined, 20);
+      const result = await repository.findCardCommentsPage(
+        'c-1',
+        undefined,
+        20,
+      );
 
       expect(prismaService.cardComment.findMany).toHaveBeenCalledWith({
         where: { cardId: 'c-1', deletedAt: null },
@@ -135,7 +147,11 @@ describe('CardCommentRepository', () => {
 
   describe('update and softDelete', () => {
     it('should update comment text and return with author', async () => {
-      const mockResult = { id: 'comm-1', content: 'updated', author: { id: 'u-1' } };
+      const mockResult = {
+        id: 'comm-1',
+        content: 'updated',
+        author: { id: 'u-1' },
+      };
       prismaService.cardComment.update.mockResolvedValue({ id: 'comm-1' });
       prismaService.cardComment.findUniqueOrThrow.mockResolvedValue(mockResult);
 

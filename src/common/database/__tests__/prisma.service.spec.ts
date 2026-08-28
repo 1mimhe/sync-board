@@ -36,7 +36,9 @@ describe('PrismaService', () => {
   describe('constructor', () => {
     it('should initialize using ConfigService DATABASE_URL', () => {
       const customConfig = {
-        get: jest.fn().mockReturnValue('postgresql://test:test@localhost:5432/testdb'),
+        get: jest
+          .fn()
+          .mockReturnValue('postgresql://test:test@localhost:5432/testdb'),
       } as unknown as ConfigService;
       const instance = new PrismaService(customConfig);
       expect(instance).toBeDefined();
@@ -56,7 +58,8 @@ describe('PrismaService', () => {
         get: jest.fn().mockReturnValue(undefined),
       } as unknown as ConfigService;
       const originalEnv = process.env.DATABASE_URL;
-      process.env.DATABASE_URL = 'postgresql://fallback:fallback@localhost:5432/fallbackdb';
+      process.env.DATABASE_URL =
+        'postgresql://fallback:fallback@localhost:5432/fallbackdb';
       const instance = new PrismaService(customConfig);
       expect(instance).toBeDefined();
       process.env.DATABASE_URL = originalEnv;

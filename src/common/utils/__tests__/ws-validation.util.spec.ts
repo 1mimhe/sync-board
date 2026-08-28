@@ -1,5 +1,8 @@
 import { validateWsPayload } from '../ws-validation.util';
-import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/realtime/dto/ws-messages.dto';
+import {
+  WsBoardJoinDto,
+  WsCursorDto,
+} from '../../../modules/board/realtime/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
 import * as classValidator from 'class-validator';
 
@@ -19,13 +22,18 @@ describe('validateWsPayload', () => {
   it('should throw WsException with INVALID_PAYLOAD when validation fails', async () => {
     const invalidPayload = { boardId: 'not-a-valid-uuid' };
 
-    await expect(validateWsPayload(WsBoardJoinDto, invalidPayload)).rejects.toThrow(WsException);
+    await expect(
+      validateWsPayload(WsBoardJoinDto, invalidPayload),
+    ).rejects.toThrow(WsException);
 
     try {
       await validateWsPayload(WsBoardJoinDto, invalidPayload);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('INVALID_PAYLOAD');
       expect(wsErr.message).toContain('Validation failed');
     }
@@ -34,7 +42,9 @@ describe('validateWsPayload', () => {
   it('should reject payloads with missing required properties', async () => {
     const emptyPayload = {};
 
-    await expect(validateWsPayload(WsBoardJoinDto, emptyPayload)).rejects.toThrow(WsException);
+    await expect(
+      validateWsPayload(WsBoardJoinDto, emptyPayload),
+    ).rejects.toThrow(WsException);
   });
 
   it('should reject payloads with extra non-whitelisted properties (forbidNonWhitelisted: true)', async () => {
@@ -43,7 +53,9 @@ describe('validateWsPayload', () => {
       extraProperty: 'malicious-data',
     };
 
-    await expect(validateWsPayload(WsBoardJoinDto, payloadWithExtra)).rejects.toThrow(WsException);
+    await expect(
+      validateWsPayload(WsBoardJoinDto, payloadWithExtra),
+    ).rejects.toThrow(WsException);
   });
 
   it('should correctly validate and transform nested optional fields in cursor payload', async () => {
@@ -68,7 +80,9 @@ describe('validateWsPayload', () => {
       y: 200,
     };
 
-    await expect(validateWsPayload(WsCursorDto, outOfBoundsPayload)).rejects.toThrow(WsException);
+    await expect(
+      validateWsPayload(WsCursorDto, outOfBoundsPayload),
+    ).rejects.toThrow(WsException);
   });
 
   it('should handle validation errors with undefined constraints safely', async () => {

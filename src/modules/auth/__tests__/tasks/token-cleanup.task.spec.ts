@@ -31,10 +31,14 @@ describe('TokenCleanupTask', () => {
 
       await task.handleTokenCleanup();
 
-      expect(tokenRepo.deleteExpiredTokens).toHaveBeenCalledWith(expect.any(Date));
+      expect(tokenRepo.deleteExpiredTokens).toHaveBeenCalledWith(
+        expect.any(Date),
+      );
       const cutoffDate = tokenRepo.deleteExpiredTokens.mock.calls[0][0];
       const approxThirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      expect(Math.abs(cutoffDate.getTime() - approxThirtyDaysAgo)).toBeLessThan(1000);
+      expect(Math.abs(cutoffDate.getTime() - approxThirtyDaysAgo)).toBeLessThan(
+        1000,
+      );
     });
   });
 });

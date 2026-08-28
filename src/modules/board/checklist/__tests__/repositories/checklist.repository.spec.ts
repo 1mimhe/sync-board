@@ -74,7 +74,11 @@ describe('ChecklistRepository', () => {
       });
 
       expect(prisma.cardChecklist.create).toHaveBeenCalledWith({
-        data: { cardId: 'card-uuid', title: 'Definition of Done', rank: '0|g0000:' },
+        data: {
+          cardId: 'card-uuid',
+          title: 'Definition of Done',
+          rank: '0|g0000:',
+        },
         include: { items: { orderBy: { rank: 'asc' } } },
       });
       expect(result.items).toEqual([]);

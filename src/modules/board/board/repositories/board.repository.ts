@@ -175,25 +175,50 @@ export class BoardRepository {
   }
 
   /**
-   * Finds all active boards within a workspace.
+   * Finds a cursor page of active boards within a workspace, newest first.
+   * Fetches limit + 1 rows so callers can compute hasMore.
+   *
+   * Unknown/stale cursors are tolerated: when Prisma cannot locate the cursor row,
+   * the query is retried without it, returning the newest page.
    *
    * @param workspaceId - Workspace UUID
    * @param userId - Current user UUID for starred status queries
-   * @returns List of active boards
+   * @param cursor - Last item id of the previous page (optional)
+   * @param limit - Page size; one extra row is fetched to detect the next page
+   * @returns Array of active boards (length up to limit + 1)
    */
-  async findWorkspaceBoards(
+  async findWorkspaceBoardsPage(
     workspaceId: string,
     userId: string,
+    cursor: string | undefined,
+    limit: number,
   ): Promise<Board[]> {
-    return this.prisma.board.findMany({
-      where: { workspaceId, archivedAt: null },
-      include: {
-        starredBy: {
-          where: { userId },
+    const find = (withCursor: boolean) =>
+      this.prisma.board.findMany({
+        where: { workspaceId, archivedAt: null },
+        include: {
+          starredBy: {
+            where: { userId },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        ...(withCursor && cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+
+    try {
+      return await find(true);
+    } catch (error) {
+      if (
+        cursor &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        // Unknown/stale cursor — degrade gracefully to the newest page
+        return find(false);
+      }
+      throw error;
+    }
   }
 
   /**

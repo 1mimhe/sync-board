@@ -45,7 +45,10 @@ describe('WsRateLimiterService', () => {
       expect(mockPipeline.zremrangebyscore).toHaveBeenCalled();
       expect(mockPipeline.zadd).toHaveBeenCalled();
       expect(mockPipeline.zcard).toHaveBeenCalled();
-      expect(mockPipeline.expire).toHaveBeenCalledWith('ratelimit:ws:user-1:join', 60);
+      expect(mockPipeline.expire).toHaveBeenCalledWith(
+        'ratelimit:ws:user-1:join',
+        60,
+      );
     });
 
     it('should block operation when count exceeds the limit', async () => {
@@ -64,7 +67,12 @@ describe('WsRateLimiterService', () => {
     it('should fail-open and return true if Redis pipeline returns null', async () => {
       mockPipeline.exec.mockResolvedValue(null);
 
-      const allowed = await service.checkRateLimit('user-1', 'cursor', 20, 60000);
+      const allowed = await service.checkRateLimit(
+        'user-1',
+        'cursor',
+        20,
+        60000,
+      );
 
       expect(allowed).toBe(true);
     });
@@ -78,10 +86,16 @@ describe('WsRateLimiterService', () => {
       ]);
 
       await service.checkRateLimit('user-abc', 'cursor', 20, 60000);
-      expect(mockPipeline.expire).toHaveBeenCalledWith('ratelimit:ws:user-abc:cursor', 60);
+      expect(mockPipeline.expire).toHaveBeenCalledWith(
+        'ratelimit:ws:user-abc:cursor',
+        60,
+      );
 
       await service.checkRateLimit('user-xyz', 'board', 60, 60000);
-      expect(mockPipeline.expire).toHaveBeenCalledWith('ratelimit:ws:user-xyz:board', 60);
+      expect(mockPipeline.expire).toHaveBeenCalledWith(
+        'ratelimit:ws:user-xyz:board',
+        60,
+      );
     });
   });
 });

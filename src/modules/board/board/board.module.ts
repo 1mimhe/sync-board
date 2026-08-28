@@ -9,7 +9,12 @@ import { WorkspaceModule } from '../../workspace/workspace.module';
 
 /** Board CRUD, stars, content hydration, and activity feed slice. */
 @Module({
-  imports: [forwardRef(() => LabelSubModule), ActivityModule, AuthModule, WorkspaceModule],
+  imports: [
+    forwardRef(() => LabelSubModule),
+    ActivityModule,
+    AuthModule,
+    WorkspaceModule,
+  ],
   controllers: [BoardController],
   providers: [BoardService, BoardRepository],
   exports: [BoardService, BoardRepository],

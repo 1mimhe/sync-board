@@ -124,19 +124,33 @@ describe('ListService', () => {
     it('should update list title and emit list.updated', async () => {
       boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
       listRepo.findActiveById.mockResolvedValue({ id: 'l-1' } as any);
-      listRepo.update.mockResolvedValue({ id: 'l-1', title: 'New Title' } as any);
+      listRepo.update.mockResolvedValue({
+        id: 'l-1',
+        title: 'New Title',
+      } as any);
 
-      const result = await service.update('b-1', 'ws-1', 'l-1', { title: 'New Title' }, 'u-1');
+      const result = await service.update(
+        'b-1',
+        'ws-1',
+        'l-1',
+        { title: 'New Title' },
+        'u-1',
+      );
 
       expect(result.title).toBe('New Title');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('list.updated', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'list.updated',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if list not found during update', async () => {
       boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
       listRepo.findActiveById.mockResolvedValue(null);
 
-      await expect(service.update('b-1', 'ws-1', 'l-99', { title: 'Title' }, 'u-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.update('b-1', 'ws-1', 'l-99', { title: 'Title' }, 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -179,7 +193,9 @@ describe('ListService', () => {
       boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
       listRepo.findActiveById.mockResolvedValue(null);
 
-      await expect(service.move('b-1', 'ws-1', 'l-99', { prevRank: '0|a:' }, 'u-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.move('b-1', 'ws-1', 'l-99', { prevRank: '0|a:' }, 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -192,14 +208,19 @@ describe('ListService', () => {
       await service.archive('b-1', 'ws-1', 'l-1', 'u-1');
 
       expect(listRepo.archive).toHaveBeenCalledWith('l-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('list.archived', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'list.archived',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if list not found during archive', async () => {
       boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
       listRepo.findActiveById.mockResolvedValue(null);
 
-      await expect(service.archive('b-1', 'ws-1', 'l-99', 'u-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.archive('b-1', 'ws-1', 'l-99', 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 

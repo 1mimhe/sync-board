@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -36,11 +37,15 @@ import {
   WorkspaceMemberResponseDto,
   MemberWithUserResponseDto,
   WorkspaceInvitationResponseDto,
+  CursorPaginationQueryDto,
 } from '../dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { EmailVerifiedGuard } from '../../../common/guards/email-verified.guard';
+import { SkipEmailVerification } from '../../../common/decorators/skip-email-verification.decorator';
 import { WorkspaceAuth } from '../decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import {
   WorkspaceWithRole,
   MemberWithUser,
@@ -57,7 +62,7 @@ export class WorkspaceController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new workspace' })
@@ -67,6 +72,11 @@ export class WorkspaceController {
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Forbidden — email not verified (EMAIL_NOT_VERIFIED) or already authenticated',
+  })
   async create(
     @Body() dto: CreateWorkspaceDto,
     @CurrentUser() user: JwtPayload,
@@ -77,16 +87,17 @@ export class WorkspaceController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List all workspaces for current user' })
+  @ApiOperation({ summary: 'List workspaces for current user (paginated)' })
   @ApiOkResponse({
     type: [WorkspaceWithRoleResponseDto],
-    description: 'List of workspaces returned',
+    description: 'Paginated list of workspaces: { items, pagination }',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async listMine(
     @CurrentUser() user: JwtPayload,
-  ): Promise<WorkspaceWithRole[]> {
-    return this.workspaceService.findAllForUser(user.sub);
+    @Query() query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<WorkspaceWithRole>> {
+    return this.workspaceService.findAllForUser(user.sub, query);
   }
 
   /**
@@ -115,6 +126,7 @@ export class WorkspaceController {
 
   @Post('invitations/accept')
   @UseGuards(JwtAuthGuard)
+  @SkipEmailVerification()
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a workspace invitation using token' })

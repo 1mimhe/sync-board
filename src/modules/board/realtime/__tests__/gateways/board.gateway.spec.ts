@@ -144,7 +144,9 @@ describe('BoardGateway', () => {
       try {
         presenceService.cleanupStaleEntries.mockResolvedValue(new Map());
         gateway.afterInit();
-        await jest.advanceTimersByTimeAsync(PRESENCE_CONFIG.CLEANUP_INTERVAL_MS);
+        await jest.advanceTimersByTimeAsync(
+          PRESENCE_CONFIG.CLEANUP_INTERVAL_MS,
+        );
         expect(presenceService.cleanupStaleEntries).toHaveBeenCalled();
       } finally {
         gateway.onModuleDestroy();
@@ -178,7 +180,9 @@ describe('BoardGateway', () => {
       await gateway.handleConnection(mockSocket as Socket);
 
       expect(mockSocket.data).toEqual({ user: validJwtPayload });
-      expect(mockSocket.join).toHaveBeenCalledWith(`user:${validJwtPayload.sub}`);
+      expect(mockSocket.join).toHaveBeenCalledWith(
+        `user:${validJwtPayload.sub}`,
+      );
       expect(mockSocket.disconnect).not.toHaveBeenCalled();
     });
 
@@ -189,8 +193,12 @@ describe('BoardGateway', () => {
 
       await gateway.handleConnection(mockSocket as Socket);
 
-      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith('header-token');
-      expect(mockSocket.join).toHaveBeenCalledWith(`user:${validJwtPayload.sub}`);
+      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith(
+        'header-token',
+      );
+      expect(mockSocket.join).toHaveBeenCalledWith(
+        `user:${validJwtPayload.sub}`,
+      );
     });
 
     it('should reject and disconnect when token is missing', async () => {
@@ -250,8 +258,13 @@ describe('BoardGateway', () => {
 
       await gateway.handleDisconnect(mockSocket as Socket);
 
-      expect(presenceService.removePresence).toHaveBeenCalledWith('123e4567-e89b-42d3-a456-426614174000', mockSocket.id);
-      expect(mockServer.to).toHaveBeenCalledWith('board:123e4567-e89b-42d3-a456-426614174000');
+      expect(presenceService.removePresence).toHaveBeenCalledWith(
+        '123e4567-e89b-42d3-a456-426614174000',
+        mockSocket.id,
+      );
+      expect(mockServer.to).toHaveBeenCalledWith(
+        'board:123e4567-e89b-42d3-a456-426614174000',
+      );
       expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.BOARD_PRESENCE, {
         userId: validJwtPayload.sub,
         action: 'left',
@@ -267,15 +280,23 @@ describe('BoardGateway', () => {
 
       // Server in workspace returns only other users' sockets
       mockServer.fetchSockets.mockResolvedValue([
-        { id: 'other-sock', data: { user: { sub: '123e4567-e89b-42d3-a456-426614174002' } } },
+        {
+          id: 'other-sock',
+          data: { user: { sub: '123e4567-e89b-42d3-a456-426614174002' } },
+        },
       ]);
 
       await gateway.handleDisconnect(mockSocket as Socket);
 
-      expect(mockServer.to).toHaveBeenCalledWith('workspace:123e4567-e89b-42d3-a456-426614174001');
-      expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.WORKSPACE_MEMBER_OFFLINE, {
-        userId: validJwtPayload.sub,
-      });
+      expect(mockServer.to).toHaveBeenCalledWith(
+        'workspace:123e4567-e89b-42d3-a456-426614174001',
+      );
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        WS_EVENTS.WORKSPACE_MEMBER_OFFLINE,
+        {
+          userId: validJwtPayload.sub,
+        },
+      );
     });
 
     it('should do nothing if socket was not authenticated', async () => {
@@ -311,25 +332,45 @@ describe('BoardGateway', () => {
         },
       ]);
 
-      await gateway.handleWorkspaceJoin(mockSocket as Socket, { workspaceId: validWorkspaceId });
+      await gateway.handleWorkspaceJoin(mockSocket as Socket, {
+        workspaceId: validWorkspaceId,
+      });
 
-      expect(mockSocket.join).toHaveBeenCalledWith(`workspace:${validWorkspaceId}`);
+      expect(mockSocket.join).toHaveBeenCalledWith(
+        `workspace:${validWorkspaceId}`,
+      );
       expect(mockSocket.emit).toHaveBeenCalledWith(WS_EVENTS.WORKSPACE_JOINED, {
         workspaceId: validWorkspaceId,
-        onlineMembers: [{ userId: validJwtPayload.sub, displayName: validJwtPayload.displayName }],
+        onlineMembers: [
+          {
+            userId: validJwtPayload.sub,
+            displayName: validJwtPayload.displayName,
+          },
+        ],
       });
-      expect(mockSocket.to).toHaveBeenCalledWith(`workspace:${validWorkspaceId}`);
-      expect(mockSocket.emit).toHaveBeenCalledWith(WS_EVENTS.WORKSPACE_MEMBER_ONLINE, {
-        userId: validJwtPayload.sub,
-        displayName: validJwtPayload.displayName,
-      });
+      expect(mockSocket.to).toHaveBeenCalledWith(
+        `workspace:${validWorkspaceId}`,
+      );
+      expect(mockSocket.emit).toHaveBeenCalledWith(
+        WS_EVENTS.WORKSPACE_MEMBER_ONLINE,
+        {
+          userId: validJwtPayload.sub,
+          displayName: validJwtPayload.displayName,
+        },
+      );
     });
 
     it('should have WsWorkspaceMemberGuard and WsRateLimit decorators applied', () => {
-      const guards = Reflect.getMetadata('__guards__', gateway.handleWorkspaceJoin);
+      const guards = Reflect.getMetadata(
+        '__guards__',
+        gateway.handleWorkspaceJoin,
+      );
       expect(guards).toContain(WsWorkspaceMemberGuard);
 
-      const rateLimit = Reflect.getMetadata('ws_rate_limit', gateway.handleWorkspaceJoin);
+      const rateLimit = Reflect.getMetadata(
+        'ws_rate_limit',
+        gateway.handleWorkspaceJoin,
+      );
       expect(rateLimit).toEqual(
         expect.objectContaining({
           category: 'join',
@@ -339,20 +380,30 @@ describe('BoardGateway', () => {
     });
 
     it('should leave previous workspace room when switching workspaces', async () => {
-      mockSocket.data.currentWorkspaceId = '123e4567-e89b-42d3-a456-426614174099';
+      mockSocket.data.currentWorkspaceId =
+        '123e4567-e89b-42d3-a456-426614174099';
       workspaceMemberRepo.findMember.mockResolvedValue({} as any);
 
-      await gateway.handleWorkspaceJoin(mockSocket as Socket, { workspaceId: validWorkspaceId });
+      await gateway.handleWorkspaceJoin(mockSocket as Socket, {
+        workspaceId: validWorkspaceId,
+      });
 
-      expect(mockSocket.leave).toHaveBeenCalledWith('workspace:123e4567-e89b-42d3-a456-426614174099');
-      expect(mockSocket.join).toHaveBeenCalledWith(`workspace:${validWorkspaceId}`);
+      expect(mockSocket.leave).toHaveBeenCalledWith(
+        'workspace:123e4567-e89b-42d3-a456-426614174099',
+      );
+      expect(mockSocket.join).toHaveBeenCalledWith(
+        `workspace:${validWorkspaceId}`,
+      );
     });
   });
 
   describe('handleWorkspaceLeave', () => {
     it('should leave workspace room and clear currentWorkspaceId', async () => {
       const workspaceId = '123e4567-e89b-42d3-a456-426614174000';
-      mockSocket.data = { user: validJwtPayload, currentWorkspaceId: workspaceId };
+      mockSocket.data = {
+        user: validJwtPayload,
+        currentWorkspaceId: workspaceId,
+      };
 
       await gateway.handleWorkspaceLeave(mockSocket as Socket, { workspaceId });
 
@@ -395,7 +446,9 @@ describe('BoardGateway', () => {
         },
       ]);
 
-      await gateway.handleBoardJoin(mockSocket as Socket, { boardId: validBoardId });
+      await gateway.handleBoardJoin(mockSocket as Socket, {
+        boardId: validBoardId,
+      });
 
       expect(mockSocket.join).toHaveBeenCalledWith(`board:${validBoardId}`);
       expect(presenceService.addPresence).toHaveBeenCalledWith(
@@ -441,7 +494,9 @@ describe('BoardGateway', () => {
       presenceService.getBoardViewers.mockResolvedValue([]);
       presenceService.removePresence.mockResolvedValue({} as any);
 
-      await gateway.handleBoardJoin(mockSocket as Socket, { boardId: validBoardId });
+      await gateway.handleBoardJoin(mockSocket as Socket, {
+        boardId: validBoardId,
+      });
 
       expect(mockSocket.leave).toHaveBeenCalledWith(`board:${previousBoardId}`);
       expect(presenceService.removePresence).toHaveBeenCalledWith(
@@ -455,7 +510,10 @@ describe('BoardGateway', () => {
       const guards = Reflect.getMetadata('__guards__', gateway.handleBoardJoin);
       expect(guards).toContain(WsBoardAccessGuard);
 
-      const rateLimit = Reflect.getMetadata('ws_rate_limit', gateway.handleBoardJoin);
+      const rateLimit = Reflect.getMetadata(
+        'ws_rate_limit',
+        gateway.handleBoardJoin,
+      );
       expect(rateLimit).toEqual(
         expect.objectContaining({
           category: 'join',
@@ -474,18 +532,27 @@ describe('BoardGateway', () => {
       await gateway.handleBoardLeave(mockSocket as Socket, { boardId });
 
       expect(mockSocket.leave).toHaveBeenCalledWith(`board:${boardId}`);
-      expect(presenceService.removePresence).toHaveBeenCalledWith(boardId, mockSocket.id);
+      expect(presenceService.removePresence).toHaveBeenCalledWith(
+        boardId,
+        mockSocket.id,
+      );
       expect(mockSocket.data.currentBoardId).toBeUndefined();
     });
   });
 
   describe('handleHeartbeat', () => {
     it('should update presence heartbeat if current board is joined', async () => {
-      mockSocket.data = { user: validJwtPayload, currentBoardId: '123e4567-e89b-42d3-a456-426614174000' };
+      mockSocket.data = {
+        user: validJwtPayload,
+        currentBoardId: '123e4567-e89b-42d3-a456-426614174000',
+      };
 
       await gateway.handleHeartbeat(mockSocket as Socket);
 
-      expect(presenceService.updateHeartbeat).toHaveBeenCalledWith('123e4567-e89b-42d3-a456-426614174000', mockSocket.id);
+      expect(presenceService.updateHeartbeat).toHaveBeenCalledWith(
+        '123e4567-e89b-42d3-a456-426614174000',
+        mockSocket.id,
+      );
     });
 
     it('should do nothing if no board is joined', async () => {
@@ -531,7 +598,10 @@ describe('BoardGateway', () => {
     });
 
     it('should have WsRateLimit decorator applied with silent mode', () => {
-      const rateLimit = Reflect.getMetadata('ws_rate_limit', gateway.handleCursor);
+      const rateLimit = Reflect.getMetadata(
+        'ws_rate_limit',
+        gateway.handleCursor,
+      );
       expect(rateLimit).toEqual(
         expect.objectContaining({
           category: 'cursor',
@@ -541,5 +611,4 @@ describe('BoardGateway', () => {
       );
     });
   });
-
 });

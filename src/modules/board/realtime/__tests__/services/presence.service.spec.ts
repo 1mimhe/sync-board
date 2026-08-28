@@ -55,7 +55,10 @@ describe('PresenceService', () => {
       await service.addPresence('board-1', entry);
 
       expect(redisService.pipeline).toHaveBeenCalled();
-      expect(mockPipeline.sadd).toHaveBeenCalledWith('presence:active_boards', 'board-1');
+      expect(mockPipeline.sadd).toHaveBeenCalledWith(
+        'presence:active_boards',
+        'board-1',
+      );
       expect(mockPipeline.zadd).toHaveBeenCalledWith(
         'presence:board:board-1:active',
         expect.any(Number),
@@ -91,9 +94,18 @@ describe('PresenceService', () => {
       const result = await service.removePresence('board-1', 'sock-1');
 
       expect(result).toEqual(entry);
-      expect(mockPipeline.hget).toHaveBeenCalledWith('presence:board:board-1:meta', 'sock-1');
-      expect(mockPipeline.zrem).toHaveBeenCalledWith('presence:board:board-1:active', 'sock-1');
-      expect(mockPipeline.hdel).toHaveBeenCalledWith('presence:board:board-1:meta', 'sock-1');
+      expect(mockPipeline.hget).toHaveBeenCalledWith(
+        'presence:board:board-1:meta',
+        'sock-1',
+      );
+      expect(mockPipeline.zrem).toHaveBeenCalledWith(
+        'presence:board:board-1:active',
+        'sock-1',
+      );
+      expect(mockPipeline.hdel).toHaveBeenCalledWith(
+        'presence:board:board-1:meta',
+        'sock-1',
+      );
       expect(redisService.srem).not.toHaveBeenCalled();
     });
 
@@ -116,7 +128,10 @@ describe('PresenceService', () => {
 
       await service.removePresence('board-1', 'sock-1');
 
-      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
+      expect(redisService.srem).toHaveBeenCalledWith(
+        'presence:active_boards',
+        'board-1',
+      );
     });
 
     it('should return null when removing non-existent socketId', async () => {
@@ -127,7 +142,10 @@ describe('PresenceService', () => {
         [null, 0],
       ]);
 
-      const result = await service.removePresence('board-1', 'non-existent-socket');
+      const result = await service.removePresence(
+        'board-1',
+        'non-existent-socket',
+      );
 
       expect(result).toBeNull();
     });
@@ -140,7 +158,10 @@ describe('PresenceService', () => {
         [null, 1],
       ]);
 
-      const result = await service.removePresence('board-1', 'corrupted-socket');
+      const result = await service.removePresence(
+        'board-1',
+        'corrupted-socket',
+      );
 
       expect(result).toBeNull();
     });
@@ -170,13 +191,30 @@ describe('PresenceService', () => {
       const removed = await service.removeUserPresence('board-1', 'user-1');
 
       expect(removed).toHaveLength(1);
-      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
+      expect(redisService.srem).toHaveBeenCalledWith(
+        'presence:active_boards',
+        'board-1',
+      );
     });
 
     it('should return empty array when user has no presence entries', async () => {
       redisService.hgetall.mockResolvedValue({});
 
-      const removed = await service.removeUserPresence('board-1', 'user-unknown');
+      const removed = await service.removeUserPresence(
+        'board-1',
+        'user-unknown',
+      );
+      expect(removed).toEqual([]);
+      expect(mockPipeline.exec).not.toHaveBeenCalled();
+    });
+
+    it('should skip malformed JSON meta entries without failing', async () => {
+      redisService.hgetall.mockResolvedValue({
+        'sock-bad': 'NOT_JSON{',
+      });
+
+      const removed = await service.removeUserPresence('board-1', 'user-1');
+
       expect(removed).toEqual([]);
       expect(mockPipeline.exec).not.toHaveBeenCalled();
     });
@@ -223,7 +261,11 @@ describe('PresenceService', () => {
         connectedAt: '2026-08-18T10:02:00.000Z',
       };
 
-      redisService.zrangebyscore.mockResolvedValue(['sock-1', 'sock-2', 'sock-3']);
+      redisService.zrangebyscore.mockResolvedValue([
+        'sock-1',
+        'sock-2',
+        'sock-3',
+      ]);
       redisService.hmget.mockResolvedValue([
         JSON.stringify(entryTab1),
         JSON.stringify(entryTab2),
@@ -269,14 +311,29 @@ describe('PresenceService', () => {
       expect(viewers).toEqual([]);
       expect(redisService.hmget).not.toHaveBeenCalled();
     });
+
+    it('should skip malformed JSON meta entries when listing viewers', async () => {
+      redisService.zrangebyscore.mockResolvedValue(['sock-bad']);
+      redisService.hmget.mockResolvedValue(['NOT_JSON{']);
+
+      const viewers = await service.getBoardViewers('board-1');
+
+      expect(viewers).toEqual([]);
+    });
   });
 
   describe('getCollaboratorColor', () => {
     it('should assign a color deterministically using FNV-1a hash', async () => {
       redisService.zrangebyscore.mockResolvedValue([]);
 
-      const color1 = await service.getCollaboratorColor('user-uuid-1', 'board-1');
-      const color2 = await service.getCollaboratorColor('user-uuid-1', 'board-1');
+      const color1 = await service.getCollaboratorColor(
+        'user-uuid-1',
+        'board-1',
+      );
+      const color2 = await service.getCollaboratorColor(
+        'user-uuid-1',
+        'board-1',
+      );
 
       expect(COLLABORATOR_COLORS).toContain(color1);
       expect(color1).toBe(color2);
@@ -300,19 +357,28 @@ describe('PresenceService', () => {
     });
 
     it('should fall back to a golden-ratio HSL color when all 16 palette slots are taken', async () => {
-      const allTakenEntries: PresenceEntry[] = [...COLLABORATOR_COLORS].map((color, idx) => ({
-        userId: `filler-${idx}`,
-        socketId: `filler-sock-${idx}`,
-        displayName: `Filler ${idx}`,
-        avatarUrl: null,
-        color,
-        connectedAt: '2026-08-18T10:00:00.000Z',
-      }));
+      const allTakenEntries: PresenceEntry[] = [...COLLABORATOR_COLORS].map(
+        (color, idx) => ({
+          userId: `filler-${idx}`,
+          socketId: `filler-sock-${idx}`,
+          displayName: `Filler ${idx}`,
+          avatarUrl: null,
+          color,
+          connectedAt: '2026-08-18T10:00:00.000Z',
+        }),
+      );
 
-      redisService.zrangebyscore.mockResolvedValue(allTakenEntries.map((e) => e.socketId));
-      redisService.hmget.mockResolvedValue(allTakenEntries.map((e) => JSON.stringify(e)));
+      redisService.zrangebyscore.mockResolvedValue(
+        allTakenEntries.map((e) => e.socketId),
+      );
+      redisService.hmget.mockResolvedValue(
+        allTakenEntries.map((e) => JSON.stringify(e)),
+      );
 
-      const color = await service.getCollaboratorColor('overflow-user', 'board-full');
+      const color = await service.getCollaboratorColor(
+        'overflow-user',
+        'board-full',
+      );
 
       expect(COLLABORATOR_COLORS as readonly string[]).not.toContain(color);
       expect(color).toMatch(/^hsl\(\d+, 75%, 50%\)$/);
@@ -351,7 +417,9 @@ describe('PresenceService', () => {
     });
 
     it('should catch and log error if redis throws in cleanupStaleEntries', async () => {
-      redisService.smembers.mockRejectedValue(new Error('Redis connection down'));
+      redisService.smembers.mockRejectedValue(
+        new Error('Redis connection down'),
+      );
 
       const result = await service.cleanupStaleEntries();
       expect(result).toEqual([]);
@@ -414,13 +482,13 @@ describe('PresenceService', () => {
 
       const checkPipeline = makeCheckPipeline([
         [null, ['stale-sock']], // board-1 has 1 stale socket
-        [null, []],             // board-2 is clean
+        [null, []], // board-2 is clean
       ]);
       const prunePipeline = makePrunePipeline([
         [null, [JSON.stringify(staleEntry)]], // hmget  (offset 0)
-        [null, 1],                            // zrem   (offset 1)
-        [null, 1],                            // hdel   (offset 2)
-        [null, 0],                            // zcard  (offset 3) → board empty
+        [null, 1], // zrem   (offset 1)
+        [null, 1], // hdel   (offset 2)
+        [null, 0], // zcard  (offset 3) → board empty
       ]);
 
       redisService.pipeline
@@ -429,10 +497,15 @@ describe('PresenceService', () => {
 
       const pruned = await service.cleanupStaleEntries();
 
-      expect(redisService.smembers).toHaveBeenCalledWith('presence:active_boards');
+      expect(redisService.smembers).toHaveBeenCalledWith(
+        'presence:active_boards',
+      );
       expect(pruned).toHaveLength(1);
       expect(pruned[0]).toEqual(['board-1', staleEntry]);
-      expect(redisService.srem).toHaveBeenCalledWith('presence:active_boards', 'board-1');
+      expect(redisService.srem).toHaveBeenCalledWith(
+        'presence:active_boards',
+        'board-1',
+      );
     });
 
     it('should ignore malformed JSON and not remove board if active viewers remain', async () => {
@@ -441,9 +514,9 @@ describe('PresenceService', () => {
       const checkPipeline = makeCheckPipeline([[null, ['stale-sock']]]);
       const prunePipeline = makePrunePipeline([
         [null, ['INVALID_MALFORMED_JSON']], // hmget
-        [null, 1],                          // zrem
-        [null, 1],                          // hdel
-        [null, 2],                          // zcard = 2 remaining viewers
+        [null, 1], // zrem
+        [null, 1], // hdel
+        [null, 2], // zcard = 2 remaining viewers
       ]);
 
       redisService.pipeline

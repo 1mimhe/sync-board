@@ -47,9 +47,9 @@ describe('LexorankService', () => {
   });
 
   it('should throw BusinessRuleException when rank string is invalid or malformed', () => {
-    expect(() => service.getRankBetween('invalid-rank-string', 'another-invalid')).toThrow(
-      BusinessRuleException,
-    );
+    expect(() =>
+      service.getRankBetween('invalid-rank-string', 'another-invalid'),
+    ).toThrow(BusinessRuleException);
   });
 
   it('should rethrow BusinessRuleException unchanged instead of wrapping it', () => {

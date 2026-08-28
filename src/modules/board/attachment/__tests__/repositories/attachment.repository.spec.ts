@@ -33,14 +33,18 @@ describe('CardAttachmentRepository', () => {
 
   describe('create', () => {
     it('should create attachment and return with uploadedBy relation', async () => {
-      const mockResult = { id: 'att-1', name: 'test.png', uploadedBy: { id: 'u-1', displayName: 'User', avatarUrl: null } };
+      const mockResult = {
+        id: 'att-1',
+        name: 'test.png',
+        uploadedBy: { id: 'u-1', displayName: 'User', avatarUrl: null },
+      };
       prismaService.cardAttachment.create.mockResolvedValue(mockResult);
 
       const result = await repository.create({
         cardId: 'c-1',
         name: 'test.png',
         url: 'https://example.com/test.png',
-        type: 'image' as any,
+        type: 'image',
         uploadedById: 'u-1',
       });
 

@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { TokenBlacklistService } from '../../modules/auth/services/token-blacklist.service';
@@ -38,6 +43,19 @@ export class WsAuthGuard implements CanActivate {
       throw new WsException({
         code: 'TOKEN_REVOKED',
         message: 'Token has been revoked',
+      });
+    }
+
+    // Email-verification soft gate: users with tokens issued before their
+    // verification lack the claim (undefined) and are allowed for backwards
+    // compatibility until the token is refreshed.
+    if (socketData.user.isEmailVerified === false) {
+      this.logger.warn(
+        `Unverified user ${socketData.user.sub} attempted WebSocket event on socket ${client?.id}`,
+      );
+      throw new WsException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Email verification required before participating in realtime',
       });
     }
 

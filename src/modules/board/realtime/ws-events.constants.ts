@@ -42,8 +42,12 @@ export const WS_EVENTS = {
   CARD_ARCHIVED: 'card:archived',
   CARD_UNARCHIVED: 'card:unarchived',
   CARD_COMMENT_ADDED: 'card:comment-added',
+  CARD_COMMENT_UPDATED: 'card:comment-updated',
+  CARD_COMMENT_DELETED: 'card:comment-deleted',
   CARD_ATTACHMENT_ADDED: 'card:attachment-added',
   CARD_ATTACHMENT_DELETED: 'card:attachment-deleted',
+  CARD_ASSIGNEE_ADDED: 'card:assignee-added',
+  CARD_ASSIGNEE_REMOVED: 'card:assignee-removed',
 
   // Checklists
   CHECKLIST_CREATED: 'checklist:created',
@@ -88,7 +92,12 @@ export const PRESENCE_CONFIG = {
  */
 export const WS_RATE_LIMITS = {
   BOARD_EVENTS: { category: 'board', limit: 60, windowMs: 60_000 },
-  PRESENCE_CURSOR: { category: 'cursor', limit: 600, windowMs: 60_000, silent: true },
+  PRESENCE_CURSOR: {
+    category: 'cursor',
+    limit: 600,
+    windowMs: 60_000,
+    silent: true,
+  },
   ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
 } as const;
 

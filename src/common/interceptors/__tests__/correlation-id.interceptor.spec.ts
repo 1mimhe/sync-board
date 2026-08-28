@@ -39,7 +39,10 @@ describe('CorrelationIdInterceptor', () => {
       expect(result).toBe('response');
       expect(mockRequest.correlationId).toBe('existing-header-id');
       expect(mockRequest.headers['x-request-id']).toBe('existing-header-id');
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Request-Id', 'existing-header-id');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Request-Id',
+        'existing-header-id',
+      );
       expect(mockHandler.handle).toHaveBeenCalledTimes(1);
       done();
     });
@@ -52,7 +55,10 @@ describe('CorrelationIdInterceptor', () => {
       expect(result).toBe('response');
       expect(mockRequest.correlationId).toBe('existing-req-id');
       expect(mockRequest.headers['x-request-id']).toBe('existing-req-id');
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Request-Id', 'existing-req-id');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Request-Id',
+        'existing-req-id',
+      );
       done();
     });
   });
@@ -61,8 +67,13 @@ describe('CorrelationIdInterceptor', () => {
     interceptor.intercept(mockContext, mockHandler).subscribe((result) => {
       expect(result).toBe('response');
       expect(mockRequest.correlationId).toMatch(/^req_[0-9a-f-]{36}$/);
-      expect(mockRequest.headers['x-request-id']).toBe(mockRequest.correlationId);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Request-Id', mockRequest.correlationId);
+      expect(mockRequest.headers['x-request-id']).toBe(
+        mockRequest.correlationId,
+      );
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Request-Id',
+        mockRequest.correlationId,
+      );
       done();
     });
   });

@@ -55,18 +55,30 @@ describe('WorkspaceController', () => {
 
       const res = await controller.create({ name: 'Eng' }, mockUser);
       expect(res).toEqual(mockWs);
-      expect(workspaceService.create).toHaveBeenCalledWith({ name: 'Eng' }, 'user-123');
+      expect(workspaceService.create).toHaveBeenCalledWith(
+        { name: 'Eng' },
+        'user-123',
+      );
     });
   });
 
   describe('listMine', () => {
-    it('should return user workspaces from service', async () => {
-      const mockList = [{ id: 'ws-1', role: WorkspaceRole.owner }];
+    it('should return paginated user workspaces from service', async () => {
+      const mockList = {
+        items: [{ id: 'ws-1', role: WorkspaceRole.owner }],
+        pagination: { cursor: 'ws-1', hasMore: false },
+      };
       workspaceService.findAllForUser.mockResolvedValue(mockList as any);
 
-      const res = await controller.listMine(mockUser);
+      const res = await controller.listMine(mockUser, {
+        cursor: 'ws-1',
+        limit: 20,
+      });
       expect(res).toEqual(mockList);
-      expect(workspaceService.findAllForUser).toHaveBeenCalledWith('user-123');
+      expect(workspaceService.findAllForUser).toHaveBeenCalledWith('user-123', {
+        cursor: 'ws-1',
+        limit: 20,
+      });
     });
   });
 
@@ -77,7 +89,10 @@ describe('WorkspaceController', () => {
 
       const res = await controller.getBySlug('eng', mockUser);
       expect(res).toEqual(mockWs);
-      expect(workspaceService.findBySlug).toHaveBeenCalledWith('eng', 'user-123');
+      expect(workspaceService.findBySlug).toHaveBeenCalledWith(
+        'eng',
+        'user-123',
+      );
     });
   });
 
@@ -88,7 +103,10 @@ describe('WorkspaceController', () => {
 
       const res = await controller.getById('ws-1', mockUser);
       expect(res).toEqual(mockWs);
-      expect(workspaceService.findByIdWithRole).toHaveBeenCalledWith('ws-1', 'user-123');
+      expect(workspaceService.findByIdWithRole).toHaveBeenCalledWith(
+        'ws-1',
+        'user-123',
+      );
     });
   });
 
@@ -99,7 +117,9 @@ describe('WorkspaceController', () => {
 
       const res = await controller.update('ws-1', { name: 'Updated' });
       expect(res).toEqual(updatedWs);
-      expect(workspaceService.update).toHaveBeenCalledWith('ws-1', { name: 'Updated' });
+      expect(workspaceService.update).toHaveBeenCalledWith('ws-1', {
+        name: 'Updated',
+      });
     });
   });
 
@@ -117,7 +137,10 @@ describe('WorkspaceController', () => {
       membershipService.leaveWorkspace.mockResolvedValue(undefined);
 
       await controller.leaveWorkspace('ws-1', mockUser);
-      expect(membershipService.leaveWorkspace).toHaveBeenCalledWith('ws-1', 'user-123');
+      expect(membershipService.leaveWorkspace).toHaveBeenCalledWith(
+        'ws-1',
+        'user-123',
+      );
     });
   });
 
@@ -155,7 +178,9 @@ describe('WorkspaceController', () => {
   describe('updateMemberRole', () => {
     it('should delegate updateMemberRole to membershipService', async () => {
       const updatedMember = { id: 'm-1', role: WorkspaceRole.admin };
-      membershipService.updateMemberRole.mockResolvedValue(updatedMember as any);
+      membershipService.updateMemberRole.mockResolvedValue(
+        updatedMember as any,
+      );
 
       const res = await controller.updateMemberRole(
         'ws-1',
@@ -178,7 +203,11 @@ describe('WorkspaceController', () => {
       membershipService.removeMember.mockResolvedValue(undefined);
 
       await controller.removeMember('ws-1', 'm-1', mockUser);
-      expect(membershipService.removeMember).toHaveBeenCalledWith('ws-1', 'm-1', 'user-123');
+      expect(membershipService.removeMember).toHaveBeenCalledWith(
+        'ws-1',
+        'm-1',
+        'user-123',
+      );
     });
   });
 
@@ -236,7 +265,10 @@ describe('WorkspaceController', () => {
       invitationService.revokeInvitation.mockResolvedValue(undefined);
 
       await controller.revokeInvitation('ws-1', 'inv-1');
-      expect(invitationService.revokeInvitation).toHaveBeenCalledWith('ws-1', 'inv-1');
+      expect(invitationService.revokeInvitation).toHaveBeenCalledWith(
+        'ws-1',
+        'inv-1',
+      );
     });
   });
 });

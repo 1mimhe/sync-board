@@ -33,10 +33,19 @@ describe('LabelRepository', () => {
 
   describe('create', () => {
     it('should create label record', async () => {
-      const mockLabel = { id: 'lbl-1', name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' };
+      const mockLabel = {
+        id: 'lbl-1',
+        name: 'Bug',
+        color: '#ff0000',
+        workspaceId: 'ws-1',
+      };
       prismaService.label.create.mockResolvedValue(mockLabel);
 
-      const result = await repository.create({ name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' });
+      const result = await repository.create({
+        name: 'Bug',
+        color: '#ff0000',
+        workspaceId: 'ws-1',
+      });
 
       expect(prismaService.label.create).toHaveBeenCalledWith({
         data: { name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' },
@@ -61,7 +70,10 @@ describe('LabelRepository', () => {
 
   describe('findAvailableLabels', () => {
     it('should find both workspace and board-specific labels when boardId is provided', async () => {
-      const mockLabels = [{ id: 'lbl-1', name: 'Shared' }, { id: 'lbl-2', name: 'Board-only' }];
+      const mockLabels = [
+        { id: 'lbl-1', name: 'Shared' },
+        { id: 'lbl-2', name: 'Board-only' },
+      ];
       prismaService.label.findMany.mockResolvedValue(mockLabels);
 
       const result = await repository.findAvailableLabels('ws-1', 'board-1');

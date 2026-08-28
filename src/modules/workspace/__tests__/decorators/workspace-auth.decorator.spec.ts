@@ -2,6 +2,7 @@ import { WorkspaceAuth } from '../../decorators/workspace-auth.decorator';
 import { WorkspaceRole } from '@prisma/client';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { JwtAuthGuard } from '../../../../common/guards/jwt-auth.guard';
+import { EmailVerifiedGuard } from '../../../../common/guards/email-verified.guard';
 import { WorkspaceMemberGuard } from '../../guards/workspace-member.guard';
 import { RbacGuard } from '../../../../common/guards/rbac.guard';
 
@@ -12,10 +13,21 @@ describe('WorkspaceAuth Decorator', () => {
       testEndpoint() {}
     }
 
-    const rolesMetadata = Reflect.getMetadata('roles', TestController.prototype.testEndpoint);
+    const rolesMetadata = Reflect.getMetadata(
+      'roles',
+      TestController.prototype.testEndpoint,
+    );
     expect(rolesMetadata).toEqual(['owner', 'admin']);
 
-    const guards = Reflect.getMetadata(GUARDS_METADATA, TestController.prototype.testEndpoint);
-    expect(guards).toEqual([JwtAuthGuard, WorkspaceMemberGuard, RbacGuard]);
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      TestController.prototype.testEndpoint,
+    );
+    expect(guards).toEqual([
+      JwtAuthGuard,
+      EmailVerifiedGuard,
+      WorkspaceMemberGuard,
+      RbacGuard,
+    ]);
   });
 });

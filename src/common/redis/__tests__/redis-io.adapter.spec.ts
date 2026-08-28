@@ -66,15 +66,26 @@ describe('RedisIoAdapter', () => {
   describe('connectToRedis', () => {
     it('should create dedicated pub and sub clients and initialize adapter constructor', async () => {
       const mockAdapterCtor = jest.fn();
-      (redisAdapterPkg.createAdapter as jest.Mock).mockReturnValue(mockAdapterCtor);
+      (redisAdapterPkg.createAdapter as jest.Mock).mockReturnValue(
+        mockAdapterCtor,
+      );
 
       await adapter.connectToRedis();
 
       expect(mockAppContext.get).toHaveBeenCalledWith(RedisService);
       expect(mockRedisService.duplicate).toHaveBeenCalledTimes(2);
-      expect(mockPubClient.on).toHaveBeenCalledWith('error', expect.any(Function));
-      expect(mockSubClient.on).toHaveBeenCalledWith('error', expect.any(Function));
-      expect(redisAdapterPkg.createAdapter).toHaveBeenCalledWith(mockPubClient, mockSubClient);
+      expect(mockPubClient.on).toHaveBeenCalledWith(
+        'error',
+        expect.any(Function),
+      );
+      expect(mockSubClient.on).toHaveBeenCalledWith(
+        'error',
+        expect.any(Function),
+      );
+      expect(redisAdapterPkg.createAdapter).toHaveBeenCalledWith(
+        mockPubClient,
+        mockSubClient,
+      );
     });
 
     it('should log error when pub or sub clients emit an error', async () => {
@@ -97,10 +108,14 @@ describe('RedisIoAdapter', () => {
         .mockReturnValue(mockServer as any);
 
       const mockAdapterCtor = jest.fn();
-      (redisAdapterPkg.createAdapter as jest.Mock).mockReturnValue(mockAdapterCtor);
+      (redisAdapterPkg.createAdapter as jest.Mock).mockReturnValue(
+        mockAdapterCtor,
+      );
 
       await adapter.connectToRedis();
-      const server = adapter.createIOServer(3000, { path: '/socket.io' } as any);
+      const server = adapter.createIOServer(3000, {
+        path: '/socket.io',
+      } as any);
 
       expect(superCreateSpy).toHaveBeenCalledWith(
         3000,

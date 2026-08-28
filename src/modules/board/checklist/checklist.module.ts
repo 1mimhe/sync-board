@@ -10,7 +10,13 @@ import { LexorankSubModule } from '../lexorank/lexorank.module';
 
 /** Card checklists and items slice with Lexorank ordering. */
 @Module({
-  imports: [AuthModule, WorkspaceModule, LexorankSubModule, BoardSubModule, CardSubModule],
+  imports: [
+    AuthModule,
+    WorkspaceModule,
+    LexorankSubModule,
+    BoardSubModule,
+    CardSubModule,
+  ],
   controllers: [ChecklistController],
   providers: [ChecklistService, ChecklistRepository],
 })

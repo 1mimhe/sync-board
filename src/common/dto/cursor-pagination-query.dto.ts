@@ -4,6 +4,7 @@ import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
 /**
  * Standard query parameters for cursor-based pagination (project standard).
+ * Shared across every paginated list endpoint.
  */
 export class CursorPaginationQueryDto {
   /** Cursor: last item's id from the previous page */

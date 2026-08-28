@@ -41,6 +41,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
     },
   };
 
+  /**
+   * Known 403 error codes thrown by guards as
+   * `ForbiddenException('<CODE>')` — mirrors `unauthorizedErrorMap` so
+   * specific guard codes survive the filter instead of collapsing to
+   * generic `FORBIDDEN`.
+   */
+  private readonly forbiddenErrorMap: Record<
+    string,
+    { code: string; message: string }
+  > = {
+    EMAIL_NOT_VERIFIED: {
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Email verification required before performing this action',
+    },
+  };
+
+  /** Known 403 guard error codes that should survive the filter. */
+  private readonly forbiddenCodes = new Set(
+    Object.keys(this.forbiddenErrorMap),
+  );
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -149,13 +170,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       return 'UNAUTHORIZED';
     }
-    if (statusCode === HttpStatus.FORBIDDEN) return 'FORBIDDEN';
+    if (statusCode === HttpStatus.FORBIDDEN) {
+      if (rawMessage && this.forbiddenErrorMap[rawMessage]) {
+        return this.forbiddenErrorMap[rawMessage].code;
+      }
+      return 'FORBIDDEN';
+    }
     if (statusCode === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
     if (statusCode === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
     if (statusCode === HttpStatus.CONFLICT) return 'CONFLICT';
     if (statusCode === HttpStatus.TOO_MANY_REQUESTS) return 'TOO_MANY_REQUESTS';
+    if (rawMessage && this.forbiddenCodes.has(rawMessage)) {
+      return this.forbiddenErrorMap[rawMessage].code;
+    }
     return 'HTTP_ERROR';
   }
+
+  /** Known 403 guard error codes that should survive the filter (as the readable message). */
+  private readonly forbiddenReadableMessages = new Set(
+    Object.values(this.forbiddenErrorMap).map((e) => e.message),
+  );
 
   private getReadableMessageForException(
     statusCode: number,
@@ -168,6 +202,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (rawMessage === 'Unauthorized') {
         return 'Authentication required';
       }
+    }
+    if (rawMessage && this.forbiddenErrorMap[rawMessage]) {
+      return this.forbiddenErrorMap[rawMessage].message;
     }
     return rawMessage;
   }

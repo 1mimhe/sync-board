@@ -22,6 +22,28 @@ export class WorkspaceMemberRemovedEvent {
   ) {}
 }
 
+/**
+ * Emitted when a member leaves a workspace on their own initiative
+ * (distinct from admin-initiated removal).
+ */
+export class WorkspaceMemberLeftEvent {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly userId: string,
+  ) {}
+}
+
+/**
+ * Emitted after an ownership transfer transaction commits.
+ */
+export class WorkspaceOwnershipTransferredEvent {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly previousOwnerId: string,
+    public readonly newOwnerId: string,
+  ) {}
+}
+
 export class WorkspaceMemberRoleChangedEvent {
   constructor(
     public readonly workspaceId: string,

@@ -7,6 +7,7 @@ import { CardRepository } from '../../../card/repositories/card.repository';
 import { BoardRepository } from '../../../board/repositories/board.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { ForbiddenException } from '@nestjs/common';
+import { COMMENT_EVENTS } from '../../../comment/events/comment-events.constants';
 
 describe('CardCommentService', () => {
   let service: CardCommentService;
@@ -77,7 +78,10 @@ describe('CardCommentService', () => {
         authorId: 'user-1',
         content: 'Nice job',
       });
-      expect(eventEmitter.emit).toHaveBeenCalledWith('comment.created', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMENT_EVENTS.created,
+        expect.any(Object),
+      );
     });
   });
 
@@ -170,11 +174,7 @@ describe('CardCommentService', () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.getCardComments(
-          'board-uuid',
-          'ws-uuid',
-          'nonexistent-uuid',
-        ),
+        service.getCardComments('board-uuid', 'ws-uuid', 'nonexistent-uuid'),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });
@@ -203,6 +203,11 @@ describe('CardCommentService', () => {
 
       expect(result.content).toBe('New text');
       expect(commentRepo.update).toHaveBeenCalledWith('comm-1', 'New text');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_EVENTS.updated, {
+        comment: { id: 'comm-1', content: 'New text' },
+        boardId: 'board-uuid',
+        updatedBy: 'user-1',
+      } as any);
     });
 
     it('should throw ForbiddenException if user is not comment author during update', async () => {
@@ -249,7 +254,7 @@ describe('CardCommentService', () => {
         id: 'comm-1',
         authorId: 'user-1',
       } as any);
-      commentRepo.softDelete.mockResolvedValue(undefined as any);
+      commentRepo.softDelete.mockResolvedValue(undefined);
 
       await service.delete(
         'board-uuid',
@@ -260,6 +265,12 @@ describe('CardCommentService', () => {
       );
 
       expect(commentRepo.softDelete).toHaveBeenCalledWith('comm-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_EVENTS.deleted, {
+        commentId: 'comm-1',
+        cardId: 'card-uuid',
+        boardId: 'board-uuid',
+        deletedBy: 'user-1',
+      } as any);
     });
 
     it('should throw ForbiddenException if user is not author during delete', async () => {

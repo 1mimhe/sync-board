@@ -88,35 +88,60 @@ describe('BoardController', () => {
 
   describe('create', () => {
     it('should create board and map response', async () => {
-      boardService.create.mockResolvedValue(mockBoard as any);
+      boardService.create.mockResolvedValue(mockBoard);
 
-      const result = await controller.create('ws-1', { title: 'Sprint Board' }, mockUser);
+      const result = await controller.create(
+        'ws-1',
+        { title: 'Sprint Board' },
+        mockUser,
+      );
 
-      expect(boardService.create).toHaveBeenCalledWith('ws-1', { title: 'Sprint Board' }, 'user-uuid-1');
+      expect(boardService.create).toHaveBeenCalledWith(
+        'ws-1',
+        { title: 'Sprint Board' },
+        'user-uuid-1',
+      );
       expect(result.id).toBe('board-1');
       expect(result.title).toBe('Sprint Board');
     });
   });
 
   describe('listWorkspaceBoards', () => {
-    it('should list all workspace boards for user', async () => {
-      boardService.listWorkspaceBoards.mockResolvedValue([mockBoard as any]);
+    it('should list workspace boards with pagination mapping', async () => {
+      const paginated = {
+        items: [mockBoard],
+        pagination: { cursor: 'board-1', hasMore: false },
+      };
+      boardService.listWorkspaceBoards.mockResolvedValue(paginated);
 
-      const result = await controller.listWorkspaceBoards('ws-1', mockUser);
+      const result = await controller.listWorkspaceBoards('ws-1', mockUser, {
+        cursor: 'board-1',
+        limit: 20,
+      });
 
-      expect(boardService.listWorkspaceBoards).toHaveBeenCalledWith('ws-1', 'user-uuid-1');
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('board-1');
+      expect(boardService.listWorkspaceBoards).toHaveBeenCalledWith(
+        'ws-1',
+        'user-uuid-1',
+        { cursor: 'board-1', limit: 20 },
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('board-1');
+      expect(result.pagination).toEqual({ cursor: 'board-1', hasMore: false });
     });
   });
 
   describe('getOne', () => {
     it('should get board with full nested content and pagination', async () => {
-      boardService.getBoardWithContent.mockResolvedValue(mockBoardWithContent as any);
+      boardService.getBoardWithContent.mockResolvedValue(mockBoardWithContent);
 
       const result = await controller.getOne('ws-1', 'board-1', {}, mockUser);
 
-      expect(boardService.getBoardWithContent).toHaveBeenCalledWith('board-1', 'ws-1', 'user-uuid-1', {});
+      expect(boardService.getBoardWithContent).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'user-uuid-1',
+        {},
+      );
       expect(result.id).toBe('board-1');
       expect(result.lists).toEqual([]);
     });
@@ -124,61 +149,101 @@ describe('BoardController', () => {
 
   describe('update', () => {
     it('should update board details', async () => {
-      boardService.update.mockResolvedValue({ ...mockBoard, title: 'Updated' } as any);
+      boardService.update.mockResolvedValue({
+        ...mockBoard,
+        title: 'Updated',
+      });
 
-      const result = await controller.update('ws-1', 'board-1', { title: 'Updated' }, mockUser);
+      const result = await controller.update(
+        'ws-1',
+        'board-1',
+        { title: 'Updated' },
+        mockUser,
+      );
 
-      expect(boardService.update).toHaveBeenCalledWith('board-1', 'ws-1', { title: 'Updated' }, 'user-uuid-1');
+      expect(boardService.update).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        { title: 'Updated' },
+        'user-uuid-1',
+      );
       expect(result.title).toBe('Updated');
     });
   });
 
   describe('archive and unarchive', () => {
     it('should archive board', async () => {
-      boardService.archive.mockResolvedValue(undefined as any);
+      boardService.archive.mockResolvedValue(undefined);
 
       await controller.archive('ws-1', 'board-1', mockUser);
 
-      expect(boardService.archive).toHaveBeenCalledWith('board-1', 'ws-1', 'user-uuid-1');
+      expect(boardService.archive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'user-uuid-1',
+      );
     });
 
     it('should unarchive board and return mapped DTO', async () => {
-      boardService.unarchive.mockResolvedValue(mockBoard as any);
+      boardService.unarchive.mockResolvedValue(mockBoard);
 
       const result = await controller.unarchive('ws-1', 'board-1', mockUser);
 
-      expect(boardService.unarchive).toHaveBeenCalledWith('board-1', 'ws-1', 'user-uuid-1');
+      expect(boardService.unarchive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'user-uuid-1',
+      );
       expect(result.id).toBe('board-1');
     });
   });
 
   describe('star and unstar', () => {
     it('should star board', async () => {
-      boardService.starBoard.mockResolvedValue(undefined as any);
+      boardService.starBoard.mockResolvedValue(undefined);
 
       await controller.star('ws-1', 'board-1', mockUser);
 
-      expect(boardService.starBoard).toHaveBeenCalledWith('user-uuid-1', 'board-1', 'ws-1');
+      expect(boardService.starBoard).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'board-1',
+        'ws-1',
+      );
     });
 
     it('should unstar board', async () => {
-      boardService.unstarBoard.mockResolvedValue(undefined as any);
+      boardService.unstarBoard.mockResolvedValue(undefined);
 
       await controller.unstar('ws-1', 'board-1', mockUser);
 
-      expect(boardService.unstarBoard).toHaveBeenCalledWith('user-uuid-1', 'board-1', 'ws-1');
+      expect(boardService.unstarBoard).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'board-1',
+        'ws-1',
+      );
     });
   });
 
   describe('activities', () => {
-    it('should get board activities and map them', async () => {
-      boardService.getBoardActivities.mockResolvedValue([mockActivity as any]);
+    it('should get board activities and map them with pagination', async () => {
+      const paginated = {
+        items: [mockActivity as any],
+        pagination: { cursor: 'act-1', hasMore: false },
+      };
+      boardService.getBoardActivities.mockResolvedValue(paginated);
 
-      const result = await controller.getActivities('ws-1', 'board-1');
+      const result = await controller.getActivities('ws-1', 'board-1', {
+        limit: 20,
+      });
 
-      expect(boardService.getBoardActivities).toHaveBeenCalledWith('board-1', 'ws-1');
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('act-1');
+      expect(boardService.getBoardActivities).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        { limit: 20 },
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('act-1');
+      expect(result.pagination).toEqual({ cursor: 'act-1', hasMore: false });
     });
   });
 });

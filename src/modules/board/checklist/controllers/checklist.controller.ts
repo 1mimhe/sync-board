@@ -40,9 +40,7 @@ import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface'
  * Controller exposing REST endpoints for managing card checklists and their items.
  */
 @ApiTags('Card Checklists')
-@Controller(
-  'workspaces/:workspaceId/boards/:boardId/cards/:cardId/checklists',
-)
+@Controller('workspaces/:workspaceId/boards/:boardId/cards/:cardId/checklists')
 export class ChecklistController {
   constructor(private readonly checklistService: ChecklistService) {}
 

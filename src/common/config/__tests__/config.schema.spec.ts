@@ -17,8 +17,33 @@ describe('configValidationSchema', () => {
     expect(value.REDIS_HOST).toBe('localhost');
     expect(value.REDIS_PORT).toBe(6379);
     expect(value.RABBITMQ_URL).toBe('amqp://guest:guest@localhost:5672');
-    expect(value.GOOGLE_CALLBACK_URL).toBe('http://localhost:3000/api/auth/google/callback');
+    expect(value.GOOGLE_CALLBACK_URL).toBe(
+      'http://localhost:3000/api/auth/google/callback',
+    );
     expect(value.CLIENT_URL).toBe('http://localhost:3001');
+    expect(value.SMTP_HOST).toBe('localhost');
+    expect(value.SMTP_PORT).toBe(1025);
+    expect(value.SMTP_SECURE).toBe(false);
+    expect(value.MAIL_FROM).toBe('SyncBoard <no-reply@syncboard.local>');
+    expect(value.MAIL_FROM_NAME).toBe('SyncBoard');
+  });
+
+  it('should accept explicit SMTP auth credentials', () => {
+    const { error, value } = configValidationSchema.validate({
+      ...validConfig,
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: 587,
+      SMTP_SECURE: true,
+      SMTP_USER: 'mailer',
+      SMTP_PASS: 'secret',
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.SMTP_HOST).toBe('smtp.example.com');
+    expect(value.SMTP_PORT).toBe(587);
+    expect(value.SMTP_SECURE).toBe(true);
+    expect(value.SMTP_USER).toBe('mailer');
+    expect(value.SMTP_PASS).toBe('secret');
   });
 
   it('should fail validation when DATABASE_URL is missing', () => {

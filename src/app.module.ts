@@ -16,6 +16,7 @@ import { DocumentModule } from './modules/document/document.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { FileModule } from './modules/file/file.module';
+import { MailModule } from './modules/mail/mail.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -87,6 +88,7 @@ import { HealthModule } from './health/health.module';
     ActivityModule,
     NotificationModule,
     FileModule,
+    MailModule,
 
     // System Health Checks
     HealthModule,

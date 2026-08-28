@@ -40,11 +40,21 @@ describe('ListController', () => {
 
   describe('create', () => {
     it('should create list and map response', async () => {
-      listService.create.mockResolvedValue(mockList as any);
+      listService.create.mockResolvedValue(mockList);
 
-      const result = await controller.create('ws-1', 'board-1', { title: 'To Do' }, mockUser);
+      const result = await controller.create(
+        'ws-1',
+        'board-1',
+        { title: 'To Do' },
+        mockUser,
+      );
 
-      expect(listService.create).toHaveBeenCalledWith('board-1', 'ws-1', { title: 'To Do' }, 'user-uuid-1');
+      expect(listService.create).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        { title: 'To Do' },
+        'user-uuid-1',
+      );
       expect(result.id).toBe('list-1');
       expect(result.title).toBe('To Do');
     });
@@ -52,41 +62,83 @@ describe('ListController', () => {
 
   describe('update', () => {
     it('should update list title', async () => {
-      listService.update.mockResolvedValue({ ...mockList, title: 'In Progress' } as any);
+      listService.update.mockResolvedValue({
+        ...mockList,
+        title: 'In Progress',
+      });
 
-      const result = await controller.update('ws-1', 'board-1', 'list-1', { title: 'In Progress' }, mockUser);
+      const result = await controller.update(
+        'ws-1',
+        'board-1',
+        'list-1',
+        { title: 'In Progress' },
+        mockUser,
+      );
 
-      expect(listService.update).toHaveBeenCalledWith('board-1', 'ws-1', 'list-1', { title: 'In Progress' }, 'user-uuid-1');
+      expect(listService.update).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'list-1',
+        { title: 'In Progress' },
+        'user-uuid-1',
+      );
       expect(result.title).toBe('In Progress');
     });
   });
 
   describe('move', () => {
     it('should reorder list via LexoRank', async () => {
-      listService.move.mockResolvedValue({ ...mockList, rank: '0|i:' } as any);
+      listService.move.mockResolvedValue({ ...mockList, rank: '0|i:' });
 
-      const result = await controller.move('ws-1', 'board-1', 'list-1', { prevRank: '0|h:' }, mockUser);
+      const result = await controller.move(
+        'ws-1',
+        'board-1',
+        'list-1',
+        { prevRank: '0|h:' },
+        mockUser,
+      );
 
-      expect(listService.move).toHaveBeenCalledWith('board-1', 'ws-1', 'list-1', { prevRank: '0|h:' }, 'user-uuid-1');
+      expect(listService.move).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'list-1',
+        { prevRank: '0|h:' },
+        'user-uuid-1',
+      );
       expect(result.rank).toBe('0|i:');
     });
   });
 
   describe('archive and unarchive', () => {
     it('should archive list', async () => {
-      listService.archive.mockResolvedValue(undefined as any);
+      listService.archive.mockResolvedValue(undefined);
 
       await controller.archive('ws-1', 'board-1', 'list-1', mockUser);
 
-      expect(listService.archive).toHaveBeenCalledWith('board-1', 'ws-1', 'list-1', 'user-uuid-1');
+      expect(listService.archive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'list-1',
+        'user-uuid-1',
+      );
     });
 
     it('should unarchive list and return mapped DTO', async () => {
-      listService.unarchive.mockResolvedValue(mockList as any);
+      listService.unarchive.mockResolvedValue(mockList);
 
-      const result = await controller.unarchive('ws-1', 'board-1', 'list-1', mockUser);
+      const result = await controller.unarchive(
+        'ws-1',
+        'board-1',
+        'list-1',
+        mockUser,
+      );
 
-      expect(listService.unarchive).toHaveBeenCalledWith('board-1', 'ws-1', 'list-1', 'user-uuid-1');
+      expect(listService.unarchive).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'list-1',
+        'user-uuid-1',
+      );
       expect(result.id).toBe('list-1');
     });
   });

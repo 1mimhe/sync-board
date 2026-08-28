@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 /**
- * Manual WebSocket Test Client for SyncBoard Phase 3.
+ * Manual WebSocket Test Client for SyncBoard.
  *
  * Usage:
  *   npx ts-node test/manual/test-ws-client.ts <ACCESS_TOKEN> <BOARD_ID> <WORKSPACE_ID>
@@ -12,11 +12,12 @@ import { io, Socket } from 'socket.io-client';
 
 const token = process.argv[2] || process.env.TOKEN || 'YOUR_ACCESS_TOKEN';
 const boardId = process.argv[3] || process.env.BOARD_ID || 'YOUR_BOARD_UUID';
-const workspaceId = process.argv[4] || process.env.WORKSPACE_ID || 'YOUR_WORKSPACE_UUID';
+const workspaceId =
+  process.argv[4] || process.env.WORKSPACE_ID || 'YOUR_WORKSPACE_UUID';
 const serverUrl = process.env.SERVER_URL || 'http://localhost:3000';
 
 console.log('====================================================');
-console.log('🚀 SyncBoard Phase 3 — Real-Time WebSocket Client');
+console.log('🚀 SyncBoard — Real-Time WebSocket Client');
 console.log('====================================================');
 console.log('Target Server :', serverUrl);
 console.log('Board ID      :', boardId);
@@ -70,7 +71,10 @@ socket.on('workspace:member-offline', (data) => {
 
 // Board & Presence Events
 socket.on('board:joined', (data) => {
-  console.log('✅ [BOARD JOINED - ACTIVE VIEWERS]:', JSON.stringify(data, null, 2));
+  console.log(
+    '✅ [BOARD JOINED - ACTIVE VIEWERS]:',
+    JSON.stringify(data, null, 2),
+  );
 });
 
 socket.on('board:presence', (data) => {
@@ -83,23 +87,37 @@ socket.on('board:cursor', (data) => {
 
 // Real-Time Entity Updates (emitted when REST API changes data)
 socket.on('board:updated', (data) => console.log('📋 [BOARD UPDATED]:', data));
-socket.on('board:archived', (data) => console.log('🗑️ [BOARD ARCHIVED]:', data));
-socket.on('board:unarchived', (data) => console.log('♻️ [BOARD RESTORED]:', data));
+socket.on('board:archived', (data) =>
+  console.log('🗑️ [BOARD ARCHIVED]:', data),
+);
+socket.on('board:unarchived', (data) =>
+  console.log('♻️ [BOARD RESTORED]:', data),
+);
 
 socket.on('list:created', (data) => console.log('➕ [LIST CREATED]:', data));
 socket.on('list:updated', (data) => console.log('✏️ [LIST UPDATED]:', data));
 socket.on('list:moved', (data) => console.log('↕️ [LIST MOVED]:', data));
 socket.on('list:archived', (data) => console.log('🗑️ [LIST ARCHIVED]:', data));
-socket.on('list:unarchived', (data) => console.log('♻️ [LIST RESTORED]:', data));
+socket.on('list:unarchived', (data) =>
+  console.log('♻️ [LIST RESTORED]:', data),
+);
 
 socket.on('card:created', (data) => console.log('🎴 [CARD CREATED]:', data));
 socket.on('card:updated', (data) => console.log('✏️ [CARD UPDATED]:', data));
 socket.on('card:moved', (data) => console.log('🚚 [CARD MOVED]:', data));
 socket.on('card:archived', (data) => console.log('🗑️ [CARD ARCHIVED]:', data));
-socket.on('card:unarchived', (data) => console.log('♻️ [CARD RESTORED]:', data));
-socket.on('card:comment-added', (data) => console.log('💬 [COMMENT ADDED]:', data));
-socket.on('card:attachment-added', (data) => console.log('📎 [ATTACHMENT ADDED]:', data));
-socket.on('card:attachment-deleted', (data) => console.log('🗑️ [ATTACHMENT DELETED]:', data));
+socket.on('card:unarchived', (data) =>
+  console.log('♻️ [CARD RESTORED]:', data),
+);
+socket.on('card:comment-added', (data) =>
+  console.log('💬 [COMMENT ADDED]:', data),
+);
+socket.on('card:attachment-added', (data) =>
+  console.log('📎 [ATTACHMENT ADDED]:', data),
+);
+socket.on('card:attachment-deleted', (data) =>
+  console.log('🗑️ [ATTACHMENT DELETED]:', data),
+);
 
 // 30s presence keep-alive heartbeat
 setInterval(() => {

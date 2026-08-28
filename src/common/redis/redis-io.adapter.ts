@@ -28,14 +28,22 @@ export class RedisIoAdapter extends IoAdapter {
     const subClient = redisService.duplicate();
 
     pubClient.on('error', (err: Error) =>
-      this.logger.error(`Socket.IO Redis Adapter Pub Error: ${err.message}`, err.stack),
+      this.logger.error(
+        `Socket.IO Redis Adapter Pub Error: ${err.message}`,
+        err.stack,
+      ),
     );
     subClient.on('error', (err: Error) =>
-      this.logger.error(`Socket.IO Redis Adapter Sub Error: ${err.message}`, err.stack),
+      this.logger.error(
+        `Socket.IO Redis Adapter Sub Error: ${err.message}`,
+        err.stack,
+      ),
     );
 
     this.adapterConstructor = createAdapter(pubClient, subClient);
-    this.logger.log('Socket.IO Redis adapter connected using unified RedisService configuration');
+    this.logger.log(
+      'Socket.IO Redis adapter connected using unified RedisService configuration',
+    );
   }
 
   override createIOServer(port: number, options?: ServerOptions): Server {

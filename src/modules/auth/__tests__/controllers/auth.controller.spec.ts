@@ -149,9 +149,9 @@ describe('AuthController', () => {
     it('should throw TOKEN_INVALID when the refresh cookie is missing', async () => {
       const req = { cookies: {}, ip: '127.0.0.1', headers: {} } as any;
 
-      await expect(controller.refresh(req, mockRes as Response)).rejects.toThrow(
-        'TOKEN_INVALID',
-      );
+      await expect(
+        controller.refresh(req, mockRes as Response),
+      ).rejects.toThrow('TOKEN_INVALID');
       expect(authService.refreshTokens).not.toHaveBeenCalled();
     });
 
@@ -162,9 +162,9 @@ describe('AuthController', () => {
         headers: {},
       } as any;
 
-      await expect(controller.refresh(req, mockRes as Response)).rejects.toThrow(
-        'TOKEN_INVALID',
-      );
+      await expect(
+        controller.refresh(req, mockRes as Response),
+      ).rejects.toThrow('TOKEN_INVALID');
       expect(authService.refreshTokens).not.toHaveBeenCalled();
     });
   });
@@ -300,6 +300,31 @@ describe('AuthController', () => {
     });
   });
 
+  describe('verifyEmail', () => {
+    it('should delegate the token to the service and return a message', async () => {
+      authService.verifyEmail = jest.fn().mockResolvedValue({ verified: true });
+
+      const result = await controller.verifyEmail({ token: 'raw-token' });
+
+      expect(authService.verifyEmail).toHaveBeenCalledWith('raw-token');
+      expect(result).toEqual({ message: 'Email verified successfully.' });
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('should request a new verification email for the current user', async () => {
+      authService.requestEmailVerification = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await controller.resendVerification({ sub: mockUser.id } as any);
+
+      expect(authService.requestEmailVerification).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+    });
+  });
+
   describe('googleAuth', () => {
     it('should return Google OAuth authorization URL', async () => {
       authService.getGoogleAuthUrl.mockResolvedValue({
@@ -361,7 +386,9 @@ describe('AuthController', () => {
 
       const result = await controller.googleCallback(req, mockRes as Response);
 
-      expect(authService.validateOAuthState).toHaveBeenCalledWith('valid-state');
+      expect(authService.validateOAuthState).toHaveBeenCalledWith(
+        'valid-state',
+      );
       expect(authService.handleGoogleCallback).toHaveBeenCalledWith(
         req.user,
         '127.0.0.1',

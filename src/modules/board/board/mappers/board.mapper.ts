@@ -11,8 +11,14 @@ import {
   CardResponseDto,
   CardWithDetailsResponseDto,
 } from '../../card/dto/card-response.dto';
-import { CommentAuthorDto, CardCommentResponseDto } from '../../comment/dto/card-comment-response.dto';
-import { ListResponseDto, ListWithCardsResponseDto } from '../../list/dto/list-response.dto';
+import {
+  CommentAuthorDto,
+  CardCommentResponseDto,
+} from '../../comment/dto/card-comment-response.dto';
+import {
+  ListResponseDto,
+  ListWithCardsResponseDto,
+} from '../../list/dto/list-response.dto';
 import { BoardLabelResponseDto } from '../../label/dto/board-label-response.dto';
 import { CardAttachmentResponseDto } from '../../attachment/dto/card-attachment-response.dto';
 import type {

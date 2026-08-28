@@ -28,7 +28,10 @@ describe('AppException Hierarchy', () => {
     });
 
     it('should use default statusCode 500 and empty details when not provided', () => {
-      const exception = new AppException('DEFAULT_ERROR', 'Default error message');
+      const exception = new AppException(
+        'DEFAULT_ERROR',
+        'Default error message',
+      );
 
       expect(exception.errorCode).toBe('DEFAULT_ERROR');
       expect(exception.message).toBe('Default error message');
@@ -42,7 +45,9 @@ describe('AppException Hierarchy', () => {
       const exception = new EntityNotFoundException('Workspace', 'ws-123');
 
       expect(exception.errorCode).toBe('WORKSPACE_NOT_FOUND');
-      expect(exception.message).toBe("Workspace with id 'ws-123' was not found");
+      expect(exception.message).toBe(
+        "Workspace with id 'ws-123' was not found",
+      );
       expect(exception.getStatus()).toBe(HttpStatus.NOT_FOUND);
     });
   });
