@@ -63,13 +63,22 @@ describe('WorkspaceController', () => {
   });
 
   describe('listMine', () => {
-    it('should return user workspaces from service', async () => {
-      const mockList = [{ id: 'ws-1', role: WorkspaceRole.owner }];
+    it('should return paginated user workspaces from service', async () => {
+      const mockList = {
+        items: [{ id: 'ws-1', role: WorkspaceRole.owner }],
+        pagination: { cursor: 'ws-1', hasMore: false },
+      };
       workspaceService.findAllForUser.mockResolvedValue(mockList as any);
 
-      const res = await controller.listMine(mockUser);
+      const res = await controller.listMine(mockUser, {
+        cursor: 'ws-1',
+        limit: 20,
+      });
       expect(res).toEqual(mockList);
-      expect(workspaceService.findAllForUser).toHaveBeenCalledWith('user-123');
+      expect(workspaceService.findAllForUser).toHaveBeenCalledWith('user-123', {
+        cursor: 'ws-1',
+        limit: 20,
+      });
     });
   });
 

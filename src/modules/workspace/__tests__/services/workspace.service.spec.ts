@@ -108,14 +108,33 @@ describe('WorkspaceService', () => {
   });
 
   describe('findAllForUser', () => {
-    it('should return workspaces for user', async () => {
+    it('should return cursor-paginated workspaces for user', async () => {
       const mockList = [
         { id: 'ws-1', name: 'WS 1', role: WorkspaceRole.owner },
       ];
-      workspaceRepo.findUserWorkspaces.mockResolvedValue(mockList as any);
+      workspaceRepo.findUserWorkspacesPage.mockResolvedValue(mockList as any);
 
-      const res = await service.findAllForUser('user-1');
-      expect(res).toEqual(mockList);
+      const res = await service.findAllForUser('user-1', { limit: 20 });
+
+      expect(res.items).toEqual(mockList);
+      expect(res.pagination).toEqual({ cursor: null, hasMore: false });
+      expect(workspaceRepo.findUserWorkspacesPage).toHaveBeenCalledWith(
+        'user-1',
+        undefined,
+        20,
+      );
+    });
+
+    it('should default limit to 20 when not provided', async () => {
+      workspaceRepo.findUserWorkspacesPage.mockResolvedValue([]);
+
+      await service.findAllForUser('user-1', {});
+
+      expect(workspaceRepo.findUserWorkspacesPage).toHaveBeenCalledWith(
+        'user-1',
+        undefined,
+        20,
+      );
     });
   });
 

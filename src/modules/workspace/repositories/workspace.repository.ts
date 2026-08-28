@@ -60,22 +60,57 @@ export class WorkspaceRepository {
     }));
   }
 
-  async findUserWorkspaces(userId: string): Promise<WorkspaceWithRole[]> {
-    const workspaces = await this.prisma.workspace.findMany({
-      where: {
-        archivedAt: null,
-        members: {
-          some: { userId },
+  /**
+   * Finds a cursor page of non-archived workspaces for a user with their role,
+   * newest first. Fetches limit + 1 rows so callers can compute hasMore.
+   *
+   * Unknown/stale cursors are tolerated: when Prisma cannot locate the cursor row,
+   * the query is retried without it, returning the newest page.
+   *
+   * @param userId - User UUID
+   * @param cursor - Last item id of the previous page (optional)
+   * @param limit - Page size; one extra row is fetched to detect the next page
+   * @returns Array of workspaces mapped with user role (length up to limit + 1)
+   */
+  async findUserWorkspacesPage(
+    userId: string,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<WorkspaceWithRole[]> {
+    const find = (withCursor: boolean) =>
+      this.prisma.workspace.findMany({
+        where: {
+          archivedAt: null,
+          members: {
+            some: { userId },
+          },
         },
-      },
-      include: {
-        members: {
-          where: { userId },
-          select: { role: true },
+        include: {
+          members: {
+            where: { userId },
+            select: { role: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        ...(withCursor && cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+
+    let workspaces;
+    try {
+      workspaces = await find(true);
+    } catch (error) {
+      if (
+        cursor &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        // Unknown/stale cursor — degrade gracefully to the newest page
+        workspaces = await find(false);
+      } else {
+        throw error;
+      }
+    }
 
     return workspaces.map((ws) => {
       const role = ws.members[0]?.role ?? WorkspaceRole.viewer;

@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -36,6 +37,7 @@ import {
   WorkspaceMemberResponseDto,
   MemberWithUserResponseDto,
   WorkspaceInvitationResponseDto,
+  CursorPaginationQueryDto,
 } from '../dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from '../../../common/guards/email-verified.guard';
@@ -43,6 +45,7 @@ import { SkipEmailVerification } from '../../../common/decorators/skip-email-ver
 import { WorkspaceAuth } from '../decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import {
   WorkspaceWithRole,
   MemberWithUser,
@@ -84,16 +87,17 @@ export class WorkspaceController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List all workspaces for current user' })
+  @ApiOperation({ summary: 'List workspaces for current user (paginated)' })
   @ApiOkResponse({
     type: [WorkspaceWithRoleResponseDto],
-    description: 'List of workspaces returned',
+    description: 'Paginated list of workspaces: { items, pagination }',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async listMine(
     @CurrentUser() user: JwtPayload,
-  ): Promise<WorkspaceWithRole[]> {
-    return this.workspaceService.findAllForUser(user.sub);
+    @Query() query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<WorkspaceWithRole>> {
+    return this.workspaceService.findAllForUser(user.sub, query);
   }
 
   /**
