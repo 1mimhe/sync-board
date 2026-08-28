@@ -1,13 +1,12 @@
 import { WsValidationPipe } from '../ws-validation.pipe';
-import { WsBoardJoinDto, WsCursorDto } from '../../../modules/board/realtime/dto/ws-messages.dto';
+import {
+  WsBoardJoinDto,
+  WsCursorDto,
+} from '../../../modules/board/realtime/dto/ws-messages.dto';
 import { WsException } from '@nestjs/websockets';
 import { ArgumentMetadata } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsString, ValidateNested } from 'class-validator';
 
 class NestedItemDto {
   @IsString()
@@ -48,13 +47,18 @@ describe('WsValidationPipe', () => {
       metatype: WsBoardJoinDto,
     };
 
-    await expect(pipe.transform(invalidPayload, metadata)).rejects.toThrow(WsException);
+    await expect(pipe.transform(invalidPayload, metadata)).rejects.toThrow(
+      WsException,
+    );
 
     try {
       await pipe.transform(invalidPayload, metadata);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('INVALID_PAYLOAD');
       expect(wsErr.message).toContain('Validation failed');
     }
@@ -70,7 +74,9 @@ describe('WsValidationPipe', () => {
       metatype: WsBoardJoinDto,
     };
 
-    await expect(pipe.transform(payloadWithExtra, metadata)).rejects.toThrow(WsException);
+    await expect(pipe.transform(payloadWithExtra, metadata)).rejects.toThrow(
+      WsException,
+    );
   });
 
   it('should correctly transform nested numeric and string fields', async () => {
@@ -114,7 +120,10 @@ describe('WsValidationPipe', () => {
       fail('Expected transform to throw');
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const wsErr = (error as WsException).getError() as { code: string; message: string };
+      const wsErr = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(wsErr.code).toBe('INVALID_PAYLOAD');
       expect(wsErr.message).toContain('Validation failed');
     }
