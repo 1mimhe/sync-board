@@ -8,8 +8,11 @@ import { UpdateMemberRoleDto } from '../dto/update-member-role.dto';
 import type { MemberWithUser } from '../interfaces/workspace.interfaces';
 import {
   WorkspaceMemberRemovedEvent,
+  WorkspaceMemberLeftEvent,
   WorkspaceMemberRoleChangedEvent,
+  WorkspaceOwnershipTransferredEvent,
 } from '../events/workspace.events';
+import { WORKSPACE_EVENTS } from '../events/workspace-events.constants';
 import {
   EntityNotFoundException,
   BusinessRuleException,
@@ -117,7 +120,7 @@ export class MembershipService {
     const updatedMember = await this.memberRepo.updateRole(memberId, dto.role);
 
     this.eventEmitter.emit(
-      'workspace.member_role_changed',
+      WORKSPACE_EVENTS.memberRoleChanged,
       new WorkspaceMemberRoleChangedEvent(
         workspaceId,
         member.userId,
@@ -190,7 +193,7 @@ export class MembershipService {
     await this.memberRepo.removeMember(memberId);
 
     this.eventEmitter.emit(
-      'workspace.member_removed',
+      WORKSPACE_EVENTS.memberRemoved,
       new WorkspaceMemberRemovedEvent(workspaceId, member.userId),
     );
 
@@ -202,6 +205,7 @@ export class MembershipService {
   /**
    * Allow current authenticated member to leave a workspace.
    * Sole owner cannot leave without transferring ownership first.
+   * @emits workspace.member_left
    */
   async leaveWorkspace(workspaceId: string, userId: string): Promise<void> {
     const member = await this.memberRepo.findMember(workspaceId, userId);
@@ -235,8 +239,8 @@ export class MembershipService {
     await this.memberRepo.removeMember(member.id);
 
     this.eventEmitter.emit(
-      'workspace.member_removed',
-      new WorkspaceMemberRemovedEvent(workspaceId, userId),
+      WORKSPACE_EVENTS.memberLeft,
+      new WorkspaceMemberLeftEvent(workspaceId, userId),
     );
 
     this.logger.log(`User ${userId} left workspace ${workspaceId}`);
@@ -244,6 +248,7 @@ export class MembershipService {
 
   /**
    * Transfer workspace ownership to another workspace member.
+   * @emits workspace.ownership_transferred
    */
   async transferOwnership(
     workspaceId: string,
@@ -271,7 +276,7 @@ export class MembershipService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedTarget = await this.prisma.$transaction(async (tx) => {
       await tx.workspaceMember.update({
         where: { id: currentMember.id },
         data: { role: WorkspaceRole.admin },
@@ -289,5 +294,16 @@ export class MembershipService {
 
       return updatedTarget;
     });
+
+    this.eventEmitter.emit(
+      WORKSPACE_EVENTS.ownershipTransferred,
+      new WorkspaceOwnershipTransferredEvent(
+        workspaceId,
+        currentOwnerId,
+        newOwnerUserId,
+      ),
+    );
+
+    return updatedTarget;
   }
 }
