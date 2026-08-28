@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>You're invited to join a workspace on SyncBoard</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef1f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <!-- Preheader (inbox preview text) -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    {{workspaceName}} has invited you to collaborate on SyncBoard.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef1f6;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <!-- Brand -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <tr>
+            <td align="left" style="padding-bottom:24px;">
+              <span style="display:inline-block;width:28px;height:28px;line-height:28px;text-align:center;background-color:#4f46e5;color:#ffffff;font-size:15px;font-weight:bold;border-radius:7px;">S</span>
+              <span style="vertical-align:middle;margin-left:8px;font-size:17px;font-weight:600;color:#111827;">SyncBoard</span>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Card -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(17,24,39,0.08);">
+          <!-- Accent -->
+          <tr>
+            <td height="5" style="background-color:#4f46e5;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 48px;">
+              <h1 style="margin:0 0 14px;font-size:23px;line-height:1.3;font-weight:700;color:#111827;">
+                You're invited to join <span style="color:#4f46e5;">{{workspaceName}}</span>{{#if inviterName}} by {{inviterName}}{{/if}}
+              </h1>
+
+              <p style="margin:0 0 26px;font-size:15px;line-height:1.65;color:#4b5563;">
+                Your teammates are waiting for you on SyncBoard &mdash; a shared space
+                where your team plans work together on boards, lists, and cards in real time.
+                Accept the invitation to jump in.
+              </p>
+
+              <!-- Button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
+                <tr>
+                  <td align="center" bgcolor="#4f46e5" style="border-radius:8px;">
+                    <a href="{{acceptUrl}}"
+                       target="_blank"
+                       style="display:inline-block;padding:13px 30px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">
+                      Accept invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#6b7280;">
+                If the button doesn't work, paste this link into your browser:
+              </p>
+              <p style="margin:0 0 26px;font-size:13px;line-height:1.6;word-break:break-all;">
+                <a href="{{acceptUrl}}" style="color:#4f46e5;text-decoration:none;">{{acceptUrl}}</a>
+              </p>
+
+              <!-- Notice box -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f6fa;border-left:3px solid #c7cbf8;border-radius:6px;">
+                <tr>
+                  <td style="padding:14px 18px;font-size:13px;line-height:1.6;color:#4b5563;">
+                    Not expecting this invitation? You can safely ignore it &mdash;
+                    no account changes will be made unless you accept.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <tr>
+            <td align="center" style="padding:24px 16px 0;font-size:12px;line-height:1.7;color:#9ca3af;">
+              You received this because of activity on your SyncBoard account.<br />
+              &copy; 2026 SyncBoard &middot; All rights reserved.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
