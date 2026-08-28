@@ -14,7 +14,10 @@ describe('WsAuthGuard', () => {
     guard = new WsAuthGuard(blacklistService);
   });
 
-  const createMockContext = (socketData?: unknown, socketId = 'sock-123'): ExecutionContext => {
+  const createMockContext = (
+    socketData?: unknown,
+    socketId = 'sock-123',
+  ): ExecutionContext => {
     const mockSocket = {
       id: socketId,
       data: socketData,
@@ -42,7 +45,9 @@ describe('WsAuthGuard', () => {
 
     const result = await guard.canActivate(context);
     expect(result).toBe(true);
-    expect(blacklistService.isBlacklisted).toHaveBeenCalledWith('token-jti-123');
+    expect(blacklistService.isBlacklisted).toHaveBeenCalledWith(
+      'token-jti-123',
+    );
   });
 
   it('should throw WsException when socket has no authenticated user', async () => {
@@ -54,7 +59,10 @@ describe('WsAuthGuard', () => {
       await guard.canActivate(context);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const err = (error as WsException).getError() as { code: string; message: string };
+      const err = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(err.code).toBe('TOKEN_INVALID');
       expect(err.message).toBe('Authentication required');
     }
@@ -78,9 +86,56 @@ describe('WsAuthGuard', () => {
       await guard.canActivate(context);
     } catch (error) {
       expect(error).toBeInstanceOf(WsException);
-      const err = (error as WsException).getError() as { code: string; message: string };
+      const err = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
       expect(err.code).toBe('TOKEN_REVOKED');
       expect(err.message).toBe('Token has been revoked');
     }
+  });
+
+  it('should throw WsException when the user has not verified their email', async () => {
+    blacklistService.isBlacklisted.mockResolvedValue(false);
+
+    const context = createMockContext({
+      user: {
+        sub: 'user-uuid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        jti: 'token-jti-123',
+        isEmailVerified: false,
+      },
+    });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(WsException);
+
+    try {
+      await guard.canActivate(context);
+    } catch (error) {
+      expect(error).toBeInstanceOf(WsException);
+      const err = (error as WsException).getError() as {
+        code: string;
+        message: string;
+      };
+      expect(err.code).toBe('EMAIL_NOT_VERIFIED');
+    }
+  });
+
+  it('should allow access when the user has verified their email', async () => {
+    blacklistService.isBlacklisted.mockResolvedValue(false);
+
+    const context = createMockContext({
+      user: {
+        sub: 'user-uuid',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        jti: 'token-jti-123',
+        isEmailVerified: true,
+      },
+    });
+
+    const result = await guard.canActivate(context);
+    expect(result).toBe(true);
   });
 });
