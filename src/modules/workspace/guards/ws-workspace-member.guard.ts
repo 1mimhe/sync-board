@@ -17,7 +17,9 @@ export class WsWorkspaceMemberGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient<Socket>();
-    const data = context.switchToWs().getData<{ workspaceId?: string } | undefined>();
+    const data = context
+      .switchToWs()
+      .getData<{ workspaceId?: string } | undefined>();
     const socketData = client?.data as AuthenticatedSocketData | undefined;
     const userId = socketData?.user?.sub;
 
