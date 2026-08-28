@@ -46,7 +46,11 @@ describe('BoardRepository', () => {
       const mockBoard = { id: 'b-1', title: 'New Board', workspaceId: 'ws-1' };
       prismaService.board.create.mockResolvedValue(mockBoard);
 
-      const result = await repository.create({ title: 'New Board', workspaceId: 'ws-1', createdBy: 'u-1' });
+      const result = await repository.create({
+        title: 'New Board',
+        workspaceId: 'ws-1',
+        createdBy: 'u-1',
+      });
 
       expect(prismaService.board.create).toHaveBeenCalledWith({
         data: { title: 'New Board', workspaceId: 'ws-1', createdBy: 'u-1' },
@@ -107,7 +111,10 @@ describe('BoardRepository', () => {
       };
       prismaService.board.findFirst.mockResolvedValue(mockDbBoard);
 
-      const result = await repository.findByIdWithContent('b-1', 'u-1', { listSkip: 0, listTake: 10 });
+      const result = await repository.findByIdWithContent('b-1', 'u-1', {
+        listSkip: 0,
+        listTake: 10,
+      });
 
       expect(result).toBeDefined();
       expect(result?.isStarred).toBe(true);
@@ -220,7 +227,10 @@ describe('BoardRepository', () => {
     });
 
     it('should return true when board is starred by user', async () => {
-      prismaService.userStarredBoard.findUnique.mockResolvedValue({ userId: 'u-1', boardId: 'b-1' });
+      prismaService.userStarredBoard.findUnique.mockResolvedValue({
+        userId: 'u-1',
+        boardId: 'b-1',
+      });
 
       const result = await repository.isStarredByUser('u-1', 'b-1');
 

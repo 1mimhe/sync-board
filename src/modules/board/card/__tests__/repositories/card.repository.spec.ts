@@ -54,7 +54,13 @@ describe('CardRepository', () => {
   describe('create', () => {
     it('should create card with initial assignees and labels in transaction', async () => {
       const mockCreated = { id: 'c-1', title: 'Task' };
-      const mockResult = { id: 'c-1', title: 'Task', assignees: [], labels: [], attachments: [] };
+      const mockResult = {
+        id: 'c-1',
+        title: 'Task',
+        assignees: [],
+        labels: [],
+        attachments: [],
+      };
 
       txMock.card.create.mockResolvedValue(mockCreated);
       txMock.card.findUniqueOrThrow.mockResolvedValue(mockResult);
@@ -89,7 +95,12 @@ describe('CardRepository', () => {
       txMock.card.create.mockResolvedValue(mockCreated);
       txMock.card.findUniqueOrThrow.mockResolvedValue(mockResult);
 
-      const result = await repository.create({ title: 'Task', listId: 'l-1', rank: '0|h:', createdBy: 'u-1' });
+      const result = await repository.create({
+        title: 'Task',
+        listId: 'l-1',
+        rank: '0|h:',
+        createdBy: 'u-1',
+      });
 
       expect(txMock.cardAssignee.createMany).not.toHaveBeenCalled();
       expect(txMock.cardLabel.createMany).not.toHaveBeenCalled();
