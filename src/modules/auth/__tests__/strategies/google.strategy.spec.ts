@@ -17,7 +17,8 @@ describe('GoogleStrategy', () => {
         return '';
       }),
       get: jest.fn((key: string, defaultValue?: any) => {
-        if (key === 'GOOGLE_CALLBACK_URL') return 'http://localhost:3000/api/auth/google/callback';
+        if (key === 'GOOGLE_CALLBACK_URL')
+          return 'http://localhost:3000/api/auth/google/callback';
         return defaultValue;
       }),
     } as unknown as jest.Mocked<ConfigService>;
@@ -59,7 +60,12 @@ describe('GoogleStrategy', () => {
       authService.findOrCreateGoogleUser.mockResolvedValue(mockUser);
       const doneCallback = jest.fn();
 
-      await strategy.validate('access-token', 'refresh-token', mockProfile, doneCallback);
+      await strategy.validate(
+        'access-token',
+        'refresh-token',
+        mockProfile,
+        doneCallback,
+      );
 
       expect(authService.findOrCreateGoogleUser).toHaveBeenCalledWith({
         googleId: 'google-uid-123',
@@ -87,7 +93,12 @@ describe('GoogleStrategy', () => {
       authService.findOrCreateGoogleUser.mockResolvedValue(mockUser);
       const doneCallback = jest.fn();
 
-      await strategy.validate('access-token', 'refresh-token', mockProfile, doneCallback);
+      await strategy.validate(
+        'access-token',
+        'refresh-token',
+        mockProfile,
+        doneCallback,
+      );
 
       expect(authService.findOrCreateGoogleUser).toHaveBeenCalledWith({
         googleId: 'google-uid-456',
@@ -107,7 +118,12 @@ describe('GoogleStrategy', () => {
 
       const doneCallback = jest.fn();
 
-      await strategy.validate('access-token', 'refresh-token', mockProfile, doneCallback);
+      await strategy.validate(
+        'access-token',
+        'refresh-token',
+        mockProfile,
+        doneCallback,
+      );
 
       expect(authService.findOrCreateGoogleUser).not.toHaveBeenCalled();
       expect(doneCallback).toHaveBeenCalledWith(
