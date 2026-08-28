@@ -206,7 +206,9 @@ describe('CardAttachmentService', () => {
       cardRepo.findActiveById.mockResolvedValue(null);
 
       await expect(
-        service.updateAttachment('board-1', 'ws-1', 'c-99', 'att-1', { name: 'Name' }),
+        service.updateAttachment('board-1', 'ws-1', 'c-99', 'att-1', {
+          name: 'Name',
+        }),
       ).rejects.toThrow(EntityNotFoundException);
     });
 
@@ -218,13 +220,9 @@ describe('CardAttachmentService', () => {
       } as any);
 
       await expect(
-        service.updateAttachment(
-          'board-1',
-          'ws-1',
-          'card-1',
-          'att-1',
-          { name: 'New Name' },
-        ),
+        service.updateAttachment('board-1', 'ws-1', 'card-1', 'att-1', {
+          name: 'New Name',
+        }),
       ).rejects.toThrow(EntityNotFoundException);
     });
 
@@ -233,13 +231,9 @@ describe('CardAttachmentService', () => {
       attachmentRepo.findById.mockResolvedValue(null);
 
       await expect(
-        service.updateAttachment(
-          'board-1',
-          'ws-1',
-          'card-1',
-          'att-99',
-          { name: 'New Name' },
-        ),
+        service.updateAttachment('board-1', 'ws-1', 'card-1', 'att-99', {
+          name: 'New Name',
+        }),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });

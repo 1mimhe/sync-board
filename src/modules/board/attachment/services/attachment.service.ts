@@ -3,10 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardRepository } from '../../card/repositories/card.repository';
 import { BoardRepository } from '../../board/repositories/board.repository';
 import { CardAttachmentRepository } from '../repositories/attachment.repository';
-import {
-  CreateCardAttachmentDto,
-  UpdateCardAttachmentDto,
-} from '../dto';
+import { CreateCardAttachmentDto, UpdateCardAttachmentDto } from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
 import {
   AttachmentCreatedEvent,
