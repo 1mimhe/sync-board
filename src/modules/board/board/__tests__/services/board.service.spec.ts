@@ -173,7 +173,12 @@ describe('BoardService', () => {
       boardRepo.findById.mockResolvedValue(mockBoard as any);
       boardRepo.update.mockResolvedValue(updatedBoard as any);
 
-      const result = await service.update('b-1', 'ws-1', { title: 'New', description: 'Desc', backgroundColor: '#fff' }, 'u-1');
+      const result = await service.update(
+        'b-1',
+        'ws-1',
+        { title: 'New', description: 'Desc', backgroundColor: '#fff' },
+        'u-1',
+      );
 
       expect(result).toEqual(updatedBoard);
       expect(boardRepo.update).toHaveBeenCalledWith('b-1', {
@@ -181,13 +186,18 @@ describe('BoardService', () => {
         description: 'Desc',
         backgroundColor: '#fff',
       });
-      expect(eventEmitter.emit).toHaveBeenCalledWith('board.updated', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'board.updated',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if board not found during update', async () => {
       boardRepo.findById.mockResolvedValue(null);
 
-      await expect(service.update('b-99', 'ws-1', { title: 'New' }, 'u-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(
+        service.update('b-99', 'ws-1', { title: 'New' }, 'u-1'),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -199,13 +209,18 @@ describe('BoardService', () => {
       await service.archive('b-1', 'ws-1', 'u-1');
 
       expect(boardRepo.archive).toHaveBeenCalledWith('b-1');
-      expect(eventEmitter.emit).toHaveBeenCalledWith('board.archived', expect.any(Object));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'board.archived',
+        expect.any(Object),
+      );
     });
 
     it('should throw EntityNotFoundException if board not found during archive', async () => {
       boardRepo.findById.mockResolvedValue(null);
 
-      await expect(service.archive('b-99', 'ws-1', 'u-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.archive('b-99', 'ws-1', 'u-1')).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
   });
 
@@ -274,7 +289,10 @@ describe('BoardService', () => {
 
       await service.unstarBoard('user-uuid', 'board-uuid', 'ws-uuid');
 
-      expect(boardRepo.unstarBoard).toHaveBeenCalledWith('user-uuid', 'board-uuid');
+      expect(boardRepo.unstarBoard).toHaveBeenCalledWith(
+        'user-uuid',
+        'board-uuid',
+      );
     });
 
     it('should throw EntityNotFoundException when unstarring nonexistent board', async () => {
@@ -300,7 +318,9 @@ describe('BoardService', () => {
     it('should throw EntityNotFoundException if board not found when getting activities', async () => {
       boardRepo.findById.mockResolvedValue(null);
 
-      await expect(service.getBoardActivities('b-99', 'ws-1')).rejects.toThrow(EntityNotFoundException);
+      await expect(service.getBoardActivities('b-99', 'ws-1')).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
   });
 });
