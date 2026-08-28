@@ -14,7 +14,7 @@ import { ChecklistSubModule } from './checklist/checklist.module';
 import { RealtimeSubModule } from './realtime/realtime.module';
 
 /**
- * AGGREGATOR module for the Board domain (CODE_STANDARDS §1a).
+ * AGGREGATOR module for the Board domain.
  * Contains zero business logic — only wires the sub-feature slices.
  */
 @Module({
