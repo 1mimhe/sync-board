@@ -19,13 +19,11 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { LabelService } from '../services/label.service';
-import {
-  CreateLabelDto,
-  UpdateLabelDto,
-  BoardLabelResponseDto,
-} from '../dto';
+import { CreateLabelDto, UpdateLabelDto, BoardLabelResponseDto } from '../dto';
 import { toBoardLabelResponseDto } from '../../board/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
+import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
 
 /**
  * Controller exposing REST endpoints for managing board labels.
@@ -64,11 +62,13 @@ export class LabelController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Body() dto: CreateLabelDto,
+    @CurrentUser() user: JwtPayload,
   ): Promise<BoardLabelResponseDto> {
     const label = await this.labelService.createLabel(
       boardId,
       workspaceId,
       dto,
+      user.sub,
     );
     return toBoardLabelResponseDto(label);
   }
@@ -136,12 +136,14 @@ export class LabelController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
     @Body() dto: UpdateLabelDto,
+    @CurrentUser() user: JwtPayload,
   ): Promise<BoardLabelResponseDto> {
     const label = await this.labelService.updateLabel(
       boardId,
       workspaceId,
       labelId,
       dto,
+      user.sub,
     );
     return toBoardLabelResponseDto(label);
   }
@@ -176,7 +178,13 @@ export class LabelController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('labelId', ParseUUIDPipe) labelId: string,
+    @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.labelService.deleteLabel(boardId, workspaceId, labelId);
+    await this.labelService.deleteLabel(
+      boardId,
+      workspaceId,
+      labelId,
+      user.sub,
+    );
   }
 }
