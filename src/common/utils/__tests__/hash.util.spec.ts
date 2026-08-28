@@ -27,7 +27,9 @@ describe('hashToken', () => {
 
   it('should handle unicode and special characters', () => {
     const unicodeToken = '🔑-token-special-!@#$%^&*()_+-=[]{}|;:,.<>?';
-    const expectedHash = createHash('sha256').update(unicodeToken).digest('hex');
+    const expectedHash = createHash('sha256')
+      .update(unicodeToken)
+      .digest('hex');
 
     expect(hashToken(unicodeToken)).toBe(expectedHash);
   });
