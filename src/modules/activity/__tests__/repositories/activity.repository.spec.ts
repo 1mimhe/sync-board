@@ -63,8 +63,8 @@ describe('ActivityRepository', () => {
     });
   });
 
-  describe('findByBoardId', () => {
-    it('should find recent board activities with default limit 50 and author profile details', async () => {
+  describe('findByBoardIdPage', () => {
+    it('should find a page of board activities with author profile details', async () => {
       const mockList = [
         {
           id: 'act-1',
@@ -73,12 +73,14 @@ describe('ActivityRepository', () => {
       ];
       prismaService.activity.findMany.mockResolvedValue(mockList);
 
-      const result = await repository.findByBoardId('b-1');
+      const result = await repository.findByBoardIdPage('b-1', 'prev-1', 20);
 
       expect(prismaService.activity.findMany).toHaveBeenCalledWith({
         where: { boardId: 'b-1' },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 21,
+        cursor: { id: 'prev-1' },
+        skip: 1,
         include: {
           user: {
             select: {
@@ -92,13 +94,13 @@ describe('ActivityRepository', () => {
       expect(result).toEqual(mockList);
     });
 
-    it('should respect custom limit in findByBoardId', async () => {
+    it('should omit cursor when not provided', async () => {
       prismaService.activity.findMany.mockResolvedValue([]);
 
-      await repository.findByBoardId('b-1', 20);
+      await repository.findByBoardIdPage('b-1', undefined, 20);
 
       expect(prismaService.activity.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 20 }),
+        expect.not.objectContaining({ cursor: expect.anything() }),
       );
     });
   });

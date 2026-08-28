@@ -8,7 +8,6 @@ import { LabelActivityListener } from './listeners/label-activity.listener';
 
 /**
  * Append-only activity audit log. Consumes domain events emitted by other
-
  */
 @Module({
   providers: [
