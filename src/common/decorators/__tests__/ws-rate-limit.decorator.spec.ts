@@ -4,7 +4,7 @@ describe('WsRateLimit Decorator', () => {
   it('should set metadata when passed an options object', () => {
     class TestClass {
       @WsRateLimit({
-        category: 'cursor' as any,
+        category: 'cursor',
         limit: 10,
         windowMs: 1000,
         silent: true,
@@ -27,7 +27,7 @@ describe('WsRateLimit Decorator', () => {
 
   it('should set metadata when passed positional arguments', () => {
     class TestClass {
-      @WsRateLimit('presence' as any, 20, 5000, true)
+      @WsRateLimit('presence', 20, 5000, true)
       testMethod() {}
     }
 
@@ -46,7 +46,7 @@ describe('WsRateLimit Decorator', () => {
 
   it('should apply default values for positional parameters when limit/windowMs omitted', () => {
     class TestClass {
-      @WsRateLimit('card_move' as any, undefined as any, undefined as any)
+      @WsRateLimit('card_move', undefined as any, undefined as any)
       testMethod() {}
     }
 

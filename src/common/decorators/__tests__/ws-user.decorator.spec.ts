@@ -24,7 +24,11 @@ describe('WsUser Decorator', () => {
 
   it('should return entire user payload when data is undefined', () => {
     const factory = getParamDecoratorFactory(WsUser);
-    const mockUser: JwtPayload = { sub: 'u-1', email: 'user@test.com', jti: 'jti-1' };
+    const mockUser: JwtPayload = {
+      sub: 'u-1',
+      email: 'user@test.com',
+      jti: 'jti-1',
+    };
     const context = createMockWsContext(mockUser);
 
     const result = factory(undefined, context);
@@ -34,7 +38,11 @@ describe('WsUser Decorator', () => {
 
   it('should return specific field when key is specified', () => {
     const factory = getParamDecoratorFactory(WsUser, 'sub');
-    const mockUser: JwtPayload = { sub: 'u-1', email: 'user@test.com', jti: 'jti-1' };
+    const mockUser: JwtPayload = {
+      sub: 'u-1',
+      email: 'user@test.com',
+      jti: 'jti-1',
+    };
     const context = createMockWsContext(mockUser);
 
     const result = factory('sub', context);
