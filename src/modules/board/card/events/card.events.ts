@@ -50,3 +50,23 @@ export class CardUnarchivedEvent {
     public readonly unarchivedBy: string,
   ) {}
 }
+
+/** Event emitted after a user is assigned to a card. */
+export class CardAssigneeAddedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly userId: string,
+    public readonly addedBy: string,
+  ) {}
+}
+
+/** Event emitted after a user is unassigned from a card. */
+export class CardAssigneeRemovedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly userId: string,
+    public readonly removedBy: string,
+  ) {}
+}

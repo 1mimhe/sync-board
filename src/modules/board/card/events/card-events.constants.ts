@@ -7,4 +7,6 @@ export const CARD_EVENTS = {
   updated: 'card.updated',
   archived: 'card.archived',
   unarchived: 'card.unarchived',
+  assigneeAdded: 'card.assignee_added',
+  assigneeRemoved: 'card.assignee_removed',
 } as const;
