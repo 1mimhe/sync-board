@@ -11,7 +11,16 @@ import { TokenBlacklistService } from '../../services/token-blacklist.service';
 import { RedisService } from '../../../../common/redis/redis.service';
 import { UserRepository } from '../../repositories/user.repository';
 import { RefreshTokenRepository } from '../../repositories/refresh-token.repository';
-import { AppException } from '../../../../common/exceptions/app.exception';
+import {
+  AppException,
+  BusinessRuleException,
+} from '../../../../common/exceptions/app.exception';
+import { AUTH_EVENTS } from '../../events/auth-events.constants';
+import {
+  AUTH_CONFIG,
+  EMAIL_VERIFY_KEY_PREFIX,
+  PASSWORD_RESET_KEY_PREFIX,
+} from '../../auth.constants';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -124,9 +133,20 @@ describe('AuthService', () => {
       expect(tokenRepositoryMock.create).toHaveBeenCalledWith(
         expect.objectContaining({ familyId: expect.any(String) }),
       );
+      // verification token stored in Redis before the event fires
+      expect(redisMock.set).toHaveBeenCalledWith(
+        expect.stringContaining(EMAIL_VERIFY_KEY_PREFIX),
+        mockUser.id,
+        'EX',
+        AUTH_CONFIG.emailVerification.expiresInSeconds,
+      );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'user.registered',
-        expect.objectContaining({ userId: mockUser.id }),
+        AUTH_EVENTS.registered,
+        expect.objectContaining({
+          userId: mockUser.id,
+          displayName: mockUser.displayName,
+          verificationToken: expect.any(String),
+        }),
       );
     });
 
@@ -164,7 +184,7 @@ describe('AuthService', () => {
       expect(result).toBeDefined();
       expect(result.user.id).toEqual(mockUser.id);
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'user.logged_in',
+        AUTH_EVENTS.loggedIn,
         expect.objectContaining({ userId: mockUser.id }),
       );
     });
@@ -307,13 +327,13 @@ describe('AuthService', () => {
       await service.forgotPassword('user@example.com');
 
       expect(redisMock.set).toHaveBeenCalledWith(
-        expect.stringMatching(/^password_reset:/),
+        expect.stringMatching(new RegExp(`^${PASSWORD_RESET_KEY_PREFIX}`)),
         mockUser.id,
         'EX',
-        3600,
+        AUTH_CONFIG.passwordReset.expiresInSeconds,
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'user.password_reset_requested',
+        AUTH_EVENTS.passwordResetRequested,
         expect.objectContaining({ email: mockUser.email }),
       );
     });
@@ -391,6 +411,105 @@ describe('AuthService', () => {
       await expect(
         service.resetPassword('valid-token', 'NewSecureP@ss123!'),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('requestEmailVerification', () => {
+    it('should store a fresh token and emit email_verification_requested', async () => {
+      userRepositoryMock.findById.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: false,
+      });
+      redisMock.set.mockResolvedValue('OK');
+
+      await service.requestEmailVerification(mockUser.id);
+
+      expect(redisMock.set).toHaveBeenCalledWith(
+        expect.stringContaining(EMAIL_VERIFY_KEY_PREFIX),
+        mockUser.id,
+        'EX',
+        AUTH_CONFIG.emailVerification.expiresInSeconds,
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        AUTH_EVENTS.emailVerificationRequested,
+        expect.objectContaining({
+          userId: mockUser.id,
+          email: mockUser.email,
+          token: expect.any(String),
+        }),
+      );
+    });
+
+    it('should throw EMAIL_ALREADY_VERIFIED when the user is already verified', async () => {
+      userRepositoryMock.findById.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: true,
+      });
+
+      await expect(
+        service.requestEmailVerification(mockUser.id),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(redisMock.set).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException for unknown user', async () => {
+      userRepositoryMock.findById.mockResolvedValue(null);
+
+      await expect(service.requestEmailVerification('ghost')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should consume the token atomically, mark verified, and emit email_verified', async () => {
+      redisMock.getdel.mockResolvedValue(mockUser.id);
+      userRepositoryMock.findById.mockResolvedValue(mockUser);
+
+      const result = await service.verifyEmail('raw-verify-token');
+
+      expect(redisMock.getdel).toHaveBeenCalledWith(
+        expect.stringContaining(EMAIL_VERIFY_KEY_PREFIX),
+      );
+      expect(userRepositoryMock.findById).toHaveBeenCalledWith(mockUser.id);
+      expect(userRepositoryMock.setEmailVerified).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+      expect(result).toEqual({ verified: true });
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        AUTH_EVENTS.emailVerified,
+        {
+          userId: mockUser.id,
+          email: mockUser.email,
+          displayName: mockUser.displayName,
+        },
+      );
+    });
+
+    it('should throw TOKEN_INVALID for unknown/expired/replayed tokens', async () => {
+      redisMock.getdel.mockResolvedValue(null);
+
+      await expect(service.verifyEmail('bogus')).rejects.toThrow(
+        'TOKEN_INVALID',
+      );
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        AUTH_EVENTS.emailVerified,
+        expect.anything(),
+      );
+    });
+
+    it('should throw TOKEN_INVALID when the token is valid but the user no longer exists', async () => {
+      redisMock.getdel.mockResolvedValue('deleted-user-id');
+      userRepositoryMock.findById.mockResolvedValue(null);
+
+      await expect(service.verifyEmail('raw-verify-token')).rejects.toThrow(
+        'TOKEN_INVALID',
+      );
+      expect(userRepositoryMock.setEmailVerified).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        AUTH_EVENTS.emailVerified,
+        expect.anything(),
+      );
     });
   });
 
@@ -555,9 +674,13 @@ describe('AuthService', () => {
       it('should issue tokens and emit user.logged_in event', async () => {
         tokenRepositoryMock.create.mockResolvedValue(mockRefreshToken);
 
-        const result = await service.handleGoogleCallback(mockUser, '127.0.0.1', 'agent');
+        const result = await service.handleGoogleCallback(
+          mockUser,
+          '127.0.0.1',
+          'agent',
+        );
         expect(result.tokens).toBeDefined();
-        expect(eventEmitter.emit).toHaveBeenCalledWith('user.logged_in', {
+        expect(eventEmitter.emit).toHaveBeenCalledWith(AUTH_EVENTS.loggedIn, {
           userId: mockUser.id,
           method: 'google',
         });
@@ -568,13 +691,15 @@ describe('AuthService', () => {
   describe('User profile & summary methods', () => {
     it('should return profile by id or throw NotFoundException', async () => {
       const { passwordHash, ...publicUser } = mockUser;
-      userRepositoryMock.findByIdPublic.mockResolvedValue(publicUser as any);
+      userRepositoryMock.findByIdPublic.mockResolvedValue(publicUser);
 
       const res = await service.getProfile('user-1');
       expect(res).toEqual(publicUser);
 
       userRepositoryMock.findByIdPublic.mockResolvedValue(null);
-      await expect(service.getProfile('missing-id')).rejects.toThrow(NotFoundException);
+      await expect(service.getProfile('missing-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should find user by email', async () => {
@@ -584,7 +709,12 @@ describe('AuthService', () => {
     });
 
     it('should find user summary by email', async () => {
-      const summary = { id: 'u-1', email: 'u@example.com', displayName: 'U', avatarUrl: null };
+      const summary = {
+        id: 'u-1',
+        email: 'u@example.com',
+        displayName: 'U',
+        avatarUrl: null,
+      };
       userRepositoryMock.findUserSummaryByEmail.mockResolvedValue(summary);
       const res = await service.findUserSummaryByEmail('u@example.com');
       expect(res).toEqual(summary);
@@ -594,7 +724,9 @@ describe('AuthService', () => {
       const updated = { id: 'u-1', displayName: 'New Name' };
       userRepositoryMock.updateProfile.mockResolvedValue(updated as any);
 
-      const res = await service.updateProfile('u-1', { displayName: 'New Name' });
+      const res = await service.updateProfile('u-1', {
+        displayName: 'New Name',
+      });
       expect(res).toEqual(updated);
     });
   });
@@ -605,7 +737,9 @@ describe('AuthService', () => {
 
       const result = await service.getGoogleAuthUrl();
 
-      expect(result.url).toContain('https://accounts.google.com/o/oauth2/v2/auth');
+      expect(result.url).toContain(
+        'https://accounts.google.com/o/oauth2/v2/auth',
+      );
       expect(result.url).toContain('state=');
       expect(redisMock.set).toHaveBeenCalledWith(
         expect.stringMatching(/^oauth:state:/),
@@ -637,9 +771,9 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException if state does not exist in Redis', async () => {
       redisMock.exists.mockResolvedValue(0);
 
-      await expect(
-        service.validateOAuthState('unknown-state'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateOAuthState('unknown-state')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

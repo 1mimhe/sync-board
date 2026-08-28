@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, User } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { BusinessRuleException } from '../../../common/exceptions/app.exception';
 import { PasswordService } from './password.service';
 import { JwtTokenService } from './jwt-token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
@@ -24,8 +25,15 @@ import {
   UserRegisteredEvent,
   UserLoggedInEvent,
   PasswordResetRequestedEvent,
+  EmailVerificationRequestedEvent,
+  EmailVerifiedEvent,
 } from '../events/auth.events';
-import { AUTH_CONFIG, PASSWORD_RESET_KEY_PREFIX } from '../auth.constants';
+import {
+  AUTH_CONFIG,
+  PASSWORD_RESET_KEY_PREFIX,
+  EMAIL_VERIFY_KEY_PREFIX,
+} from '../auth.constants';
+import { AUTH_EVENTS } from '../events/auth-events.constants';
 
 /**
  * Core authentication service handling registration, login, token rotation,
@@ -48,6 +56,8 @@ export class AuthService {
 
   /**
    * Register a new user with email and password.
+   * Stores a single-use email verification token (24h) and includes it in the
+   * registered event so the mail listener can send the combined welcome email.
    * @throws AppException EMAIL_ALREADY_EXISTS if email is taken
    * @emits user.registered
    */
@@ -65,10 +75,14 @@ export class AuthService {
       displayName: dto.displayName,
     });
 
+    const verificationToken = await this.createEmailVerificationToken(user.id);
+
     const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
-    this.eventEmitter.emit('user.registered', {
+    this.eventEmitter.emit(AUTH_EVENTS.registered, {
       userId: user.id,
       email: user.email,
+      displayName: user.displayName,
+      verificationToken,
     } satisfies UserRegisteredEvent);
     this.logger.log(`User registered successfully: ${user.id}`);
     return this.buildAuthResponse(user, tokens);
@@ -102,7 +116,7 @@ export class AuthService {
     await this.userRepository.updateLastLogin(user.id);
 
     const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
-    this.eventEmitter.emit('user.logged_in', {
+    this.eventEmitter.emit(AUTH_EVENTS.loggedIn, {
       userId: user.id,
       method: 'email',
     } satisfies UserLoggedInEvent);
@@ -237,7 +251,7 @@ export class AuthService {
       AUTH_CONFIG.passwordReset.expiresInSeconds,
     );
 
-    this.eventEmitter.emit('user.password_reset_requested', {
+    this.eventEmitter.emit(AUTH_EVENTS.passwordResetRequested, {
       userId: user.id,
       email: user.email,
       token: resetToken,
@@ -283,6 +297,71 @@ export class AuthService {
     );
 
     return tokens;
+  }
+
+  /**
+   * Request a fresh email-verification token for an authenticated user.
+   * @throws BusinessRuleException EMAIL_ALREADY_VERIFIED if already verified
+   * @throws NotFoundException USER_NOT_FOUND
+   * @emits user.email_verification_requested
+   */
+  async requestEmailVerification(userId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException('USER_NOT_FOUND');
+    }
+    if (user.isEmailVerified) {
+      throw new BusinessRuleException(
+        'EMAIL_ALREADY_VERIFIED',
+        'This email address is already verified',
+      );
+    }
+
+    const verificationToken = await this.createEmailVerificationToken(user.id);
+
+    this.eventEmitter.emit(AUTH_EVENTS.emailVerificationRequested, {
+      userId: user.id,
+      email: user.email,
+      token: verificationToken,
+    } satisfies EmailVerificationRequestedEvent);
+    this.logger.log(
+      `Email verification token created in Redis for user: ${user.id}`,
+    );
+  }
+
+  /**
+   * Verify a user's email address using a single-use token from Redis.
+   * The token is consumed atomically via GETDEL, so replayed or expired
+   * tokens always fail.
+   * @throws UnauthorizedException TOKEN_INVALID
+   * @emits user.email_verified
+   */
+  async verifyEmail(rawToken: string): Promise<{ verified: true }> {
+    const tokenHash = this.hashToken(rawToken);
+    const redisKey = `${EMAIL_VERIFY_KEY_PREFIX}${tokenHash}`;
+    const userId = await this.redis.getdel(redisKey);
+
+    if (!userId) {
+      throw new UnauthorizedException('TOKEN_INVALID');
+    }
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      // User deleted between token issuance and verification — the token is
+      // already consumed, so the link cannot be replayed.
+      throw new UnauthorizedException('TOKEN_INVALID');
+    }
+
+    await this.userRepository.setEmailVerified(userId);
+
+    this.eventEmitter.emit(AUTH_EVENTS.emailVerified, {
+      userId,
+      email: user.email,
+      displayName: user.displayName,
+    } satisfies EmailVerifiedEvent);
+    this.logger.log(`Email verified successfully for user: ${userId}`);
+
+    return { verified: true };
   }
 
   /**
@@ -395,7 +474,7 @@ export class AuthService {
     userAgent?: string,
   ): Promise<AuthResponse> {
     const tokens = await this.issueTokenPair(user, ipAddress, userAgent);
-    this.eventEmitter.emit('user.logged_in', {
+    this.eventEmitter.emit(AUTH_EVENTS.loggedIn, {
       userId: user.id,
       method: 'google',
     } satisfies UserLoggedInEvent);
@@ -523,6 +602,22 @@ export class AuthService {
    */
   private hashToken(token: string): string {
     return hashToken(token);
+  }
+
+  /**
+   * Helper to create a single-use email verification token: stores the
+   * SHA-256 hash in Redis (24h TTL) and returns the raw token for emailing.
+   */
+  private async createEmailVerificationToken(userId: string): Promise<string> {
+    const rawToken = randomBytes(32).toString('base64url');
+    const redisKey = `${EMAIL_VERIFY_KEY_PREFIX}${this.hashToken(rawToken)}`;
+    await this.redis.set(
+      redisKey,
+      userId,
+      'EX',
+      AUTH_CONFIG.emailVerification.expiresInSeconds,
+    );
+    return rawToken;
   }
 
   /**
