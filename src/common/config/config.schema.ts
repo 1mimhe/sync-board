@@ -33,4 +33,11 @@ export const configValidationSchema = Joi.object({
     .optional()
     .default('http://localhost:3000/api/auth/google/callback'),
   CLIENT_URL: Joi.string().optional().default('http://localhost:3001'),
+  SMTP_HOST: Joi.string().default('localhost'),
+  SMTP_PORT: Joi.number().default(1025),
+  SMTP_SECURE: Joi.boolean().default(false),
+  SMTP_USER: Joi.string().optional().allow(''),
+  SMTP_PASS: Joi.string().optional().allow(''),
+  MAIL_FROM: Joi.string().default('SyncBoard <no-reply@syncboard.local>'),
+  MAIL_FROM_NAME: Joi.string().default('SyncBoard'),
 });
