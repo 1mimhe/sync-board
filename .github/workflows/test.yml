@@ -1,0 +1,66 @@
+name: Test Suite
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run unit tests
+        run: npm run test
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Start Docker services (Postgres, Redis, MailHog)
+        run: docker compose up -d --wait
+
+      - name: Push Prisma schema to test database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: 'postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public'
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Teardown Docker services
+        if: always()
+        run: docker compose down -v
