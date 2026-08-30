@@ -9,7 +9,11 @@ import { ResponseInterceptor } from '../../src/common/interceptors/response.inte
 import { RedisIoAdapter } from '../../src/common/redis/redis-io.adapter';
 import { PrismaService } from '../../src/common/database/prisma.service';
 import { RedisService } from '../../src/common/redis/redis.service';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import {
+  ThrottlerGuard,
+  ThrottlerStorageService,
+  getStorageToken,
+} from '@nestjs/throttler';
 
 /**
  * Bootstraps the real AppModule in-process, wiring the exact same globals as
@@ -31,13 +35,28 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
+import { WsRateLimitGuard } from '../../src/common/guards/ws-rate-limit.guard';
+import { WsRateLimiterService } from '../../src/modules/board/realtime/services/ws-rate-limiter.service';
+
 export async function createTestApp(
   options: { throttler?: boolean } = {},
 ): Promise<TestApp> {
   const builder = Test.createTestingModule({ imports: [AppModule] });
 
   if (!options.throttler) {
+    const bypassStorage = {
+      increment: async () => ({
+        totalHits: 0,
+        timeToExpire: 0,
+        isBlocked: false,
+        timeToBlockExpire: 0,
+      }),
+    };
+    builder.overrideProvider(getStorageToken()).useValue(bypassStorage);
+    builder.overrideProvider(ThrottlerStorageService).useValue(bypassStorage);
+    builder.overrideProvider(WsRateLimiterService).useValue({ checkRateLimit: async () => true });
     builder.overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true });
+    builder.overrideGuard(WsRateLimitGuard).useValue({ canActivate: () => true });
   }
 
   const module = await builder.compile();

@@ -24,6 +24,8 @@ export async function connect(
     timeout: timeoutMs,
   });
   await waitFor(sock, 'connect', timeoutMs);
+  // Allow server-side handleConnection async verification to settle
+  await new Promise((r) => setTimeout(r, 20));
   return sock;
 }
 
@@ -59,14 +61,35 @@ export function onceEvent<T = AnyPayload>(
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`timeout waiting "${event}"`)),
-      timeoutMs,
-    );
-    sock.once(event, (payload: T) => {
+    const cleanup = () => {
       clearTimeout(timer);
+      sock.off(event, onEvent);
+      sock.off('error', onError);
+      sock.off('connect_error', onError);
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`timeout waiting "${event}"`));
+    }, timeoutMs);
+
+    const onEvent = (payload: T) => {
+      cleanup();
       resolve(payload);
-    });
+    };
+
+    const onError = (payload: unknown) => {
+      cleanup();
+      reject(
+        new Error(
+          `ws error received while waiting for "${event}": ${JSON.stringify(payload)}`,
+        ),
+      );
+    };
+
+    sock.once(event, onEvent);
+    sock.once('error', onError);
+    sock.once('connect_error', onError);
   });
 }
 
@@ -145,7 +168,8 @@ export async function expectRejectedConnection(
 }
 
 /** Close a socket and wait for the server-side disconnect to settle. */
-export async function closeSocket(sock: Socket): Promise<void> {
+export async function closeSocket(sock?: Socket | null): Promise<void> {
+  if (!sock) return;
   if (!sock.connected) {
     sock.close();
     return;
