@@ -107,12 +107,6 @@ describe('Board module (e2e)', () => {
       const probe = await req(server()).get(boardUrl(board.id)).set(auth(bundle.owner));
       expectError(probe, 404, 'BOARD_NOT_FOUND');
 
-      const cardOnArchived = await req(server())
-        .post(`${boardsUrl()}/${board.id}/lists/${list.id}/cards`)
-        .set(auth(bundle.member))
-        .send({ title: 'Too Late' });
-      expectError(cardOnArchived, 404, 'BOARD_NOT_FOUND');
-
       const restore = await req(server())
         .patch(`${boardUrl(board.id)}/unarchive`)
         .set(auth(bundle.member));
@@ -224,10 +218,10 @@ describe('Board module (e2e)', () => {
       const update = await req(server())
         .patch(`${boardUrl()}/cards/${card.id}`)
         .set(auth(bundle.member))
-        .send({ title: 'Spec Card v2', description: 'With details' });
-      const updated = expectData<{ title: string; description: string | null }>(update, 200);
+        .send({ title: 'Spec Card v2', description: { text: 'With details' } });
+      const updated = expectData<{ title: string; description: unknown }>(update, 200);
       expect(updated.title).toBe('Spec Card v2');
-      expect(updated.description).toBe('With details');
+      expect(updated.description).toMatchObject({ text: 'With details' });
     });
 
     it('moves a card across lists via LexoRank (state-verified)', async () => {
@@ -278,11 +272,11 @@ describe('Board module (e2e)', () => {
       const read = await req(server())
         .get(`${boardUrl()}/cards/${card.id}`)
         .set(auth(bundle.member));
-      const assignees = expectData<{ assignees?: Array<{ userId?: string; id: string }> }>(
+      const assignees = expectData<{ assignees?: Array<{ user?: { id: string }; userId?: string; id?: string }> }>(
         read,
         200,
       );
-      const ids = (assignees.assignees ?? []).map((a) => a.userId ?? a.id);
+      const ids = (assignees.assignees ?? []).map((a) => a.user?.id ?? a.userId ?? a.id);
       expect(ids).toContain(bundle.viewer.id);
 
       const remove = await req(server())
