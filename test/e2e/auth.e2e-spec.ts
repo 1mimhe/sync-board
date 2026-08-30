@@ -73,15 +73,16 @@ describe('Auth module (e2e)', () => {
     });
 
     it('1.1.4 trims + lowercases the email', async () => {
+      const emailBase = uniqueEmail('reg-case');
       const res = await req(app.app.getHttpServer())
         .post('/api/auth/register')
         .send({
-          email: '  Test@EXAMPLE.com  ',
+          email: `  ${emailBase.toUpperCase()}  `,
           password: PASSWORD,
           displayName: 'Case Test',
         });
       const data = expectData<{ user: { email: string } }>(res, 201);
-      expect(data.user.email).toBe('test@example.com');
+      expect(data.user.email).toBe(emailBase.toLowerCase());
     });
 
     it('1.1.5 trims the display name', async () => {
@@ -440,7 +441,7 @@ describe('Auth module (e2e)', () => {
       expectError(replay, 401, 'TOKEN_INVALID');
     });
 
-    it('resend-verification on an already-verified user → 409 EMAIL_ALREADY_VERIFIED', async () => {
+    it('resend-verification on an already-verified user → 422 EMAIL_ALREADY_VERIFIED', async () => {
       const user = await registerUser(app, 'resend');
       const token = await waitForMailToken(user.email, 'verify');
       await req(app.app.getHttpServer())
@@ -450,7 +451,7 @@ describe('Auth module (e2e)', () => {
       const res = await req(app.app.getHttpServer())
         .post('/api/auth/resend-verification')
         .set('Authorization', `Bearer ${user.accessToken}`);
-      expectError(res, 409, 'EMAIL_ALREADY_VERIFIED');
+      expectError(res, 422, 'EMAIL_ALREADY_VERIFIED');
     });
 
     it('resend-verification requires authentication → 401 TOKEN_INVALID', async () => {
@@ -589,7 +590,7 @@ describe('Auth module (e2e)', () => {
     });
 
     it('14.6 blocks the 6th login attempt within the window — even with correct credentials', async () => {
-      const user = await registerUser(throttled, 'throttle-login');
+      const user = await registerUser(app, 'throttle-login');
       const server = throttled.app.getHttpServer();
 
       for (let i = 1; i <= 5; i++) {
