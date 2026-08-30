@@ -80,7 +80,6 @@
     "@types/pg": "^8.21.0",
     "@types/socket.io": "^3.0.1",
     "@types/supertest": "^7.0.0",
-    "chokidar": "^3.6.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
