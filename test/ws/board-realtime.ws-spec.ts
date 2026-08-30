@@ -317,8 +317,6 @@ describe('Board realtime (ws)', () => {
     it('outsider emitting board:join receives an error frame BOARD_ACCESS_DENIED', async () => {
       // bundle.outsider is not a member of bundle.workspaceId
       const sock = await connect(app.url, bundle.outsider.accessToken);
-      sock.emit('workspace:join', { workspaceId: bundle.workspaceId });
-      // Workspace join may or may not be blocked; the board join MUST be denied
       const errors = collect(sock, 'error');
       sock.emit('board:join', { boardId: bundle.boardId });
       const evts = await errors.waitForCount(1, 5000).catch(() => errors.events);
@@ -338,27 +336,33 @@ describe('Board realtime (ws)', () => {
       const sockB = await connect(app.url, bundle.admin.accessToken);
 
       // Both join workspace first
+      const joinWsA = onceEvent(sockA, 'workspace:joined');
       sockA.emit('workspace:join', { workspaceId: bundle.workspaceId });
-      await onceEvent(sockA, 'workspace:joined');
+      await joinWsA;
+
+      const joinWsB = onceEvent(sockB, 'workspace:joined');
       sockB.emit('workspace:join', { workspaceId: bundle.workspaceId });
-      await onceEvent(sockB, 'workspace:joined');
+      await joinWsB;
 
       // A joins board
+      const joinBoardA = onceEvent(sockA, 'board:joined');
       sockA.emit('board:join', { boardId: bundle.boardId });
-      await onceEvent(sockA, 'board:joined');
+      await joinBoardA;
 
       // B joins board — triggers board:presence for A
       const presenceFromB = collect(sockA, 'board:presence');
+      const joinBoardB = onceEvent(sockB, 'board:joined');
       sockB.emit('board:join', { boardId: bundle.boardId });
-      await onceEvent(sockB, 'board:joined');
+      await joinBoardB;
       await presenceFromB.waitForCount(1);
       presenceFromB.dispose();
 
       // B joins the SAME board again — no error, re-emits board:joined, re-announces to A
       const errorsCatcher = collect(sockB, 'error');
       const presenceAgain = collect(sockA, 'board:presence');
+      const dupJoinedP = onceEvent(sockB, 'board:joined', 5000);
       sockB.emit('board:join', { boardId: bundle.boardId });
-      const dupJoined = await onceEvent(sockB, 'board:joined', 5000);
+      const dupJoined = await dupJoinedP;
       expect((dupJoined as Record<string, unknown>).boardId).toBe(bundle.boardId);
       const presenceEvts = await presenceAgain.waitForCount(1).catch(() => presenceAgain.events);
       expect(presenceEvts.length).toBeGreaterThanOrEqual(1);
@@ -382,10 +386,13 @@ describe('Board realtime (ws)', () => {
       const list = await createList(app, user, ws.id, board.id, 'Leave List');
 
       const sock = await connect(app.url, user.accessToken);
+      const joinWs = onceEvent(sock, 'workspace:joined');
       sock.emit('workspace:join', { workspaceId: ws.id });
-      await onceEvent(sock, 'workspace:joined');
+      await joinWs;
+
+      const joinBoard = onceEvent(sock, 'board:joined');
       sock.emit('board:join', { boardId: board.id });
-      await onceEvent(sock, 'board:joined');
+      await joinBoard;
 
       // Leave the board room
       sock.emit('board:leave', { boardId: board.id });
@@ -405,29 +412,16 @@ describe('Board realtime (ws)', () => {
   // =========================================================================
   describe('§2.6/§2.8 REST mutation → WS broadcast payload fidelity', () => {
     let sockObserver: Awaited<ReturnType<typeof connect>>;
-    let actor: TestUser;
-    let wsId: string;
-    let bId: string;
-    let lId: string;
-    let cId: string;
 
     beforeAll(async () => {
-      actor = await createVerifiedUser(app, 'relay-actor');
-      const ws = await createWorkspace(app, actor);
-      wsId = ws.id;
-      const board = await createBoard(app, actor, wsId, 'Relay Board');
-      bId = board.id;
-      const list = await createList(app, actor, wsId, bId, 'Relay List');
-      lId = list.id;
-      const card = await createCard(app, actor, wsId, bId, lId, 'Relay Card');
-      cId = card.id;
+      sockObserver = await connect(app.url, bundle.admin.accessToken);
+      const joinWs = onceEvent(sockObserver, 'workspace:joined');
+      sockObserver.emit('workspace:join', { workspaceId: bundle.workspaceId });
+      await joinWs;
 
-      // Observer socket joins workspace + board BEFORE any mutation
-      sockObserver = await connect(app.url, actor.accessToken);
-      sockObserver.emit('workspace:join', { workspaceId: wsId });
-      await onceEvent(sockObserver, 'workspace:joined');
-      sockObserver.emit('board:join', { boardId: bId });
-      await onceEvent(sockObserver, 'board:joined');
+      const joinBoard = onceEvent(sockObserver, 'board:joined');
+      sockObserver.emit('board:join', { boardId: bundle.boardId });
+      await joinBoard;
     });
 
     afterAll(async () => {
@@ -436,13 +430,20 @@ describe('Board realtime (ws)', () => {
 
     it('§2.6 REST POST card → card:created ≤2s with payload contract (card.id, listId, createdBy)', async () => {
       const relay = collect(sockObserver, 'card:created');
-      const newCard = await createCard(app, actor, wsId, bId, lId, 'Mirror Card');
+      const newCard = await createCard(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        bundle.boardId,
+        bundle.listId,
+        'Mirror Card',
+      );
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({
         card: { id: newCard.id },
-        listId: lId,
-        createdBy: { id: actor.id },
+        listId: bundle.listId,
+        createdBy: { id: bundle.owner.id },
       });
       relay.dispose();
     });
@@ -450,62 +451,61 @@ describe('Board realtime (ws)', () => {
     it('§2.8 PATCH card → card:updated broadcast (cardId, changes, updatedBy)', async () => {
       const relay = collect(sockObserver, 'card:updated');
       await req(app.app.getHttpServer())
-        .patch(`/api/workspaces/${wsId}/boards/${bId}/cards/${cId}`)
-        .set('Authorization', `Bearer ${actor.accessToken}`)
+        .patch(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}`)
+        .set('Authorization', `Bearer ${bundle.owner.accessToken}`)
         .send({ title: 'Relay Card Updated' });
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({
-        cardId: cId,
+        cardId: bundle.cardId,
         changes: { title: 'Relay Card Updated' },
-        updatedBy: { id: actor.id },
+        updatedBy: { id: bundle.owner.id },
       });
       relay.dispose();
     });
 
     it('§2.8 PATCH card/move → card:moved broadcast (cardId, fromListId, toListId, newRank, movedBy)', async () => {
-      const targetList = await createList(app, actor, wsId, bId, 'Relay Target');
+      const targetList = await createList(app, bundle.owner, bundle.workspaceId, bundle.boardId, 'Relay Target');
       const relay = collect(sockObserver, 'card:moved');
       await req(app.app.getHttpServer())
-        .patch(`/api/workspaces/${wsId}/boards/${bId}/cards/${cId}/move`)
-        .set('Authorization', `Bearer ${actor.accessToken}`)
+        .patch(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}/move`)
+        .set('Authorization', `Bearer ${bundle.owner.accessToken}`)
         .send({ targetListId: targetList.id });
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({
-        cardId: cId,
-        fromListId: lId,
+        cardId: bundle.cardId,
+        fromListId: bundle.listId,
         toListId: targetList.id,
         newRank: expect.any(String),
-        movedBy: { id: actor.id },
+        movedBy: { id: bundle.owner.id },
       });
       relay.dispose();
     });
 
     it('§2.8 DELETE card → card:archived broadcast (cardId, listId, archivedBy)', async () => {
-      // Create a dedicated card for archiving so we don't break cId
-      const toArchive = await createCard(app, actor, wsId, bId, lId, 'Archive Me');
+      const toArchive = await createCard(app, bundle.owner, bundle.workspaceId, bundle.boardId, bundle.listId, 'Archive Me');
       const relay = collect(sockObserver, 'card:archived');
       await req(app.app.getHttpServer())
-        .delete(`/api/workspaces/${wsId}/boards/${bId}/cards/${toArchive.id}`)
-        .set('Authorization', `Bearer ${actor.accessToken}`);
+        .delete(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${toArchive.id}`)
+        .set('Authorization', `Bearer ${bundle.owner.accessToken}`);
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({
         cardId: toArchive.id,
-        archivedBy: { id: actor.id },
+        archivedBy: { id: bundle.owner.id },
       });
       relay.dispose();
     });
 
     it('§2.8 POST list → list:created broadcast (list.id, list.boardId, createdBy)', async () => {
       const relay = collect(sockObserver, 'list:created');
-      const newList = await createList(app, actor, wsId, bId, 'Mirror List');
+      const newList = await createList(app, bundle.owner, bundle.workspaceId, bundle.boardId, 'Mirror List');
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({
-        list: { id: newList.id, boardId: bId },
-        createdBy: { id: actor.id },
+        list: { id: newList.id, boardId: bundle.boardId },
+        createdBy: { id: bundle.owner.id },
       });
       relay.dispose();
     });
