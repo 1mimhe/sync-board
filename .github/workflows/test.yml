@@ -54,7 +54,7 @@ jobs:
         run: docker compose up -d --wait
 
       - name: Push Prisma schema to test database
-        run: npx prisma db push --skip-generate
+        run: npx prisma db push --accept-data-loss
         env:
           DATABASE_URL: 'postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public'
 
