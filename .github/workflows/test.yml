@@ -33,6 +33,25 @@ jobs:
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      DATABASE_URL: 'postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public'
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      RABBITMQ_URL: 'amqp://guest:guest@localhost:5672'
+      JWT_SECRET: 'e2e-test-secret-key-32-chars-minimum!!'
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      SMTP_SECURE: 'false'
+      MAILHOG_URL: 'http://localhost:8025'
+      MAIL_FROM: 'SyncBoard E2E <no-reply@syncboard.local>'
+      MAIL_FROM_NAME: SyncBoard
+      CLIENT_URL: 'http://localhost:3001'
+      APP_URL: 'http://localhost:3000'
+      GOOGLE_CLIENT_ID: dummy
+      GOOGLE_CLIENT_SECRET: dummy
+      LOG_LEVEL: error
 
     steps:
       - name: Checkout repository
