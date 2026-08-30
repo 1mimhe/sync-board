@@ -164,11 +164,16 @@ export class BoardGateway
       // 3. Verify JWT signature, expiration, and decode payload
       const payload: JwtPayload = this.jwtTokenService.verifyAccessToken(token);
 
-      // 4. Verify token has not been revoked in Redis blacklist
+      // 4. Attach decoded user payload to socket session data immediately
+      const socketData: AuthenticatedSocketData = { user: payload };
+      client.data = socketData;
+
+      // 5. Verify token has not been revoked in Redis blacklist
       if (await this.blacklistService.isBlacklisted(payload.jti)) {
         this.logger.warn(
           `Rejected WebSocket connection: revoked token (jti: ${payload.jti})`,
         );
+        client.data = {};
         client.emit('error', {
           code: 'TOKEN_REVOKED',
           message: 'Token has been revoked',
@@ -176,10 +181,6 @@ export class BoardGateway
         client.disconnect(true);
         return;
       }
-
-      // 5. Attach decoded user payload to socket session data
-      const socketData: AuthenticatedSocketData = { user: payload };
-      client.data = socketData;
 
       // 6. Join user-specific private room for targeted direct notifications
       await client.join(`user:${payload.sub}`);
