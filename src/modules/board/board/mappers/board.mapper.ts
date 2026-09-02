@@ -99,6 +99,7 @@ export function toLabelResponseDto(label: Label): LabelResponseDto {
   return {
     id: label.id,
     workspaceId: label.workspaceId,
+    boardId: label.boardId,
     name: label.name,
     color: label.color,
     createdAt: label.createdAt,
@@ -266,7 +267,7 @@ export function toActivityResponseDto(
 ): ActivityResponseDto {
   return {
     id: activity.id,
-    boardId: activity.boardId,
+    boardId: activity.boardId!,
     user: toCommentAuthorDto(activity.user),
     action: activity.action,
     entityType: activity.entityType,

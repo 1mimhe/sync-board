@@ -57,7 +57,6 @@ export const WS_EVENTS = {
   CHECKLIST_UPDATED: 'checklist:updated',
   CHECKLIST_DELETED: 'checklist:deleted',
 
-
   // Presence & Collaboration
   PRESENCE_HEARTBEAT: 'presence:heartbeat',
   BOARD_PRESENCE: 'board:presence',
@@ -90,6 +89,7 @@ export const PRESENCE_CONFIG = {
 export const WS_RATE_LIMITS = {
   BOARD_EVENTS: { category: 'board', limit: 60, windowMs: 60_000 },
   ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
+  PRESENCE_CURSOR: { category: 'cursor', limit: 30, windowMs: 60_000 },
   DOC_UPDATE: { category: 'doc_update', limit: 120, windowMs: 60_000 },
   DOC_AWARENESS: {
     category: 'doc_awareness',
