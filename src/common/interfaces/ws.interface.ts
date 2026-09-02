@@ -11,6 +11,8 @@ export interface AuthenticatedSocketData {
   currentBoardId?: string;
   /** Active workspace room the socket is subscribed to */
   currentWorkspaceId?: string;
+  /** Active document room the socket is subscribed to */
+  currentDocumentId?: string;
 }
 
 /**
