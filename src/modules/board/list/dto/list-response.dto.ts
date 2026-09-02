@@ -47,6 +47,13 @@ export class ListResponseDto {
     nullable: true,
   })
   archivedAt!: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'List deleted timestamp (permanent delete, not retrievable)',
+    example: null,
+    nullable: true,
+  })
+  deletedAt!: Date | null;
 }
 
 /**

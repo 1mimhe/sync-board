@@ -1,10 +1,12 @@
 import {
   Controller,
   Post,
+  Get,
   Patch,
   Delete,
   Param,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
@@ -25,10 +27,12 @@ import {
   MoveListDto,
   ListResponseDto,
 } from '../dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import { toListResponseDto } from '../../board/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
  * Controller exposing REST endpoints for managing board lists (create, rename, LexoRank reorder, archive).
@@ -245,5 +249,77 @@ export class ListController {
       user.sub,
     );
     return toListResponseDto(list);
+  }
+
+  /**
+   * Lists archived lists in a board (paginated).
+   */
+  @Get('archived')
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'List archived lists in board (paginated)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of archived lists: { items, pagination }',
+    type: [ListResponseDto],
+  })
+  async listArchived(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<ListResponseDto>> {
+    const result = await this.listService.listArchivedListsPaginated(boardId, workspaceId, query);
+    return {
+      items: result.items.map(toListResponseDto),
+      pagination: result.pagination,
+    };
+  }
+
+  /**
+   * Permanently deletes a list (sets deletedAt). Can be called directly
+   * without archiving first. Only owner and admin can perform this operation.
+   * Emits list.deleted event.
+   */
+  @Delete(':listId/permanent')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @WorkspaceAuth('owner', 'admin')
+  @ApiOperation({ summary: 'Permanently delete a list (direct delete)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'listId',
+    type: String,
+    format: 'uuid',
+    description: 'List UUID',
+  })
+  @ApiNoContentResponse({ description: 'List permanently deleted' })
+  @ApiResponse({ status: 404, description: 'List not found' })
+  async deletePermanently(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    await this.listService.deletePermanently(boardId, workspaceId, listId, user.sub);
   }
 }

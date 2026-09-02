@@ -7,4 +7,5 @@ export const LIST_EVENTS = {
   moved: 'list.moved',
   archived: 'list.archived',
   unarchived: 'list.unarchived',
+  deleted: 'list.deleted',
 } as const;
