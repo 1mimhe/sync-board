@@ -26,11 +26,6 @@ import {
   CommentDeletedEvent,
 } from '../../../comment/events/comment.events';
 import {
-  LabelCreatedEvent,
-  LabelUpdatedEvent,
-  LabelDeletedEvent,
-} from '../../../label/events/label.events';
-import {
   CardAssigneeAddedEvent,
   CardAssigneeRemovedEvent,
 } from '../../../card/events/card.events';
@@ -501,67 +496,7 @@ describe('BroadcastRelayService', () => {
     );
   });
 
-  it('should broadcast label:created on LabelCreatedEvent (board-scoped)', () => {
-    const event = new LabelCreatedEvent(
-      { id: 'lbl-1' } as any,
-      'ws-1',
-      '123e4567-e89b-42d3-a456-426614174000',
-      'user-1',
-    );
 
-    relay.broadcastLabelCreated(event);
-
-    expect(mockServer.to).toHaveBeenCalledWith(
-      'board:123e4567-e89b-42d3-a456-426614174000',
-    );
-    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LABEL_CREATED, {
-      label: event.label,
-      createdBy: { id: 'user-1' },
-    });
-  });
-
-  it('should skip broadcasting workspace-level label creation (null boardId)', () => {
-    const event = new LabelCreatedEvent(
-      { id: 'lbl-ws' } as any,
-      'ws-1',
-      null,
-      'user-1',
-    );
-
-    relay.broadcastLabelCreated(event);
-
-    expect(mockServer.to).not.toHaveBeenCalled();
-  });
-
-  it('should broadcast label:updated on LabelUpdatedEvent', () => {
-    const event = new LabelUpdatedEvent(
-      { id: 'lbl-1' } as any,
-      '123e4567-e89b-42d3-a456-426614174000',
-      'user-1',
-    );
-
-    relay.broadcastLabelUpdated(event);
-
-    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LABEL_UPDATED, {
-      label: event.label,
-      updatedBy: { id: 'user-1' },
-    });
-  });
-
-  it('should broadcast label:deleted on LabelDeletedEvent', () => {
-    const event = new LabelDeletedEvent(
-      'lbl-1',
-      '123e4567-e89b-42d3-a456-426614174000',
-      'user-1',
-    );
-
-    relay.broadcastLabelDeleted(event);
-
-    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LABEL_DELETED, {
-      labelId: 'lbl-1',
-      deletedBy: { id: 'user-1' },
-    });
-  });
 
   it('should broadcast card:assignee-added on CardAssigneeAddedEvent', () => {
     const event = new CardAssigneeAddedEvent(
@@ -655,13 +590,6 @@ describe('BroadcastRelayService', () => {
       relay.broadcastCommentDeleted(
         new CommentDeletedEvent('cm-1', 'c-1', 'b-1', 'u-1'),
       );
-      relay.broadcastLabelCreated(
-        new LabelCreatedEvent({} as any, 'ws-1', 'b-1', 'u-1'),
-      );
-      relay.broadcastLabelUpdated(
-        new LabelUpdatedEvent({} as any, 'b-1', 'u-1'),
-      );
-      relay.broadcastLabelDeleted(new LabelDeletedEvent('lbl-1', 'b-1', 'u-1'));
       relay.broadcastCardAssigneeAdded(
         new CardAssigneeAddedEvent('c-1', 'b-1', 'a-1', 'u-1'),
       );
