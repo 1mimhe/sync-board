@@ -246,4 +246,16 @@ describe('BoardController', () => {
       expect(result.pagination).toEqual({ cursor: 'act-1', hasMore: false });
     });
   });
+
+  describe('listArchived', () => {
+    it('should list all archived boards and map response', async () => {
+      boardService.listArchivedBoards = jest.fn().mockResolvedValue([mockBoard]);
+
+      const result = await controller.listArchived('ws-1');
+
+      expect(boardService.listArchivedBoards).toHaveBeenCalledWith('ws-1');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('board-1');
+    });
+  });
 });

@@ -5,6 +5,7 @@ import type {
   BoardContentQuery,
   BoardWithFullContent,
 } from '../interfaces/board.interfaces';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
  * Repository handling database access for boards, board memberships/stars, and nested board content.
@@ -24,17 +25,18 @@ export class BoardRepository {
   }
 
   /**
-   * Finds an active (non-archived) board by ID, optionally scoped to a workspace.
+   * Finds an active (non-archived, non-deleted) board by ID, optionally scoped to a workspace.
    *
    * @param id - Board UUID
    * @param workspaceId - Optional workspace UUID filter
-   * @returns The board or null if not found/archived
+   * @returns The board or null if not found/archived/deleted
    */
   async findById(id: string, workspaceId?: string): Promise<Board | null> {
     return this.prisma.board.findFirst({
       where: {
         id,
         archivedAt: null,
+        deletedAt: null,
         ...(workspaceId && { workspaceId }),
       },
     });
@@ -59,8 +61,8 @@ export class BoardRepository {
     });
   }
 
-  /**
-   * Finds a board by ID with its nested relational structure (lists, cards, assignees, labels, attachments, starred status).
+/**
+   * Finds a board by ID with its nested relational structure (lists, cards, available labels, and pagination metadata).
    *
    * @param id - Board UUID
    * @param userId - Requesting user UUID for calculating starred status
@@ -78,21 +80,21 @@ export class BoardRepository {
       where: {
         id,
         archivedAt: null,
+        deletedAt: null,
         ...(workspaceId && { workspaceId }),
       },
       include: {
-        labels: true,
         lists: {
-          where: { archivedAt: null },
+          where: { archivedAt: null, deletedAt: null },
           orderBy: { rank: 'asc' },
           skip: query.listSkip ?? 0,
           take: query.listTake,
           include: {
             _count: {
-              select: { cards: { where: { archivedAt: null } } },
+              select: { cards: { where: { archivedAt: null, deletedAt: null } } },
             },
             cards: {
-              where: { archivedAt: null },
+              where: { archivedAt: null, deletedAt: null },
               orderBy: { rank: 'asc' },
               skip: query.cardSkip ?? 0,
               take: query.cardTake,
@@ -139,9 +141,17 @@ export class BoardRepository {
       return null;
     }
 
+    const labels = this.prisma.label
+      ? await this.prisma.label.findMany({
+          where: { workspaceId: board.workspaceId },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
     const { starredBy, ...rest } = board;
     return {
       ...rest,
+      labels,
       isStarred: starredBy.length > 0,
       lists: board.lists.map(({ _count, ...list }) => ({
         ...list,
@@ -151,26 +161,26 @@ export class BoardRepository {
   }
 
   /**
-   * Counts active (non-archived) lists belonging to a board.
+   * Counts active (non-archived, non-deleted) lists belonging to a board.
    *
    * @param boardId - Board UUID
    * @returns Total active lists count
    */
   async countLists(boardId: string): Promise<number> {
     return this.prisma.list.count({
-      where: { boardId, archivedAt: null },
+      where: { boardId, archivedAt: null, deletedAt: null },
     });
   }
 
   /**
-   * Counts active (non-archived) cards across all lists in a board.
+   * Counts active (non-archived, non-deleted) cards across all lists in a board.
    *
    * @param boardId - Board UUID
    * @returns Total active cards count
    */
   async countCards(boardId: string): Promise<number> {
     return this.prisma.card.count({
-      where: { list: { boardId }, archivedAt: null },
+      where: { list: { boardId }, archivedAt: null, deletedAt: null },
     });
   }
 
@@ -195,7 +205,7 @@ export class BoardRepository {
   ): Promise<Board[]> {
     const find = (withCursor: boolean) =>
       this.prisma.board.findMany({
-        where: { workspaceId, archivedAt: null },
+        where: { workspaceId, archivedAt: null, deletedAt: null },
         include: {
           starredBy: {
             where: { userId },
@@ -299,5 +309,89 @@ export class BoardRepository {
       where: { userId_boardId: { userId, boardId } },
     });
     return !!star;
+  }
+
+  /**
+   * Finds all archived boards in a workspace.
+   *
+   * @param workspaceId - Workspace UUID
+   * @returns Array of archived boards
+   */
+  async findArchivedBoards(workspaceId: string): Promise<Board[]> {
+    return this.prisma.board.findMany({
+      where: {
+        workspaceId,
+        archivedAt: { not: null },
+        deletedAt: null,
+      },
+      orderBy: { archivedAt: 'desc' },
+    });
+  }
+
+  /**
+   * Finds a cursor page of archived boards in a workspace.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param cursor - Last item id of the previous page
+   * @param limit - Page size
+   * @returns PaginatedResult with items and pagination cursor/hasMore
+   */
+  async findArchivedBoardsPage(
+    workspaceId: string,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<PaginatedResult<Board>> {
+    const boards = await this.prisma.board.findMany({
+      where: {
+        workspaceId,
+        archivedAt: { not: null },
+        deletedAt: null,
+      },
+      orderBy: [{ archivedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = boards.length > limit;
+    const items = hasMore ? boards.slice(0, limit) : boards;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return {
+      items,
+      pagination: { cursor: nextCursor, hasMore },
+    };
+  }
+
+  /**
+   * Finds a board by ID including deleted boards, optionally scoped to a workspace.
+   *
+   * @param id - Board UUID
+   * @param workspaceId - Optional workspace UUID filter
+   * @returns The board or null if not found
+   */
+  async findByIdIncludingDeleted(
+    id: string,
+    workspaceId?: string,
+  ): Promise<Board | null> {
+    return this.prisma.board.findFirst({
+      where: {
+        id,
+        ...(workspaceId && { workspaceId }),
+      },
+    });
+  }
+
+  /**
+   * Permanently marks a board as deleted by setting deletedAt timestamp.
+   * Deleted boards are not retrievable or restorable.
+   *
+   * @param id - Board UUID
+   * @returns The updated board with deletedAt set
+   */
+  async deletePermanently(id: string): Promise<Board> {
+    return this.prisma.board.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   }
 }

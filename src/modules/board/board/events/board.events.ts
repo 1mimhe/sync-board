@@ -32,3 +32,12 @@ export class BoardUnarchivedEvent {
     public readonly unarchivedBy: string,
   ) {}
 }
+
+/** Event emitted after a board is permanently deleted (not retrievable). */
+export class BoardDeletedEvent {
+  constructor(
+    public readonly boardId: string,
+    public readonly workspaceId: string,
+    public readonly deletedBy: string,
+  ) {}
+}

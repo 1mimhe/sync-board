@@ -340,4 +340,23 @@ describe('BoardService', () => {
       );
     });
   });
+
+  describe('listArchivedBoards', () => {
+    it('should return archived boards from repository', async () => {
+      const mockArchived = [
+        {
+          id: 'b-archived',
+          workspaceId: 'ws-1',
+          title: 'Archived Board',
+          archivedAt: new Date(),
+        },
+      ];
+      boardRepo.findArchivedBoards.mockResolvedValue(mockArchived as any);
+
+      const result = await service.listArchivedBoards('ws-1');
+
+      expect(boardRepo.findArchivedBoards).toHaveBeenCalledWith('ws-1');
+      expect(result).toEqual(mockArchived);
+    });
+  });
 });
