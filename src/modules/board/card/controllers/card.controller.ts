@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
@@ -34,6 +35,8 @@ import {
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import { CursorPaginationQueryDto } from '../../board/dto';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
  * Controller exposing REST endpoints for managing cards, card assignments, and card label attachments.
@@ -89,6 +92,40 @@ export class CardController {
       user.sub,
     );
     return toCardWithDetailsResponseDto(card);
+  }
+
+  /**
+   * Lists archived cards in a board (paginated, owner/admin/member).
+   */
+  @Get('cards/archived')
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'List archived cards in board (paginated)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of archived cards: { items, pagination }',
+    type: [CardWithDetailsResponseDto],
+  })
+  async listArchived(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<CardWithDetailsResponseDto>> {
+    const result = await this.cardService.listArchivedCardsPaginated(boardId, workspaceId, query);
+    return {
+      items: result.items.map(toCardWithDetailsResponseDto),
+      pagination: result.pagination,
+    };
   }
 
   /**
@@ -307,6 +344,44 @@ export class CardController {
       user.sub,
     );
     return toCardResponseDto(card);
+  }
+
+  /**
+   * Permanently deletes a card (sets deletedAt). Can be called directly
+   * without archiving first. Only owner and admin can perform this operation.
+   * Emits card.deleted event.
+   */
+  @Delete('cards/:cardId/permanent')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @WorkspaceAuth('owner', 'admin')
+  @ApiOperation({ summary: 'Permanently delete a card (direct delete)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Card UUID',
+  })
+  @ApiNoContentResponse({ description: 'Card permanently deleted' })
+  @ApiResponse({ status: 404, description: 'Card not found' })
+  async deletePermanently(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    await this.cardService.deletePermanently(boardId, workspaceId, cardId, user.sub);
   }
 
   /**

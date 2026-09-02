@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ListWithCardsResponseDto } from '../../list/dto/list-response.dto';
-import { BoardLabelResponseDto } from '../../label/dto/board-label-response.dto';
+import { LabelResponseDto } from '../../label/dto/board-label-response.dto';
 
 /**
  * Response DTO representing standard board metadata.
@@ -62,6 +62,13 @@ export class BoardResponseDto {
     nullable: true,
   })
   archivedAt!: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Board deleted timestamp (permanent delete, not retrievable)',
+    example: null,
+    nullable: true,
+  })
+  deletedAt!: Date | null;
 }
 
 /**
@@ -110,10 +117,10 @@ export class BoardWithContentResponseDto extends BoardResponseDto {
   lists!: ListWithCardsResponseDto[];
 
   @ApiProperty({
-    description: 'Board labels list',
-    type: [BoardLabelResponseDto],
+    description: 'Labels list',
+    type: [LabelResponseDto],
   })
-  labels!: BoardLabelResponseDto[];
+  labels!: LabelResponseDto[];
 
   @ApiProperty({
     description: 'Board content pagination metadata',

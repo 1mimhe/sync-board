@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { List, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../common/database/prisma.service';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
  * Repository handling database operations for board lists.
@@ -20,30 +21,31 @@ export class ListRepository {
   }
 
   /**
-   * Finds an active (non-archived) list by ID, optionally scoped to a board.
+   * Finds an active (non-archived, non-deleted) list by ID, optionally scoped to a board.
    *
    * @param id - List UUID
    * @param boardId - Optional board UUID filter
-   * @returns The list or null if not found/archived
+   * @returns The list or null if not found/archived/deleted
    */
   async findActiveById(id: string, boardId?: string): Promise<List | null> {
     return this.prisma.list.findFirst({
       where: {
         id,
         archivedAt: null,
+        deletedAt: null,
         ...(boardId && { boardId }),
       },
     });
   }
 
   /**
-   * Finds a list by ID including archived lists, optionally scoped to a board.
+   * Finds a list by ID including archived and deleted lists, optionally scoped to a board.
    *
    * @param id - List UUID
    * @param boardId - Optional board UUID filter
    * @returns The list or null if not found
    */
-  async findByIdIncludingArchived(
+  async findByIdIncludingDeleted(
     id: string,
     boardId?: string,
   ): Promise<List | null> {
@@ -56,6 +58,20 @@ export class ListRepository {
   }
 
   /**
+   * Alias for findByIdIncludingDeleted — kept for backward compatibility.
+   *
+   * @param id - List UUID
+   * @param boardId - Optional board UUID filter
+   * @returns The list or null if not found
+   */
+  async findByIdIncludingArchived(
+    id: string,
+    boardId?: string,
+  ): Promise<List | null> {
+    return this.findByIdIncludingDeleted(id, boardId);
+  }
+
+  /**
    * Finds the last active list in a board (highest rank) for rank calculation.
    *
    * @param boardId - Board UUID
@@ -63,7 +79,7 @@ export class ListRepository {
    */
   async findLastInBoard(boardId: string): Promise<List | null> {
     return this.prisma.list.findFirst({
-      where: { boardId, archivedAt: null },
+      where: { boardId, archivedAt: null, deletedAt: null },
       orderBy: { rank: 'desc' },
     });
   }
@@ -76,7 +92,7 @@ export class ListRepository {
    */
   async findBoardLists(boardId: string): Promise<List[]> {
     return this.prisma.list.findMany({
-      where: { boardId, archivedAt: null },
+      where: { boardId, archivedAt: null, deletedAt: null },
       orderBy: { rank: 'asc' },
     });
   }
@@ -118,6 +134,54 @@ export class ListRepository {
     return this.prisma.list.update({
       where: { id },
       data: { archivedAt: null },
+    });
+  }
+
+  /**
+   * Finds a cursor page of archived (non-deleted) lists in a board.
+   *
+   * @param boardId - Board UUID
+   * @param cursor - Last item id of the previous page
+   * @param limit - Page size
+   * @returns PaginatedResult with items and pagination cursor/hasMore
+   */
+  async findArchivedByBoardIdPage(
+    boardId: string,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<PaginatedResult<List>> {
+    const lists = await this.prisma.list.findMany({
+      where: {
+        boardId,
+        archivedAt: { not: null },
+        deletedAt: null,
+      },
+      orderBy: [{ archivedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = lists.length > limit;
+    const items = hasMore ? lists.slice(0, limit) : lists;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return {
+      items,
+      pagination: { cursor: nextCursor, hasMore },
+    };
+  }
+
+  /**
+   * Permanently marks a list as deleted by setting deletedAt timestamp.
+   * Deleted lists are not retrievable or restorable.
+   *
+   * @param id - List UUID
+   * @returns The updated list with deletedAt set
+   */
+  async deletePermanently(id: string): Promise<List> {
+    return this.prisma.list.update({
+      where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 }

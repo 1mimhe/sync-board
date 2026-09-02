@@ -43,6 +43,7 @@ enum EntityType {
   label
   assignee
   attachment
+  document
 
   @@map("entity_type")
 }
@@ -77,6 +78,8 @@ model User {
   cardComments         CardComment[]
   uploadedAttachments  CardAttachment[]
   activities           Activity[]
+  createdDocuments     Document[]           @relation("DocumentCreator")
+  documentSnapshots    DocumentSnapshot[]   @relation("SnapshotCreator")
 
   @@index([googleId], map: "idx_users_google_id")
   @@map("users")
@@ -120,6 +123,7 @@ model Workspace {
   invitations WorkspaceInvitation[]
   boards      Board[]
   labels      Label[]
+  documents   Document[]
 
   @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
@@ -171,11 +175,11 @@ model Board {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   archivedAt      DateTime? @map("archived_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
   workspace  Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   creator    User               @relation("BoardCreator", fields: [createdBy], references: [id])
   starredBy  UserStarredBoard[]
-  labels     Label[]
   lists      List[]
   activities Activity[]
 
@@ -198,16 +202,14 @@ model UserStarredBoard {
 model Label {
   id          String   @id @default(uuid()) @db.Uuid
   workspaceId String   @map("workspace_id") @db.Uuid
-  boardId     String?  @map("board_id") @db.Uuid
   name        String?  @db.VarChar(50)
   color       String   @db.VarChar(7)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   workspace  Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  board      Board?      @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cardLabels CardLabel[]
 
-  @@index([workspaceId, boardId], map: "idx_labels_workspace_board")
+  @@index([workspaceId], map: "idx_labels_workspace")
   @@map("labels")
 }
 
@@ -219,6 +221,7 @@ model List {
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   archivedAt DateTime? @map("archived_at") @db.Timestamptz
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
 
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
@@ -239,6 +242,7 @@ model Card {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   archivedAt    DateTime? @map("archived_at") @db.Timestamptz
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
 
   list        List             @relation(fields: [listId], references: [id], onDelete: Cascade)
   creator     User             @relation("CardCreator", fields: [createdBy], references: [id])
@@ -247,6 +251,7 @@ model Card {
   comments    CardComment[]
   attachments CardAttachment[]
   checklists  CardChecklist[]
+  documents   Document[]
 
   @@map("cards")
 }
@@ -313,7 +318,7 @@ model CardAttachment {
 
 model Activity {
   id          String     @id @default(uuid()) @db.Uuid
-  boardId     String     @map("board_id") @db.Uuid
+  boardId     String?    @map("board_id") @db.Uuid
   userId      String     @map("user_id") @db.Uuid
   action      ActionType
   entityType  EntityType @map("entity_type")
@@ -324,8 +329,8 @@ model Activity {
   details     Json?      @db.JsonB
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
-  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board? @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([boardId], map: "idx_activities_board")
   @@map("activities")
@@ -359,4 +364,49 @@ model ChecklistItem {
 
   @@index([checklistId], map: "idx_checklist_items_checklist")
   @@map("checklist_items")
+}
+
+enum DocumentStatus {
+  active
+  archived
+
+  @@map("document_status")
+}
+
+model Document {
+  id           String         @id @default(uuid()) @db.Uuid
+  workspaceId  String         @map("workspace_id") @db.Uuid
+  title        String         @default("Untitled") @db.VarChar(500)
+  yjsState     Bytes?         @map("yjs_state")
+  previewText  String?        @map("preview_text") @db.Text
+  createdBy    String         @map("created_by") @db.Uuid
+  parentCardId String?        @map("parent_card_id") @db.Uuid
+  status       DocumentStatus @default(active)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  workspace  Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator    User               @relation("DocumentCreator", fields: [createdBy], references: [id])
+  parentCard Card?              @relation(fields: [parentCardId], references: [id], onDelete: SetNull)
+  snapshots  DocumentSnapshot[]
+
+  @@index([workspaceId], map: "idx_documents_workspace")
+  @@index([workspaceId, status, updatedAt], map: "idx_documents_workspace_status_updated")
+  @@index([parentCardId], map: "idx_documents_parent_card")
+  @@map("documents")
+}
+
+model DocumentSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  documentId   String   @map("document_id") @db.Uuid
+  yjsState     Bytes    @map("yjs_state")
+  snapshotName String?  @map("snapshot_name") @db.VarChar(200)
+  createdBy    String   @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  creator  User     @relation("SnapshotCreator", fields: [createdBy], references: [id])
+
+  @@index([documentId], map: "idx_snapshots_document")
+  @@map("document_snapshots")
 }

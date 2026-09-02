@@ -19,7 +19,7 @@ import {
   ListResponseDto,
   ListWithCardsResponseDto,
 } from '../../list/dto/list-response.dto';
-import { BoardLabelResponseDto } from '../../label/dto/board-label-response.dto';
+import { LabelResponseDto } from '../../label/dto/board-label-response.dto';
 import { CardAttachmentResponseDto } from '../../attachment/dto/card-attachment-response.dto';
 import type {
   BoardWithFullContent,
@@ -66,6 +66,7 @@ export function toBoardResponseDto(board: Board): BoardResponseDto {
     createdAt: board.createdAt,
     updatedAt: board.updatedAt,
     archivedAt: board.archivedAt,
+    deletedAt: (board as Board & { deletedAt: Date | null }).deletedAt ?? null,
   };
 }
 
@@ -84,25 +85,30 @@ export function toListResponseDto(list: List): ListResponseDto {
     createdAt: list.createdAt,
     updatedAt: list.updatedAt,
     archivedAt: list.archivedAt,
+    deletedAt: (list as List & { deletedAt: Date | null }).deletedAt ?? null,
   };
 }
 
 /**
- * Maps a Prisma Label model to BoardLabelResponseDto.
+ * Maps a Prisma Label model to LabelResponseDto.
  *
  * @param label - Label database entity
- * @returns Mapped BoardLabelResponseDto
+ * @returns Mapped LabelResponseDto
  */
-export function toBoardLabelResponseDto(label: Label): BoardLabelResponseDto {
+export function toLabelResponseDto(label: Label): LabelResponseDto {
   return {
     id: label.id,
     workspaceId: label.workspaceId,
-    boardId: label.boardId,
     name: label.name,
     color: label.color,
     createdAt: label.createdAt,
   };
 }
+
+/**
+ * Backward compatibility alias for toLabelResponseDto.
+ */
+export const toBoardLabelResponseDto = toLabelResponseDto;
 
 /**
  * Maps a Prisma Card model to CardResponseDto.
@@ -124,6 +130,7 @@ export function toCardResponseDto(card: Card): CardResponseDto {
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
     archivedAt: card.archivedAt,
+    deletedAt: (card as Card & { deletedAt: Date | null }).deletedAt ?? null,
   };
 }
 

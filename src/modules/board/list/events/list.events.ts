@@ -42,3 +42,12 @@ export class ListMovedEvent {
     public readonly movedBy: string,
   ) {}
 }
+
+/** Event emitted after a list is permanently deleted (not retrievable). */
+export class ListDeletedEvent {
+  constructor(
+    public readonly listId: string,
+    public readonly boardId: string,
+    public readonly deletedBy: string,
+  ) {}
+}

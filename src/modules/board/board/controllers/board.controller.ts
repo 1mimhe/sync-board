@@ -111,6 +111,33 @@ export class BoardController {
   }
 
   /**
+   * Lists archived boards in a workspace (paginated).
+   */
+  @Get('archived')
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'List archived boards in workspace (paginated)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of archived boards: { items, pagination }',
+    type: [BoardResponseDto],
+  })
+  async listArchived(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ): Promise<PaginatedResult<BoardResponseDto>> {
+    const result = await this.boardService.listArchivedBoardsPaginated(workspaceId, query);
+    return {
+      items: result.items.map(toBoardResponseDto),
+      pagination: result.pagination,
+    };
+  }
+
+  /**
    * Retrieves a single board along with its nested lists, cards, and labels.
    */
   @Get(':boardId')
@@ -251,6 +278,37 @@ export class BoardController {
       user.sub,
     );
     return toBoardResponseDto(restored);
+  }
+
+  /**
+   * Permanently deletes a board (sets deletedAt). Can be called directly
+   * without archiving first. Only owner and admin can perform this operation.
+   * Emits board.deleted event.
+   */
+  @Delete(':boardId/permanent')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @WorkspaceAuth('owner', 'admin')
+  @ApiOperation({ summary: 'Permanently delete a board (direct delete)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiNoContentResponse({ description: 'Board permanently deleted' })
+  @ApiResponse({ status: 404, description: 'Board not found' })
+  async deletePermanently(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    await this.boardService.deletePermanently(boardId, workspaceId, user.sub);
   }
 
   /**

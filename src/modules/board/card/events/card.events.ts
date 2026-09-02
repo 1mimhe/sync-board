@@ -51,6 +51,16 @@ export class CardUnarchivedEvent {
   ) {}
 }
 
+/** Event emitted after a card is permanently deleted (not retrievable). */
+export class CardDeletedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly listId: string,
+    public readonly deletedBy: string,
+  ) {}
+}
+
 /** Event emitted after a user is assigned to a card. */
 export class CardAssigneeAddedEvent {
   constructor(

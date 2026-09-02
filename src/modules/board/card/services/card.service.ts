@@ -8,7 +8,7 @@ import { LabelRepository } from '../../label/repositories/label.repository';
 import { LexorankService } from '../../lexorank/services/lexorank.service';
 import { WorkspaceService } from '../../../workspace/services/workspace.service';
 import { CreateCardDto, UpdateCardDto, MoveCardDto } from '../dto';
-import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
 import {
   CardCreatedEvent,
   CardMovedEvent,
@@ -17,9 +17,12 @@ import {
   CardUnarchivedEvent,
   CardAssigneeAddedEvent,
   CardAssigneeRemovedEvent,
+  CardDeletedEvent,
 } from '../events/card.events';
 import { CARD_EVENTS } from '../events/card-events.constants';
 import type { CardWithDetails } from '../../board/interfaces/board.interfaces';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
+import { CursorPaginationQueryDto } from '../../board/dto';
 
 /**
  * Service encapsulating business logic for card operations, ordering, assignments, and labels.
@@ -96,13 +99,9 @@ export class CardService {
     if (!labelIds || labelIds.length === 0) return;
     for (const labelId of labelIds) {
       const label = await this.labelRepo.findById(labelId);
-      if (
-        !label ||
-        label.workspaceId !== workspaceId ||
-        (label.boardId !== null && label.boardId !== boardId)
-      ) {
+      if (!label || label.workspaceId !== workspaceId) {
         throw new BadRequestException(
-          `Label ${labelId} is not available for board ${boardId}`,
+          `Label ${labelId} is not available in workspace ${workspaceId}`,
         );
       }
     }
@@ -371,6 +370,104 @@ export class CardService {
   }
 
   /**
+   * Retrieves a cursor page of archived (non-deleted) cards in a board.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with items and pagination
+   * @throws {EntityNotFoundException} If board is not found
+   */
+  async listArchivedCardsPaginated(
+    boardId: string,
+    workspaceId: string,
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<CardWithDetails>> {
+    const board = await this.boardRepo.findById(boardId, workspaceId);
+    if (!board) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+    const limit = query.limit ?? 20;
+    const result = await this.cardRepo.findArchivedByBoardIdPage(boardId, query.cursor, limit);
+    return result;
+  }
+
+  /**
+   * Permanently deletes a card (sets deletedAt). Can be called directly
+   * on active cards or on archived cards. Deleted cards are not retrievable
+   * or restorable.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param cardId - Card UUID
+   * @param userId - User UUID who deleted the card
+   * @throws {EntityNotFoundException} If board or card is not found
+   * @throws {BusinessRuleException} If card is not archived
+   * @emits card.deleted - After successful deletion
+   */
+  async deletePermanently(
+    boardId: string,
+    workspaceId: string,
+    cardId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
+    const card = await this.cardRepo.findByIdIncludingDeleted(cardId, boardId);
+    if (!card) {
+      throw new EntityNotFoundException('Card', cardId);
+    }
+
+    if (card.deletedAt) {
+      throw new BusinessRuleException(
+        'CARD_ALREADY_DELETED',
+        'Card is already deleted',
+      );
+    }
+
+    const listId = card.listId;
+
+    await this.cardRepo.deletePermanently(cardId);
+
+    this.eventEmitter.emit(
+      CARD_EVENTS.deleted,
+      new CardDeletedEvent(cardId, boardId, listId, userId),
+    );
+
+    this.logger.log(`Card permanently deleted: ${cardId} by user ${userId}`);
+  }
+
+  /**
+   * Retrieves all archived cards for a board (legacy method).
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @returns Array of archived cards
+   */
+  async listArchivedCards(
+    boardId: string,
+    workspaceId: string,
+  ): Promise<CardWithDetails[]> {
+    const board = await this.boardRepo.findById(boardId, workspaceId);
+    if (!board) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+    return this.cardRepo.findArchivedByBoardId(boardId);
+  }
+
+  /**
+   * Retrieves all archived cards across an entire workspace.
+   *
+   * @param workspaceId - Workspace UUID
+   * @returns Array of archived cards
+   */
+  async listWorkspaceArchivedCards(
+    workspaceId: string,
+  ): Promise<CardWithDetails[]> {
+    return this.cardRepo.findArchivedByWorkspaceId(workspaceId);
+  }
+
+  /**
    * Assigns a user to a card.
    *
    * @param boardId - Board UUID
@@ -465,13 +562,9 @@ export class CardService {
     }
 
     const label = await this.labelRepo.findById(labelId);
-    if (
-      !label ||
-      label.workspaceId !== workspaceId ||
-      (label.boardId !== null && label.boardId !== boardId)
-    ) {
+    if (!label || label.workspaceId !== workspaceId) {
       throw new BadRequestException(
-        `Label ${labelId} is not available for board ${boardId}`,
+        `Label ${labelId} is not available in workspace ${workspaceId}`,
       );
     }
 

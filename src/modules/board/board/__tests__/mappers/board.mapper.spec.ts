@@ -77,7 +77,6 @@ describe('BoardMapper Functions', () => {
       const label: any = {
         id: 'lbl-1',
         workspaceId: 'ws-1',
-        boardId: 'b-1',
         name: 'Urgent',
         color: '#ff0000',
         createdAt: now,
@@ -165,7 +164,6 @@ describe('BoardMapper Functions', () => {
               name: 'Bug',
               color: '#f00',
               workspaceId: 'ws-1',
-              boardId: 'b-1',
               createdAt: now,
             },
           },
@@ -186,7 +184,6 @@ describe('BoardMapper Functions', () => {
             name: 'Bug',
             color: '#f00',
             workspaceId: 'ws-1',
-            boardId: 'b-1',
             createdAt: now,
           },
         },

@@ -10,7 +10,7 @@ import {
   BoardContentQueryDto,
   CursorPaginationQueryDto,
 } from '../dto';
-import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
 import { buildCursorPagination } from '../../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import {
@@ -18,6 +18,7 @@ import {
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
+  BoardDeletedEvent,
 } from '../events/board.events';
 import { BOARD_EVENTS } from '../events/board-events.constants';
 import type {
@@ -257,6 +258,70 @@ export class BoardService {
 
     this.logger.log(`Board unarchived: ${boardId} by user ${userId}`);
     return restored;
+  }
+
+  /**
+   * Retrieves a cursor page of archived boards in a workspace.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with items and pagination
+   */
+  async listArchivedBoardsPaginated(
+    workspaceId: string,
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<Board>> {
+    const limit = query.limit ?? 20;
+    const result = await this.boardRepo.findArchivedBoardsPage(workspaceId, query.cursor, limit);
+    return result;
+  }
+
+  /**
+   * Permanently deletes a board (sets deletedAt). Can be called directly
+   * on active boards or on archived boards. Deleted boards are not retrievable
+   * or restorable.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param userId - User UUID who deleted the board
+   * @throws {EntityNotFoundException} If board is not found
+   * @emits board.deleted - After successful deletion (emitted for direct delete)
+   */
+  async deletePermanently(
+    boardId: string,
+    workspaceId: string,
+    userId: string,
+  ): Promise<void> {
+    const board = await this.boardRepo.findByIdIncludingDeleted(boardId, workspaceId);
+    if (!board) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+
+    if (board.deletedAt) {
+      throw new BusinessRuleException(
+        'BOARD_ALREADY_DELETED',
+        'Board is already deleted',
+      );
+    }
+
+    await this.boardRepo.deletePermanently(boardId);
+
+    this.eventEmitter.emit(
+      BOARD_EVENTS.deleted,
+      new BoardDeletedEvent(boardId, workspaceId, userId),
+    );
+
+    this.logger.log(`Board permanently deleted: ${boardId} by user ${userId}`);
+  }
+
+  /**
+   * Retrieves all archived boards in a workspace (legacy method).
+   *
+   * @param workspaceId - Workspace UUID
+   * @returns Array of archived boards
+   */
+  async listArchivedBoards(workspaceId: string): Promise<Board[]> {
+    return this.boardRepo.findArchivedBoards(workspaceId);
   }
 
   /**

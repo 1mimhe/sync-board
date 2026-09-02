@@ -27,6 +27,7 @@ export const WS_EVENTS = {
   BOARD_UPDATED: 'board:updated',
   BOARD_ARCHIVED: 'board:archived',
   BOARD_UNARCHIVED: 'board:unarchived',
+  BOARD_DELETED: 'board:deleted',
 
   // List State Broadcasts
   LIST_CREATED: 'list:created',
@@ -34,6 +35,7 @@ export const WS_EVENTS = {
   LIST_MOVED: 'list:moved',
   LIST_ARCHIVED: 'list:archived',
   LIST_UNARCHIVED: 'list:unarchived',
+  LIST_DELETED: 'list:deleted',
 
   // Card State Broadcasts
   CARD_CREATED: 'card:created',
@@ -41,6 +43,7 @@ export const WS_EVENTS = {
   CARD_MOVED: 'card:moved',
   CARD_ARCHIVED: 'card:archived',
   CARD_UNARCHIVED: 'card:unarchived',
+  CARD_DELETED: 'card:deleted',
   CARD_COMMENT_ADDED: 'card:comment-added',
   CARD_COMMENT_UPDATED: 'card:comment-updated',
   CARD_COMMENT_DELETED: 'card:comment-deleted',
@@ -54,17 +57,11 @@ export const WS_EVENTS = {
   CHECKLIST_UPDATED: 'checklist:updated',
   CHECKLIST_DELETED: 'checklist:deleted',
 
-  // Label Broadcasts
-  LABEL_CREATED: 'label:created',
-  LABEL_UPDATED: 'label:updated',
-  LABEL_DELETED: 'label:deleted',
 
   // Presence & Collaboration
   PRESENCE_HEARTBEAT: 'presence:heartbeat',
-  PRESENCE_CURSOR: 'presence:cursor',
   BOARD_PRESENCE: 'board:presence',
   BOARD_VIEWERS: 'board:viewers',
-  BOARD_CURSOR: 'board:cursor',
 
   // Notifications (user-scoped room)
   NOTIFICATION_NEW: 'notification:new',
@@ -92,37 +89,18 @@ export const PRESENCE_CONFIG = {
  */
 export const WS_RATE_LIMITS = {
   BOARD_EVENTS: { category: 'board', limit: 60, windowMs: 60_000 },
-  PRESENCE_CURSOR: {
-    category: 'cursor',
+  ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
+  DOC_UPDATE: { category: 'doc_update', limit: 120, windowMs: 60_000 },
+  DOC_AWARENESS: {
+    category: 'doc_awareness',
     limit: 600,
     windowMs: 60_000,
     silent: true,
   },
-  ROOM_JOINS: { category: 'join', limit: 10, windowMs: 60_000 },
 } as const;
 
 export type WsRateLimitCategory =
   (typeof WS_RATE_LIMITS)[keyof typeof WS_RATE_LIMITS]['category'];
 
-/**
- * Distinct collaborator colors assigned deterministically to board viewers.
- * Curated 16 high-contrast, accessible colors matching modern collaboration design systems.
- */
-export const COLLABORATOR_COLORS = [
-  '#E11D48', // Rose / Red
-  '#2563EB', // Blue
-  '#059669', // Emerald
-  '#D97706', // Amber
-  '#7C3AED', // Violet
-  '#0891B2', // Cyan
-  '#DB2777', // Pink
-  '#4F46E5', // Indigo
-  '#EA580C', // Orange
-  '#16A34A', // Green
-  '#9333EA', // Purple
-  '#0284C7', // Sky
-  '#CA8A04', // Yellow Gold
-  '#65A30D', // Lime
-  '#0D9488', // Teal
-  '#C026D3', // Fuchsia
-] as const;
+export { COLLABORATOR_COLORS } from '../../../common/utils/collaborator-color.util';
+

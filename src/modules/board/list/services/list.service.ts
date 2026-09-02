@@ -5,15 +5,18 @@ import { ListRepository } from '../repositories/list.repository';
 import { BoardRepository } from '../../board/repositories/board.repository';
 import { LexorankService } from '../../lexorank/services/lexorank.service';
 import { CreateListDto, UpdateListDto, MoveListDto } from '../dto';
-import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
   ListMovedEvent,
   ListArchivedEvent,
   ListUnarchivedEvent,
+  ListDeletedEvent,
 } from '../events/list.events';
 import { LIST_EVENTS } from '../events/list-events.constants';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
+import { CursorPaginationQueryDto } from '../../board/dto';
 
 /**
  * Service handling business logic for board lists (creation, renaming, LexoRank reordering, archiving).
@@ -226,5 +229,68 @@ export class ListService {
 
     this.logger.log(`List unarchived: ${listId} by user ${userId}`);
     return restored;
+  }
+
+  /**
+   * Retrieves a cursor page of archived (non-deleted) lists in a board.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param query - Cursor and limit parameters
+   * @returns PaginatedResult with items and pagination
+   * @throws {EntityNotFoundException} If board is not found
+   */
+  async listArchivedListsPaginated(
+    boardId: string,
+    workspaceId: string,
+    query: CursorPaginationQueryDto = {},
+  ): Promise<PaginatedResult<List>> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+    const limit = query.limit ?? 20;
+    const result = await this.listRepo.findArchivedByBoardIdPage(boardId, query.cursor, limit);
+    return result;
+  }
+
+  /**
+   * Permanently deletes a list (sets deletedAt). Can be called directly
+   * on active lists or on archived lists. Deleted lists are not retrievable
+   * or restorable.
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param listId - List UUID
+   * @param userId - User UUID who deleted the list
+   * @throws {EntityNotFoundException} If board or list is not found
+   * @throws {BusinessRuleException} If list is not archived
+   * @emits list.deleted - After successful deletion
+   */
+  async deletePermanently(
+    boardId: string,
+    workspaceId: string,
+    listId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+
+    const list = await this.listRepo.findByIdIncludingArchived(listId, boardId);
+    if (!list) {
+      throw new EntityNotFoundException('List', listId);
+    }
+
+    if (list.deletedAt) {
+      throw new BusinessRuleException(
+        'LIST_ALREADY_DELETED',
+        'List is already deleted',
+      );
+    }
+
+    await this.listRepo.deletePermanently(listId);
+
+    this.eventEmitter.emit(
+      LIST_EVENTS.deleted,
+      new ListDeletedEvent(listId, boardId, userId),
+    );
+
+    this.logger.log(`List permanently deleted: ${listId} by user ${userId}`);
   }
 }
