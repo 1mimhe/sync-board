@@ -614,4 +614,38 @@ describe('CardService', () => {
       ).rejects.toThrow(EntityNotFoundException);
     });
   });
+
+  describe('listArchivedCards', () => {
+    it('should return archived cards for board when board exists', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+      cardRepo.findArchivedByBoardId.mockResolvedValue([
+        { id: 'c-archived', title: 'Archived Card' },
+      ] as any);
+
+      const result = await service.listArchivedCards('board-uuid', 'ws-uuid');
+
+      expect(cardRepo.findArchivedByBoardId).toHaveBeenCalledWith('board-uuid');
+      expect(result).toHaveLength(1);
+    });
+
+    it('should throw EntityNotFoundException if board not found', async () => {
+      boardRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.listArchivedCards('b-nonexistent', 'ws-uuid'),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should list all archived cards across a workspace', async () => {
+      cardRepo.findArchivedByWorkspaceId.mockResolvedValue([
+        { id: 'c-archived-1' },
+        { id: 'c-archived-2' },
+      ] as any);
+
+      const result = await service.listWorkspaceArchivedCards('ws-uuid');
+
+      expect(cardRepo.findArchivedByWorkspaceId).toHaveBeenCalledWith('ws-uuid');
+      expect(result).toHaveLength(2);
+    });
+  });
 });

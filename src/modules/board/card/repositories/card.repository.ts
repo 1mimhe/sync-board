@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Card, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../common/database/prisma.service';
 import type { CardWithDetails } from '../../board/interfaces/board.interfaces';
+import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
  * Repository handling database operations for cards, card assignees, and card labels.
@@ -67,11 +68,11 @@ export class CardRepository {
   }
 
   /**
-   * Finds an active (non-archived) card by ID with its full relational graph, optionally scoped to a board.
+   * Finds an active (non-archived, non-deleted) card by ID with its full relational graph, optionally scoped to a board.
    *
    * @param id - Card UUID
    * @param boardId - Optional board UUID filter
-   * @returns The card with details, or null if not found/archived
+   * @returns The card with details, or null if not found/archived/deleted
    */
   async findActiveById(
     id: string,
@@ -81,6 +82,7 @@ export class CardRepository {
       where: {
         id,
         archivedAt: null,
+        deletedAt: null,
         ...(boardId && { list: { boardId } }),
       },
       include: {
@@ -133,7 +135,7 @@ export class CardRepository {
    */
   async findLastInList(listId: string): Promise<Card | null> {
     return this.prisma.card.findFirst({
-      where: { listId, archivedAt: null },
+      where: { listId, archivedAt: null, deletedAt: null },
       orderBy: { rank: 'desc' },
     });
   }
@@ -249,6 +251,167 @@ export class CardRepository {
   async removeLabel(cardId: string, labelId: string): Promise<void> {
     await this.prisma.cardLabel.deleteMany({
       where: { cardId, labelId },
+    });
+  }
+
+  /**
+   * Finds all archived (non-deleted) cards in a board.
+   *
+   * @param boardId - Board UUID
+   * @returns Array of archived cards with details
+   */
+  async findArchivedByBoardId(boardId: string): Promise<CardWithDetails[]> {
+    return this.prisma.card.findMany({
+      where: {
+        archivedAt: { not: null },
+        deletedAt: null,
+        list: { boardId },
+      },
+      include: {
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+        labels: {
+          include: { label: true },
+        },
+        attachments: {
+          where: { archivedAt: null },
+          include: {
+            uploadedBy: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+      orderBy: { archivedAt: 'desc' },
+    }) as unknown as Promise<CardWithDetails[]>;
+  }
+
+  /**
+   * Finds a cursor page of archived (non-deleted) cards in a board.
+   *
+   * @param boardId - Board UUID
+   * @param cursor - Last item id of the previous page
+   * @param limit - Page size
+   * @returns PaginatedResult with items and pagination cursor/hasMore
+   */
+  async findArchivedByBoardIdPage(
+    boardId: string,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<PaginatedResult<CardWithDetails>> {
+    const cards = await this.prisma.card.findMany({
+      where: {
+        archivedAt: { not: null },
+        deletedAt: null,
+        list: { boardId },
+      },
+      include: {
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+        labels: {
+          include: { label: true },
+        },
+        attachments: {
+          where: { archivedAt: null },
+          include: {
+            uploadedBy: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ archivedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    }) as unknown as CardWithDetails[];
+
+    const hasMore = cards.length > limit;
+    const items = hasMore ? cards.slice(0, limit) : cards;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return {
+      items,
+      pagination: { cursor: nextCursor, hasMore },
+    };
+  }
+
+  /**
+   * Finds all archived (non-deleted) cards across a workspace.
+   *
+   * @param workspaceId - Workspace UUID
+   * @returns Array of archived cards with details
+   */
+  async findArchivedByWorkspaceId(workspaceId: string): Promise<CardWithDetails[]> {
+    return this.prisma.card.findMany({
+      where: {
+        archivedAt: { not: null },
+        deletedAt: null,
+        list: { board: { workspaceId } },
+      },
+      include: {
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+        labels: {
+          include: { label: true },
+        },
+        attachments: {
+          where: { archivedAt: null },
+          include: {
+            uploadedBy: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+      orderBy: { archivedAt: 'desc' },
+    }) as unknown as Promise<CardWithDetails[]>;
+  }
+
+  /**
+   * Finds a card by ID including deleted cards, optionally scoped to a board.
+   *
+   * @param id - Card UUID
+   * @param boardId - Optional board UUID filter
+   * @returns The card or null if not found
+   */
+  async findByIdIncludingDeleted(
+    id: string,
+    boardId?: string,
+  ): Promise<Card | null> {
+    return this.prisma.card.findFirst({
+      where: {
+        id,
+        ...(boardId && { list: { boardId } }),
+      },
+    });
+  }
+
+  /**
+   * Permanently marks a card as deleted by setting deletedAt timestamp.
+   * Deleted cards are not retrievable or restorable.
+   *
+   * @param id - Card UUID
+   * @returns The updated card with deletedAt set
+   */
+  async deletePermanently(id: string): Promise<Card> {
+    return this.prisma.card.update({
+      where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 }

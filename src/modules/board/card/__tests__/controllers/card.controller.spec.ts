@@ -246,4 +246,16 @@ describe('CardController', () => {
       );
     });
   });
+
+  describe('listArchived', () => {
+    it('should retrieve list of archived cards and map to DTOs', async () => {
+      cardService.listArchivedCards = jest.fn().mockResolvedValue([mockCardWithDetails]);
+
+      const result = await controller.listArchived('ws-1', 'board-1');
+
+      expect(cardService.listArchivedCards).toHaveBeenCalledWith('board-1', 'ws-1');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('card-1');
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
-import { BoardLabelResponseDto } from '../../label/dto/board-label-response.dto';
+import { LabelResponseDto } from '../../label/dto/board-label-response.dto';
 import { CommentAuthorDto } from '../../comment/dto/card-comment-response.dto';
 import { CardAttachmentResponseDto } from '../../attachment/dto/card-attachment-response.dto';
 
@@ -20,10 +20,10 @@ export class CardAssigneeUserDto {
  */
 export class CardLabelItemDto {
   @ApiProperty({
-    description: 'Attached board label details',
-    type: BoardLabelResponseDto,
+    description: 'Attached label details',
+    type: LabelResponseDto,
   })
-  label!: BoardLabelResponseDto;
+  label!: LabelResponseDto;
 }
 
 /**
@@ -104,6 +104,13 @@ export class CardResponseDto {
     nullable: true,
   })
   archivedAt!: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Card deleted timestamp (permanent delete, not retrievable)',
+    example: null,
+    nullable: true,
+  })
+  deletedAt!: Date | null;
 }
 
 /**
