@@ -1,16 +1,9 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Label } from '@prisma/client';
 import { LabelRepository } from '../repositories/label.repository';
 import { BoardRepository } from '../../board/repositories/board.repository';
 import { CreateLabelDto, UpdateLabelDto } from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
-import {
-  LabelCreatedEvent,
-  LabelUpdatedEvent,
-  LabelDeletedEvent,
-} from '../events/label.events';
-import { LABEL_EVENTS } from '../events/label-events.constants';
 
 /**
  * Service encapsulating business logic for labels
@@ -22,7 +15,6 @@ export class LabelService {
     private readonly labelRepo: LabelRepository,
     @Inject(forwardRef(() => BoardRepository))
     private readonly boardRepo: BoardRepository,
-    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -34,31 +26,26 @@ export class LabelService {
    * @param createdBy - UUID of the acting user
    * @returns The created label
    * @throws {EntityNotFoundException} If board is not found
-   * @emits label.created
    */
   async createLabel(
     boardId: string,
     workspaceId: string,
     dto: CreateLabelDto,
-    createdBy: string,
+    _createdBy?: string,
   ): Promise<Label> {
     const board = await this.boardRepo.findById(boardId, workspaceId);
     if (!board) {
       throw new EntityNotFoundException('Board', boardId);
     }
 
-    const label = await this.labelRepo.create({
-      workspaceId,
-      name: dto.name,
-      color: dto.color,
-    });
-
-    this.eventEmitter.emit(
-      LABEL_EVENTS.created,
-      new LabelCreatedEvent(label, workspaceId, boardId, createdBy),
+    return this.labelRepo.createWithCard(
+      {
+        workspaceId,
+        name: dto.name,
+        color: dto.color,
+      },
+      dto.cardId,
     );
-
-    return label;
   }
 
   /**
@@ -68,25 +55,20 @@ export class LabelService {
    * @param dto - Label creation data
    * @param createdBy - UUID of the acting user
    * @returns The created label
-   * @emits label.created
    */
   async createWorkspaceLabel(
     workspaceId: string,
     dto: CreateLabelDto,
-    createdBy: string,
+    _createdBy?: string,
   ): Promise<Label> {
-    const label = await this.labelRepo.create({
-      workspaceId,
-      name: dto.name,
-      color: dto.color,
-    });
-
-    this.eventEmitter.emit(
-      LABEL_EVENTS.created,
-      new LabelCreatedEvent(label, workspaceId, null, createdBy),
+    return this.labelRepo.createWithCard(
+      {
+        workspaceId,
+        name: dto.name,
+        color: dto.color,
+      },
+      dto.cardId,
     );
-
-    return label;
   }
 
   /**
@@ -120,6 +102,23 @@ export class LabelService {
   }
 
   /**
+   * Retrieves all active cards tagged with a workspace label.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param labelId - Label UUID
+   * @returns Array of active cards with full relational graph
+   * @throws {EntityNotFoundException} If label is not found in workspace
+   */
+  async getCardsForLabel(workspaceId: string, labelId: string): Promise<any[]> {
+    const label = await this.labelRepo.findById(labelId);
+    if (!label || label.workspaceId !== workspaceId) {
+      throw new EntityNotFoundException('Label', labelId);
+    }
+
+    return this.labelRepo.findCardsForLabel(labelId, workspaceId);
+  }
+
+  /**
    * Updates a label belonging to a board or workspace.
    *
    * @param boardId - Board UUID
@@ -129,14 +128,13 @@ export class LabelService {
    * @param updatedBy - UUID of the acting user
    * @returns The updated label
    * @throws {EntityNotFoundException} If board or label is not found
-   * @emits label.updated
    */
   async updateLabel(
     boardId: string,
     workspaceId: string,
     labelId: string,
     dto: UpdateLabelDto,
-    updatedBy: string,
+    _updatedBy?: string,
   ): Promise<Label> {
     const board = await this.boardRepo.findById(boardId, workspaceId);
     if (!board) {
@@ -148,17 +146,37 @@ export class LabelService {
       throw new EntityNotFoundException('Label', labelId);
     }
 
-    const updated = await this.labelRepo.update(labelId, {
+    return this.labelRepo.update(labelId, {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.color !== undefined && { color: dto.color }),
     });
+  }
 
-    this.eventEmitter.emit(
-      LABEL_EVENTS.updated,
-      new LabelUpdatedEvent(updated, boardId, updatedBy),
-    );
+  /**
+   * Updates a workspace-scoped label without requiring boardId.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param labelId - Label UUID
+   * @param dto - Update data
+   * @param updatedBy - UUID of the acting user
+   * @returns The updated label
+   * @throws {EntityNotFoundException} If label is not found in workspace
+   */
+  async updateWorkspaceLabel(
+    workspaceId: string,
+    labelId: string,
+    dto: UpdateLabelDto,
+    _updatedBy?: string,
+  ): Promise<Label> {
+    const label = await this.labelRepo.findById(labelId);
+    if (!label || label.workspaceId !== workspaceId) {
+      throw new EntityNotFoundException('Label', labelId);
+    }
 
-    return updated;
+    return this.labelRepo.update(labelId, {
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.color !== undefined && { color: dto.color }),
+    });
   }
 
   /**
@@ -169,13 +187,12 @@ export class LabelService {
    * @param labelId - Label UUID
    * @param deletedBy - UUID of the acting user
    * @throws {EntityNotFoundException} If board or label is not found
-   * @emits label.deleted
    */
   async deleteLabel(
     boardId: string,
     workspaceId: string,
     labelId: string,
-    deletedBy: string,
+    _deletedBy?: string,
   ): Promise<void> {
     const board = await this.boardRepo.findById(boardId, workspaceId);
     if (!board) {
@@ -188,10 +205,26 @@ export class LabelService {
     }
 
     await this.labelRepo.delete(labelId);
+  }
 
-    this.eventEmitter.emit(
-      LABEL_EVENTS.deleted,
-      new LabelDeletedEvent(labelId, boardId, deletedBy),
-    );
+  /**
+   * Deletes a workspace-scoped label without requiring boardId.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param labelId - Label UUID
+   * @param deletedBy - UUID of the acting user
+   * @throws {EntityNotFoundException} If label is not found in workspace
+   */
+  async deleteWorkspaceLabel(
+    workspaceId: string,
+    labelId: string,
+    _deletedBy?: string,
+  ): Promise<void> {
+    const label = await this.labelRepo.findById(labelId);
+    if (!label || label.workspaceId !== workspaceId) {
+      throw new EntityNotFoundException('Label', labelId);
+    }
+
+    await this.labelRepo.delete(labelId);
   }
 }
