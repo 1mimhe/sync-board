@@ -2,17 +2,20 @@
 
 > Modern, blazing-fast real-time collaborative workspace, Kanban board, and document management client built with **React 19**, **TypeScript**, and **Vite**.
 
+> [!NOTE]
+> **Vibe-Coded Frontend for Testing**: This is a vibe-coded client designed for simpler manual testing, rapid feature verification, and interactive exploration of SyncBoard's backend API and WebSocket real-time engine.
+
 ---
 
 ## 📸 Screenshots & Visual Tour
 
 > [!TIP]
-> **To add screenshots**: Take 16:9 high-resolution screenshots of the running application and save them to `frontend/docs/screenshots/` matching the filenames below. Markdown preview will automatically render them.
+> **To add screenshots**: Take 16:9 high-resolution screenshots of the running application and save them to `frontend/public/screenshots/` matching the filenames below. Markdown preview and GitHub will automatically render them.
 
 ### 1. Workspaces Dashboard
 _Browse, search, and manage your personal and team workspaces with slug-based routing._
 
-![Workspaces Dashboard](docs/screenshots/01-workspaces-dashboard.png)
+![Workspaces Dashboard](public/screenshots/01-workspaces-dashboard.png)
 <!-- Screenshot guide: Navigate to http://localhost:5173/workspaces with 2+ workspaces created -->
 
 ---
@@ -20,7 +23,7 @@ _Browse, search, and manage your personal and team workspaces with slug-based ro
 ### 2. Real-Time Kanban Board
 _Drag-and-drop lists and cards powered by LexoRank with real-time multiplayer updates._
 
-![Kanban Board View](docs/screenshots/02-kanban-board.png)
+![Kanban Board View](public/screenshots/02-kanban-board.png)
 <!-- Screenshot guide: Open a board with To Do, In Progress, and Done lists populated with cards -->
 
 ---
@@ -28,7 +31,7 @@ _Drag-and-drop lists and cards powered by LexoRank with real-time multiplayer up
 ### 3. Card Detail & Checklists
 _Inspect assignees, colored labels, due dates, checklists, attachments, comments, and linked documents._
 
-![Card Detail Modal](docs/screenshots/03-card-detail-modal.png)
+![Card Detail Modal](public/screenshots/03-card-detail-modal.png)
 <!-- Screenshot guide: Click any card to open the CardModal with populated checklists and comments -->
 
 ---
@@ -36,7 +39,7 @@ _Inspect assignees, colored labels, due dates, checklists, attachments, comments
 ### 4. Collaborative Document Editor
 _Live multiplayer markdown documentation with real-time awareness and snapshot history._
 
-![Document Editor](docs/screenshots/04-document-editor.png)
+![Document Editor](public/screenshots/04-document-editor.png)
 <!-- Screenshot guide: Open a workspace document in /workspaces/:wid/docs/:did with headings and code blocks -->
 
 ---
@@ -44,7 +47,7 @@ _Live multiplayer markdown documentation with real-time awareness and snapshot h
 ### 5. Workspace Members & Role-Based Access Control
 _Manage workspace members, transfer ownership, assign roles (`owner`, `admin`, `member`, `viewer`), and handle pending email invitations._
 
-![Workspace Members](docs/screenshots/05-workspace-members.png)
+![Workspace Members](public/screenshots/05-workspace-members.png)
 <!-- Screenshot guide: Open Workspace Settings modal -> Members / Invitations tab -->
 
 ---
@@ -52,7 +55,7 @@ _Manage workspace members, transfer ownership, assign roles (`owner`, `admin`, `
 ### 6. Real-Time Activity Drawer
 _Full audit trail of workspace and board modifications streaming over WebSockets in real time._
 
-![Activity Drawer](docs/screenshots/06-activity-drawer.png)
+![Activity Drawer](public/screenshots/06-activity-drawer.png)
 <!-- Screenshot guide: Click the 'Activity' button in the Board header to slide open the ActivityDrawer -->
 
 ---
@@ -263,9 +266,3 @@ frontend/
 2. Click **+ New Document** to create a rich markdown document.
 3. Multiple users can edit the document concurrently with live presence indicators showing active cursor positions.
 4. Use **Snapshot History** to inspect earlier versions or restore prior milestones.
-
----
-
-## 📄 License
-
-This project is part of the **SyncBoard** monorepo licensed under the [MIT License](../LICENSE).
