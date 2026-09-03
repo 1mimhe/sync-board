@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsOptional,
+  IsUUID,
   MaxLength,
   MinLength,
   Matches,
@@ -37,4 +38,14 @@ export class CreateLabelDto {
     message: 'color must be a valid 6-character hex color code e.g. #EB5A46',
   })
   color!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional card UUID to immediately attach newly created label to',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  cardId?: string;
 }
