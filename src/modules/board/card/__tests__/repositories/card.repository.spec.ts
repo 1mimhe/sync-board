@@ -116,7 +116,12 @@ describe('CardRepository', () => {
       const result = await repository.findActiveById('c-1', 'b-1');
 
       expect(prismaService.card.findFirst).toHaveBeenCalledWith({
-        where: { id: 'c-1', archivedAt: null, list: { boardId: 'b-1' } },
+        where: {
+          id: 'c-1',
+          archivedAt: null,
+          deletedAt: null,
+          list: { boardId: 'b-1' },
+        },
         include: expect.any(Object),
       });
       expect(result).toEqual(mockCard);
@@ -143,7 +148,7 @@ describe('CardRepository', () => {
       const result = await repository.findLastInList('l-1');
 
       expect(prismaService.card.findFirst).toHaveBeenCalledWith({
-        where: { listId: 'l-1', archivedAt: null },
+        where: { listId: 'l-1', archivedAt: null, deletedAt: null },
         orderBy: { rank: 'desc' },
       });
       expect(result).toEqual(lastCard);

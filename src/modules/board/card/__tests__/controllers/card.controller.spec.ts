@@ -249,13 +249,20 @@ describe('CardController', () => {
 
   describe('listArchived', () => {
     it('should retrieve list of archived cards and map to DTOs', async () => {
-      cardService.listArchivedCards = jest.fn().mockResolvedValue([mockCardWithDetails]);
+      cardService.listArchivedCardsPaginated = jest.fn().mockResolvedValue({
+        items: [mockCardWithDetails],
+        pagination: { cursor: null, hasMore: false },
+      });
 
-      const result = await controller.listArchived('ws-1', 'board-1');
+      const result = await controller.listArchived('ws-1', 'board-1', {} as any);
 
-      expect(cardService.listArchivedCards).toHaveBeenCalledWith('board-1', 'ws-1');
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('card-1');
+      expect(cardService.listArchivedCardsPaginated).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        {},
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('card-1');
     });
   });
 });

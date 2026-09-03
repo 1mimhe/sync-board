@@ -49,7 +49,6 @@ export class LabelService {
 
     const label = await this.labelRepo.create({
       workspaceId,
-      boardId,
       name: dto.name,
       color: dto.color,
     });
@@ -78,7 +77,6 @@ export class LabelService {
   ): Promise<Label> {
     const label = await this.labelRepo.create({
       workspaceId,
-      boardId: null,
       name: dto.name,
       color: dto.color,
     });
@@ -108,7 +106,7 @@ export class LabelService {
       throw new EntityNotFoundException('Board', boardId);
     }
 
-    return this.labelRepo.findAvailableLabels(workspaceId, boardId);
+    return this.labelRepo.findAvailableLabels(workspaceId);
   }
 
   /**
@@ -146,11 +144,7 @@ export class LabelService {
     }
 
     const label = await this.labelRepo.findById(labelId);
-    if (
-      !label ||
-      label.workspaceId !== workspaceId ||
-      (label.boardId !== null && label.boardId !== boardId)
-    ) {
+    if (!label || label.workspaceId !== workspaceId) {
       throw new EntityNotFoundException('Label', labelId);
     }
 
@@ -189,11 +183,7 @@ export class LabelService {
     }
 
     const label = await this.labelRepo.findById(labelId);
-    if (
-      !label ||
-      label.workspaceId !== workspaceId ||
-      (label.boardId !== null && label.boardId !== boardId)
-    ) {
+    if (!label || label.workspaceId !== workspaceId) {
       throw new EntityNotFoundException('Label', labelId);
     }
 

@@ -249,13 +249,16 @@ describe('BoardController', () => {
 
   describe('listArchived', () => {
     it('should list all archived boards and map response', async () => {
-      boardService.listArchivedBoards = jest.fn().mockResolvedValue([mockBoard]);
+      boardService.listArchivedBoardsPaginated = jest.fn().mockResolvedValue({
+        items: [mockBoard],
+        pagination: { cursor: null, hasMore: false },
+      });
 
-      const result = await controller.listArchived('ws-1');
+      const result = await controller.listArchived('ws-1', {} as any);
 
-      expect(boardService.listArchivedBoards).toHaveBeenCalledWith('ws-1');
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('board-1');
+      expect(boardService.listArchivedBoardsPaginated).toHaveBeenCalledWith('ws-1', {});
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe('board-1');
     });
   });
 });
