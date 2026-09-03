@@ -67,7 +67,12 @@ describe('BoardRepository', () => {
       const result = await repository.findById('b-1', 'ws-1');
 
       expect(prismaService.board.findFirst).toHaveBeenCalledWith({
-        where: { id: 'b-1', archivedAt: null, workspaceId: 'ws-1' },
+        where: {
+          id: 'b-1',
+          archivedAt: null,
+          deletedAt: null,
+          workspaceId: 'ws-1',
+        },
       });
       expect(result).toEqual(mockBoard);
     });
@@ -129,7 +134,7 @@ describe('BoardRepository', () => {
       const count = await repository.countLists('b-1');
 
       expect(prismaService.list.count).toHaveBeenCalledWith({
-        where: { boardId: 'b-1', archivedAt: null },
+        where: { boardId: 'b-1', archivedAt: null, deletedAt: null },
       });
       expect(count).toBe(5);
     });
@@ -140,7 +145,11 @@ describe('BoardRepository', () => {
       const count = await repository.countCards('b-1');
 
       expect(prismaService.card.count).toHaveBeenCalledWith({
-        where: { list: { boardId: 'b-1' }, archivedAt: null },
+        where: {
+          list: { boardId: 'b-1' },
+          archivedAt: null,
+          deletedAt: null,
+        },
       });
       expect(count).toBe(12);
     });
@@ -159,7 +168,7 @@ describe('BoardRepository', () => {
       );
 
       expect(prismaService.board.findMany).toHaveBeenCalledWith({
-        where: { workspaceId: 'ws-1', archivedAt: null },
+        where: { workspaceId: 'ws-1', archivedAt: null, deletedAt: null },
         include: { starredBy: { where: { userId: 'u-1' } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 21,

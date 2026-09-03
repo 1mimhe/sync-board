@@ -24,6 +24,6 @@ import { BoardSubModule } from '../board/board.module';
     WsBoardAccessGuard,
     WsRateLimitGuard,
   ],
-  exports: [PresenceService, WsBoardAccessGuard, WsRateLimitGuard],
+  exports: [PresenceService, WsRateLimiterService, WsBoardAccessGuard, WsRateLimitGuard],
 })
 export class RealtimeSubModule {}

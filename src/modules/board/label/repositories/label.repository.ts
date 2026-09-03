@@ -33,32 +33,22 @@ export class LabelRepository {
   }
 
   /**
-   * Finds all labels available to a given board within a workspace
-   * (includes shared workspace-level labels + board-specific labels).
+   * Finds all labels available within a workspace.
    *
    * @param workspaceId - Workspace UUID
-   * @param boardId - Optional board UUID
    * @returns Array of available labels
    */
-  async findAvailableLabels(
-    workspaceId: string,
-    boardId?: string,
-  ): Promise<Label[]> {
+  async findAvailableLabels(workspaceId: string): Promise<Label[]> {
     return this.prisma.label.findMany({
       where: {
         workspaceId,
-        ...(boardId
-          ? {
-              OR: [{ boardId: null }, { boardId }],
-            }
-          : { boardId: null }),
       },
       orderBy: { createdAt: 'asc' },
     });
   }
 
   /**
-   * Finds only workspace-level labels (where boardId IS NULL).
+   * Finds only workspace-level labels.
    *
    * @param workspaceId - Workspace UUID
    * @returns Array of workspace-level labels
@@ -67,24 +57,11 @@ export class LabelRepository {
     return this.prisma.label.findMany({
       where: {
         workspaceId,
-        boardId: null,
       },
       orderBy: { createdAt: 'asc' },
     });
   }
 
-  /**
-   * Finds only labels specific to a single board.
-   *
-   * @param boardId - Board UUID
-   * @returns Array of board-specific labels
-   */
-  async findBoardLabels(boardId: string): Promise<Label[]> {
-    return this.prisma.label.findMany({
-      where: { boardId },
-      orderBy: { createdAt: 'asc' },
-    });
-  }
 
   /**
    * Updates an existing label.

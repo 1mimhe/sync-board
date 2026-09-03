@@ -81,7 +81,6 @@ describe('LabelService', () => {
 
     expect(labelRepo.create).toHaveBeenCalledWith({
       workspaceId: 'ws-1',
-      boardId: null,
       name: 'Global',
       color: '#00f',
     });
