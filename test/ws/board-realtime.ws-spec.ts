@@ -32,7 +32,6 @@ import {
 } from '../helpers/factories';
 import { expectData, req } from '../helpers/http';
 
-
 const UUID = '00000000-0000-4000-8000-000000000000';
 describe('Board realtime (ws)', () => {
   let app: TestApp;
@@ -50,9 +49,16 @@ describe('Board realtime (ws)', () => {
   // =========================================================================
   describe('§1 Connection authentication', () => {
     it('rejects a missing token with an error frame TOKEN_INVALID', async () => {
-      const sock = io(app.url, { transports: ['websocket'], reconnection: false });
+      const sock = io(app.url, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
       try {
-        const payload = await onceEvent<Record<string, unknown>>(sock, 'error', 5000);
+        const payload = await onceEvent<Record<string, unknown>>(
+          sock,
+          'error',
+          5000,
+        );
         expect(payload.code).toBe('TOKEN_INVALID');
       } finally {
         sock.close();
@@ -66,7 +72,11 @@ describe('Board realtime (ws)', () => {
         reconnection: false,
       });
       try {
-        const payload = await onceEvent<Record<string, unknown>>(sock, 'error', 5000);
+        const payload = await onceEvent<Record<string, unknown>>(
+          sock,
+          'error',
+          5000,
+        );
         expect(payload.code).toBe('TOKEN_INVALID');
       } finally {
         sock.close();
@@ -77,7 +87,12 @@ describe('Board realtime (ws)', () => {
       const expired = jwt.sign(
         { sub: bundle.viewer.id, isEmailVerified: true },
         process.env.JWT_SECRET as string,
-        { algorithm: 'HS256', expiresIn: -10, issuer: 'syncboard', jwtid: UUID },
+        {
+          algorithm: 'HS256',
+          expiresIn: -10,
+          issuer: 'syncboard',
+          jwtid: UUID,
+        },
       );
       const sock = io(app.url, {
         auth: { token: expired },
@@ -85,7 +100,11 @@ describe('Board realtime (ws)', () => {
         reconnection: false,
       });
       try {
-        const payload = await onceEvent<Record<string, unknown>>(sock, 'error', 5000);
+        const payload = await onceEvent<Record<string, unknown>>(
+          sock,
+          'error',
+          5000,
+        );
         expect(payload.code).toBe('TOKEN_EXPIRED');
       } finally {
         sock.close();
@@ -102,11 +121,15 @@ describe('Board realtime (ws)', () => {
       sockA = await connect(app.url, bundle.owner.accessToken);
       sockB = await connect(app.url, bundle.admin.accessToken);
 
-      const joinedA = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        sockA.once('workspace:joined', resolve);
-        sockA.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
-        sockA.emit('workspace:join', { workspaceId: bundle.workspaceId });
-      });
+      const joinedA = await new Promise<Record<string, unknown>>(
+        (resolve, reject) => {
+          sockA.once('workspace:joined', resolve);
+          sockA.once('error', (e: unknown) =>
+            reject(new Error(JSON.stringify(e))),
+          );
+          sockA.emit('workspace:join', { workspaceId: bundle.workspaceId });
+        },
+      );
       expect(joinedA.workspaceId).toBe(bundle.workspaceId);
       expect(joinedA.onlineMembers).toEqual(
         expect.arrayContaining([
@@ -116,11 +139,15 @@ describe('Board realtime (ws)', () => {
 
       // B joining triggers workspace:member-online for A
       const online = collect(sockA, 'workspace:member-online');
-      const joinedB = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        sockB.once('workspace:joined', resolve);
-        sockB.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
-        sockB.emit('workspace:join', { workspaceId: bundle.workspaceId });
-      });
+      const joinedB = await new Promise<Record<string, unknown>>(
+        (resolve, reject) => {
+          sockB.once('workspace:joined', resolve);
+          sockB.once('error', (e: unknown) =>
+            reject(new Error(JSON.stringify(e))),
+          );
+          sockB.emit('workspace:join', { workspaceId: bundle.workspaceId });
+        },
+      );
       expect(joinedB.workspaceId).toBe(bundle.workspaceId);
       const memberOnline = await online.waitForCount(1);
       expect(memberOnline[0]).toMatchObject({ userId: bundle.admin.id });
@@ -128,11 +155,15 @@ describe('Board realtime (ws)', () => {
     });
 
     it('board:join returns viewers to the joiner and announces presence to peers', async () => {
-      const joinedA = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        sockA.once('board:joined', resolve);
-        sockA.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
-        sockA.emit('board:join', { boardId: bundle.boardId });
-      });
+      const joinedA = await new Promise<Record<string, unknown>>(
+        (resolve, reject) => {
+          sockA.once('board:joined', resolve);
+          sockA.once('error', (e: unknown) =>
+            reject(new Error(JSON.stringify(e))),
+          );
+          sockA.emit('board:join', { boardId: bundle.boardId });
+        },
+      );
       expect(joinedA.boardId).toBe(bundle.boardId);
       expect(joinedA.viewers).toEqual(
         expect.arrayContaining([
@@ -142,11 +173,15 @@ describe('Board realtime (ws)', () => {
 
       // B joins → A receives board:presence joined
       const presence = collect(sockA, 'board:presence');
-      const joinedB = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        sockB.once('board:joined', resolve);
-        sockB.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
-        sockB.emit('board:join', { boardId: bundle.boardId });
-      });
+      const joinedB = await new Promise<Record<string, unknown>>(
+        (resolve, reject) => {
+          sockB.once('board:joined', resolve);
+          sockB.once('error', (e: unknown) =>
+            reject(new Error(JSON.stringify(e))),
+          );
+          sockB.emit('board:join', { boardId: bundle.boardId });
+        },
+      );
       expect(joinedB.boardId).toBe(bundle.boardId);
 
       const events = await presence.waitForCount(1);
@@ -201,7 +236,12 @@ describe('Board realtime (ws)', () => {
   describe('§5 Room isolation', () => {
     it('a client on another board receives nothing', async () => {
       const outsiderWs = await createWorkspace(app, bundle.outsider);
-      const outsiderBoard = await createBoard(app, bundle.outsider, outsiderWs.id, 'Other');
+      const outsiderBoard = await createBoard(
+        app,
+        bundle.outsider,
+        outsiderWs.id,
+        'Other',
+      );
       const sockC = await connect(app.url, bundle.outsider.accessToken);
       sockC.emit('board:join', { boardId: outsiderBoard.id });
       await onceEvent(sockC, 'board:joined');
@@ -304,7 +344,11 @@ describe('Board realtime (ws)', () => {
         reconnection: false,
       });
       try {
-        const payload = await onceEvent<Record<string, unknown>>(sock3, 'error', 5000);
+        const payload = await onceEvent<Record<string, unknown>>(
+          sock3,
+          'error',
+          5000,
+        );
         expect(payload.code).toBe('TOKEN_REVOKED');
       } finally {
         sock3.close();
@@ -319,7 +363,9 @@ describe('Board realtime (ws)', () => {
       const sock = await connect(app.url, bundle.outsider.accessToken);
       const errors = collect(sock, 'error');
       sock.emit('board:join', { boardId: bundle.boardId });
-      const evts = await errors.waitForCount(1, 5000).catch(() => errors.events);
+      const evts = await errors
+        .waitForCount(1, 5000)
+        .catch(() => errors.events);
       const found = evts.some(
         (e) => e.code === 'BOARD_ACCESS_DENIED' || e.code === 'FORBIDDEN',
       );
@@ -363,8 +409,12 @@ describe('Board realtime (ws)', () => {
       const dupJoinedP = onceEvent(sockB, 'board:joined', 5000);
       sockB.emit('board:join', { boardId: bundle.boardId });
       const dupJoined = await dupJoinedP;
-      expect((dupJoined as Record<string, unknown>).boardId).toBe(bundle.boardId);
-      const presenceEvts = await presenceAgain.waitForCount(1).catch(() => presenceAgain.events);
+      expect((dupJoined as Record<string, unknown>).boardId).toBe(
+        bundle.boardId,
+      );
+      const presenceEvts = await presenceAgain
+        .waitForCount(1)
+        .catch(() => presenceAgain.events);
       expect(presenceEvts.length).toBeGreaterThanOrEqual(1);
       // Must NOT produce an error frame
       await new Promise((r) => setTimeout(r, 300));
@@ -451,7 +501,9 @@ describe('Board realtime (ws)', () => {
     it('§2.8 PATCH card → card:updated broadcast (cardId, changes, updatedBy)', async () => {
       const relay = collect(sockObserver, 'card:updated');
       await req(app.app.getHttpServer())
-        .patch(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}`)
+        .patch(
+          `/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}`,
+        )
         .set('Authorization', `Bearer ${bundle.owner.accessToken}`)
         .send({ title: 'Relay Card Updated' });
 
@@ -465,10 +517,18 @@ describe('Board realtime (ws)', () => {
     });
 
     it('§2.8 PATCH card/move → card:moved broadcast (cardId, fromListId, toListId, newRank, movedBy)', async () => {
-      const targetList = await createList(app, bundle.owner, bundle.workspaceId, bundle.boardId, 'Relay Target');
+      const targetList = await createList(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        bundle.boardId,
+        'Relay Target',
+      );
       const relay = collect(sockObserver, 'card:moved');
       await req(app.app.getHttpServer())
-        .patch(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}/move`)
+        .patch(
+          `/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${bundle.cardId}/move`,
+        )
         .set('Authorization', `Bearer ${bundle.owner.accessToken}`)
         .send({ targetListId: targetList.id });
 
@@ -484,10 +544,19 @@ describe('Board realtime (ws)', () => {
     });
 
     it('§2.8 DELETE card → card:archived broadcast (cardId, listId, archivedBy)', async () => {
-      const toArchive = await createCard(app, bundle.owner, bundle.workspaceId, bundle.boardId, bundle.listId, 'Archive Me');
+      const toArchive = await createCard(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        bundle.boardId,
+        bundle.listId,
+        'Archive Me',
+      );
       const relay = collect(sockObserver, 'card:archived');
       await req(app.app.getHttpServer())
-        .delete(`/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${toArchive.id}`)
+        .delete(
+          `/api/workspaces/${bundle.workspaceId}/boards/${bundle.boardId}/cards/${toArchive.id}`,
+        )
         .set('Authorization', `Bearer ${bundle.owner.accessToken}`);
 
       const evts = await relay.waitForCount(1, 3000);
@@ -500,7 +569,13 @@ describe('Board realtime (ws)', () => {
 
     it('§2.8 POST list → list:created broadcast (list.id, list.boardId, createdBy)', async () => {
       const relay = collect(sockObserver, 'list:created');
-      const newList = await createList(app, bundle.owner, bundle.workspaceId, bundle.boardId, 'Mirror List');
+      const newList = await createList(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        bundle.boardId,
+        'Mirror List',
+      );
 
       const evts = await relay.waitForCount(1, 3000);
       expect(evts[0]).toMatchObject({

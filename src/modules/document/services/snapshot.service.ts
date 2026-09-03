@@ -90,10 +90,7 @@ export class SnapshotService {
     if (!snapshot) {
       throw new EntityNotFoundException('DocumentSnapshot', snapshotId);
     }
-    await this.manager.replaceState(
-      documentId,
-      snapshot.yjsState as Uint8Array,
-    );
+    await this.manager.replaceState(documentId, snapshot.yjsState);
     return (await this.documentRepo.findActiveById(documentId)) as Document;
   }
 }

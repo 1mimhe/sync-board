@@ -14,7 +14,9 @@ export class WsDocJoinDto {
   workspaceId!: string;
 
   /** Optional client state vector for diff sync (binary) */
-  @ApiPropertyOptional({ description: 'Binary state vector for incremental sync' })
+  @ApiPropertyOptional({
+    description: 'Binary state vector for incremental sync',
+  })
   @Allow()
   stateVector?: unknown;
 }

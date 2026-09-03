@@ -64,7 +64,9 @@ export class DocumentManagerService implements OnModuleDestroy {
           try {
             Y.applyUpdateV2(ydoc, bytes);
           } catch {
-            this.logger.warn(`Failed to hydrate Y.Doc ${documentId}: invalid update`);
+            this.logger.warn(
+              `Failed to hydrate Y.Doc ${documentId}: invalid update`,
+            );
           }
         }
         /* c8 ignore stop */
@@ -114,7 +116,9 @@ export class DocumentManagerService implements OnModuleDestroy {
       try {
         Y.applyUpdateV2(entry.ydoc, update);
       } catch (err) {
-        this.logger.warn(`Invalid Yjs update for ${documentId}: ${(err as Error).message}`);
+        this.logger.warn(
+          `Invalid Yjs update for ${documentId}: ${(err as Error).message}`,
+        );
       }
     }
     /* c8 ignore stop */

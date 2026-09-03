@@ -278,7 +278,11 @@ export class ListController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Query() query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<ListResponseDto>> {
-    const result = await this.listService.listArchivedListsPaginated(boardId, workspaceId, query);
+    const result = await this.listService.listArchivedListsPaginated(
+      boardId,
+      workspaceId,
+      query,
+    );
     return {
       items: result.items.map(toListResponseDto),
       pagination: result.pagination,
@@ -320,6 +324,11 @@ export class ListController {
     @Param('listId', ParseUUIDPipe) listId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.listService.deletePermanently(boardId, workspaceId, listId, user.sub);
+    await this.listService.deletePermanently(
+      boardId,
+      workspaceId,
+      listId,
+      user.sub,
+    );
   }
 }

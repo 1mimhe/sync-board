@@ -288,7 +288,7 @@ export class CardRepository {
         },
       },
       orderBy: { archivedAt: 'desc' },
-    }) as unknown as Promise<CardWithDetails[]>;
+    });
   }
 
   /**
@@ -304,7 +304,7 @@ export class CardRepository {
     cursor: string | undefined,
     limit: number,
   ): Promise<PaginatedResult<CardWithDetails>> {
-    const cards = await this.prisma.card.findMany({
+    const cards = (await this.prisma.card.findMany({
       where: {
         archivedAt: { not: null },
         deletedAt: null,
@@ -333,7 +333,7 @@ export class CardRepository {
       orderBy: [{ archivedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    }) as unknown as CardWithDetails[];
+    })) as unknown as CardWithDetails[];
 
     const hasMore = cards.length > limit;
     const items = hasMore ? cards.slice(0, limit) : cards;
@@ -351,7 +351,9 @@ export class CardRepository {
    * @param workspaceId - Workspace UUID
    * @returns Array of archived cards with details
    */
-  async findArchivedByWorkspaceId(workspaceId: string): Promise<CardWithDetails[]> {
+  async findArchivedByWorkspaceId(
+    workspaceId: string,
+  ): Promise<CardWithDetails[]> {
     return this.prisma.card.findMany({
       where: {
         archivedAt: { not: null },
@@ -379,7 +381,7 @@ export class CardRepository {
         },
       },
       orderBy: { archivedAt: 'desc' },
-    }) as unknown as Promise<CardWithDetails[]>;
+    });
   }
 
   /**

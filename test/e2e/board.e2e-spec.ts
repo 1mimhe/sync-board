@@ -45,7 +45,10 @@ describe('Board module (e2e)', () => {
         .post(boardsUrl())
         .set(auth(bundle.member))
         .send({ title: 'Member Board', backgroundColor: '#0079BF' });
-      const data = expectData<{ id: string; title: string; archivedAt: null }>(res, 201);
+      const data = expectData<{ id: string; title: string; archivedAt: null }>(
+        res,
+        201,
+      );
       expect(data.title).toBe('Member Board');
       expect(data.archivedAt).toBeNull();
     });
@@ -70,7 +73,9 @@ describe('Board module (e2e)', () => {
         .patch(boardUrl())
         .set(auth(bundle.admin))
         .send({ title: 'Renamed Board' });
-      expect(expectData<{ title: string }>(res, 200).title).toBe('Renamed Board');
+      expect(expectData<{ title: string }>(res, 200).title).toBe(
+        'Renamed Board',
+      );
     });
 
     it('star + unstar → 204 and reflected in content', async () => {
@@ -79,8 +84,12 @@ describe('Board module (e2e)', () => {
         .set(auth(bundle.viewer));
       expect(star.status).toBe(204);
 
-      const probe = await req(server()).get(boardUrl()).set(auth(bundle.viewer));
-      expect(expectData<{ isStarred: boolean }>(probe, 200).isStarred).toBe(true);
+      const probe = await req(server())
+        .get(boardUrl())
+        .set(auth(bundle.viewer));
+      expect(expectData<{ isStarred: boolean }>(probe, 200).isStarred).toBe(
+        true,
+      );
 
       const unstar = await req(server())
         .delete(`${boardUrl()}/star`)
@@ -98,13 +107,28 @@ describe('Board module (e2e)', () => {
     });
 
     it('archives a board → content GET 404, card creation blocked, unarchive restores', async () => {
-      const board = await createBoard(app, bundle.owner, bundle.workspaceId, 'Doomed Board');
-      const list = await createList(app, bundle.owner, bundle.workspaceId, board.id, 'L');
+      const board = await createBoard(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        'Doomed Board',
+      );
+      const list = await createList(
+        app,
+        bundle.owner,
+        bundle.workspaceId,
+        board.id,
+        'L',
+      );
 
-      const archive = await req(server()).delete(boardUrl(board.id)).set(auth(bundle.owner));
+      const archive = await req(server())
+        .delete(boardUrl(board.id))
+        .set(auth(bundle.owner));
       expect(archive.status).toBe(204);
 
-      const probe = await req(server()).get(boardUrl(board.id)).set(auth(bundle.owner));
+      const probe = await req(server())
+        .get(boardUrl(board.id))
+        .set(auth(bundle.owner));
       expectError(probe, 404, 'BOARD_NOT_FOUND');
 
       const restore = await req(server())
@@ -120,7 +144,9 @@ describe('Board module (e2e)', () => {
         .send({ title: 'Nope' });
       expectError(viewerCreate, 403, 'FORBIDDEN');
 
-      const outsiderRead = await req(server()).get(boardUrl()).set(auth(bundle.outsider));
+      const outsiderRead = await req(server())
+        .get(boardUrl())
+        .set(auth(bundle.outsider));
       expectError(outsiderRead, 403, 'FORBIDDEN');
     });
 
@@ -145,8 +171,20 @@ describe('Board module (e2e)', () => {
 
   describe('Lists', () => {
     it('creates lists (rank assigned), renames, moves, and archives', async () => {
-      const l1 = await createList(app, bundle.member, bundle.workspaceId, bundle.boardId, 'First');
-      const l2 = await createList(app, bundle.member, bundle.workspaceId, bundle.boardId, 'Second');
+      const l1 = await createList(
+        app,
+        bundle.member,
+        bundle.workspaceId,
+        bundle.boardId,
+        'First',
+      );
+      const l2 = await createList(
+        app,
+        bundle.member,
+        bundle.workspaceId,
+        bundle.boardId,
+        'Second',
+      );
       expect(l1.rank).toEqual(expect.any(String));
       expect(l2.rank).toEqual(expect.any(String));
 
@@ -154,7 +192,9 @@ describe('Board module (e2e)', () => {
         .patch(`${boardUrl()}/lists/${l1.id}`)
         .set(auth(bundle.member))
         .send({ title: 'First Renamed' });
-      expect(expectData<{ title: string }>(rename, 200).title).toBe('First Renamed');
+      expect(expectData<{ title: string }>(rename, 200).title).toBe(
+        'First Renamed',
+      );
 
       // Move l2 in front of l1 (LexoRank reorder)
       const move = await req(server())
@@ -170,8 +210,13 @@ describe('Board module (e2e)', () => {
       expect(archive.status).toBe(204);
 
       // Archived list is not visible in board content
-      const content = await req(server()).get(boardUrl()).set(auth(bundle.member));
-      const lists = expectData<{ lists: Array<{ id: string }> }>(content, 200).lists;
+      const content = await req(server())
+        .get(boardUrl())
+        .set(auth(bundle.member));
+      const lists = expectData<{ lists: Array<{ id: string }> }>(
+        content,
+        200,
+      ).lists;
       expect(lists.map((l) => l.id)).not.toContain(l2.id);
 
       // Unarchive restores
@@ -213,13 +258,18 @@ describe('Board module (e2e)', () => {
       const read = await req(server())
         .get(`${boardUrl()}/cards/${card.id}`)
         .set(auth(bundle.viewer));
-      expect(expectData<{ id: string; title: string }>(read, 200).title).toBe('Spec Card');
+      expect(expectData<{ id: string; title: string }>(read, 200).title).toBe(
+        'Spec Card',
+      );
 
       const update = await req(server())
         .patch(`${boardUrl()}/cards/${card.id}`)
         .set(auth(bundle.member))
         .send({ title: 'Spec Card v2', description: { text: 'With details' } });
-      const updated = expectData<{ title: string; description: unknown }>(update, 200);
+      const updated = expectData<{ title: string; description: unknown }>(
+        update,
+        200,
+      );
       expect(updated.title).toBe('Spec Card v2');
       expect(updated.description).toMatchObject({ text: 'With details' });
     });
@@ -272,11 +322,16 @@ describe('Board module (e2e)', () => {
       const read = await req(server())
         .get(`${boardUrl()}/cards/${card.id}`)
         .set(auth(bundle.member));
-      const assignees = expectData<{ assignees?: Array<{ user?: { id: string }; userId?: string; id?: string }> }>(
-        read,
-        200,
+      const assignees = expectData<{
+        assignees?: Array<{
+          user?: { id: string };
+          userId?: string;
+          id?: string;
+        }>;
+      }>(read, 200);
+      const ids = (assignees.assignees ?? []).map(
+        (a) => a.user?.id ?? a.userId ?? a.id,
       );
-      const ids = (assignees.assignees ?? []).map((a) => a.user?.id ?? a.userId ?? a.id);
       expect(ids).toContain(bundle.viewer.id);
 
       const remove = await req(server())
@@ -361,7 +416,9 @@ describe('Board module (e2e)', () => {
         .patch(`${boardUrl()}/labels/${label.id}`)
         .set(auth(bundle.member))
         .send({ name: 'Critical' });
-      expect(expectData<{ name: string | null }>(update, 200).name).toBe('Critical');
+      expect(expectData<{ name: string | null }>(update, 200).name).toBe(
+        'Critical',
+      );
 
       const del = await req(server())
         .delete(`${boardUrl()}/labels/${label.id}`)
@@ -388,7 +445,9 @@ describe('Board module (e2e)', () => {
       expect(checklist.title).toBe('Definition of Done');
 
       const item = await req(server())
-        .post(`${boardUrl()}/cards/${bundle.cardId}/checklists/${checklist.id}/items`)
+        .post(
+          `${boardUrl()}/cards/${bundle.cardId}/checklists/${checklist.id}/items`,
+        )
         .set(auth(bundle.member))
         .send({ content: 'Write tests' });
       const created = expectData<{ id: string; isDone: boolean }>(item, 201);
@@ -410,7 +469,9 @@ describe('Board module (e2e)', () => {
       expect(delItem.status).toBe(204);
 
       const delChecklist = await req(server())
-        .delete(`${boardUrl()}/cards/${bundle.cardId}/checklists/${checklist.id}`)
+        .delete(
+          `${boardUrl()}/cards/${bundle.cardId}/checklists/${checklist.id}`,
+        )
         .set(auth(bundle.member));
       expect(delChecklist.status).toBe(204);
     });
@@ -442,23 +503,29 @@ describe('Board module (e2e)', () => {
         .query({ limit: 2 })
         .set(auth(bundle.viewer));
       const p1 = expectData<{
-        items: Array<{ id: string; content: string; author: { displayName: string } }>;
+        items: Array<{
+          id: string;
+          content: string;
+          author: { displayName: string };
+        }>;
         pagination: { cursor: string | null; hasMore: boolean };
       }>(page1, 200);
       expect(p1.items).toHaveLength(2);
       expect(p1.pagination.hasMore).toBe(true);
       expect(p1.pagination.cursor).toEqual(expect.any(String));
-      expect(p1.items[0].author).toMatchObject({ displayName: expect.any(String) });
+      expect(p1.items[0].author).toMatchObject({
+        displayName: expect.any(String),
+      });
 
       // Cursor pagination page 2
       const page2 = await req(server())
         .get(commentsUrl)
         .query({ limit: 2, cursor: p1.pagination.cursor })
         .set(auth(bundle.viewer));
-      const p2 = expectData<{ items: Array<{ id: string }>; pagination: { hasMore: boolean } }>(
-        page2,
-        200,
-      );
+      const p2 = expectData<{
+        items: Array<{ id: string }>;
+        pagination: { hasMore: boolean };
+      }>(page2, 200);
       expect(p2.items.map((c) => c.id)).not.toContain(p1.items[0].id);
 
       // Author edits their own comment
@@ -466,7 +533,9 @@ describe('Board module (e2e)', () => {
         .patch(`${commentsUrl}/${created[0].id}`)
         .set(auth(bundle.member))
         .send({ content: 'Comment number 1 (edited)' });
-      expect(expectData<{ content: string }>(edit, 200).content).toContain('edited');
+      expect(expectData<{ content: string }>(edit, 200).content).toContain(
+        'edited',
+      );
     });
 
     it('author-only rule: another member editing a foreign comment → 403 FORBIDDEN', async () => {
@@ -506,11 +575,20 @@ describe('Board module (e2e)', () => {
       const create = await req(server())
         .post(attachmentsUrl)
         .set(auth(bundle.member))
-        .send({ type: 'link', url: 'https://example.com/spec', name: 'Spec Doc' });
-      const attachment = expectData<{ id: string; url: string; name: string }>(create, 201);
+        .send({
+          type: 'link',
+          url: 'https://example.com/spec',
+          name: 'Spec Doc',
+        });
+      const attachment = expectData<{ id: string; url: string; name: string }>(
+        create,
+        201,
+      );
       expect(attachment.url).toBe('https://example.com/spec');
 
-      const list = await req(server()).get(attachmentsUrl).set(auth(bundle.viewer));
+      const list = await req(server())
+        .get(attachmentsUrl)
+        .set(auth(bundle.viewer));
       expect(
         expectData<Array<{ id: string }>>(list, 200).map((a) => a.id),
       ).toContain(attachment.id);
@@ -519,7 +597,9 @@ describe('Board module (e2e)', () => {
         .patch(`${attachmentsUrl}/${attachment.id}`)
         .set(auth(bundle.member))
         .send({ name: 'Spec Doc v2' });
-      expect(expectData<{ name: string }>(rename, 200).name).toBe('Spec Doc v2');
+      expect(expectData<{ name: string }>(rename, 200).name).toBe(
+        'Spec Doc v2',
+      );
 
       const del = await req(server())
         .delete(`${attachmentsUrl}/${attachment.id}`)
@@ -549,7 +629,10 @@ describe('Board module (e2e)', () => {
       const items = Array.isArray(data) ? data : (data.items ?? []);
       expect(
         items.some(
-          (a) => a.entityId === card.id || a.action === 'card_created' || a.action === 'created',
+          (a) =>
+            a.entityId === card.id ||
+            a.action === 'card_created' ||
+            a.action === 'created',
         ),
       ).toBe(true);
     });

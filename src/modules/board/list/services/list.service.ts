@@ -5,7 +5,10 @@ import { ListRepository } from '../repositories/list.repository';
 import { BoardRepository } from '../../board/repositories/board.repository';
 import { LexorankService } from '../../lexorank/services/lexorank.service';
 import { CreateListDto, UpdateListDto, MoveListDto } from '../dto';
-import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
+import {
+  EntityNotFoundException,
+  BusinessRuleException,
+} from '../../../../common/exceptions/app.exception';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
@@ -247,7 +250,11 @@ export class ListService {
   ): Promise<PaginatedResult<List>> {
     await this.verifyBoardInWorkspace(boardId, workspaceId);
     const limit = query.limit ?? 20;
-    const result = await this.listRepo.findArchivedByBoardIdPage(boardId, query.cursor, limit);
+    const result = await this.listRepo.findArchivedByBoardIdPage(
+      boardId,
+      query.cursor,
+      limit,
+    );
     return result;
   }
 

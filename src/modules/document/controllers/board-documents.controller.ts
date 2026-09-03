@@ -24,7 +24,9 @@ export class BoardDocumentsController {
    */
   @Get()
   @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
-  @ApiOperation({ summary: 'List documents for a board, including all attached card docs' })
+  @ApiOperation({
+    summary: 'List documents for a board, including all attached card docs',
+  })
   @ApiParam({
     name: 'workspaceId',
     type: String,

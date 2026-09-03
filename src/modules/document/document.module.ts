@@ -40,4 +40,3 @@ import { CardDocumentsController } from './controllers/card-documents.controller
   exports: [DocumentService, DocumentRepository, DocumentManagerService],
 })
 export class DocumentModule {}
-

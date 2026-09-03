@@ -49,8 +49,21 @@ describe('Documents module (e2e)', () => {
     await addMemberViaInvitation(app, owner, member, workspaceId, 'member');
     await addMemberViaInvitation(app, owner, viewer, workspaceId, 'viewer');
     const board = await createBoard(app, owner, workspaceId, 'Doc Board');
-    const list = await createList(app, owner, workspaceId, board.id, 'Doc List');
-    const card = await createCard(app, owner, workspaceId, board.id, list.id, 'Doc Card');
+    const list = await createList(
+      app,
+      owner,
+      workspaceId,
+      board.id,
+      'Doc List',
+    );
+    const card = await createCard(
+      app,
+      owner,
+      workspaceId,
+      board.id,
+      list.id,
+      'Doc Card',
+    );
     cardId = card.id;
   });
 
@@ -65,7 +78,10 @@ describe('Documents module (e2e)', () => {
         .post(docsUrl())
         .set(auth(owner))
         .send({ title: 'My Doc' });
-      const data = expectData<{ id: string; title: string; status: string }>(res, 201);
+      const data = expectData<{ id: string; title: string; status: string }>(
+        res,
+        201,
+      );
       expect(data.title).toBe('My Doc');
       expect(data.status).toBe('active');
     });
@@ -86,10 +102,10 @@ describe('Documents module (e2e)', () => {
     });
 
     it('1.4 parentCardId from a non-existent card → 404/403', async () => {
-      const res = await req(server())
-        .post(docsUrl())
-        .set(auth(owner))
-        .send({ title: 'Foreign Link', parentCardId: '00000000-0000-4000-8000-000000000000' });
+      const res = await req(server()).post(docsUrl()).set(auth(owner)).send({
+        title: 'Foreign Link',
+        parentCardId: '00000000-0000-4000-8000-000000000000',
+      });
       expect([403, 404]).toContain(res.status);
     });
 
@@ -120,8 +136,14 @@ describe('Documents module (e2e)', () => {
         .set(auth(owner))
         .send({ title: 'Archive Me' });
       const { id } = expectData<{ id: string }>(created, 201);
-      expect((await req(server()).delete(docUrl(id)).set(auth(owner))).status).toBe(204);
-      expectError(await req(server()).get(docUrl(id)).set(auth(owner)), 404, 'DOCUMENT_NOT_FOUND');
+      expect(
+        (await req(server()).delete(docUrl(id)).set(auth(owner))).status,
+      ).toBe(204);
+      expectError(
+        await req(server()).get(docUrl(id)).set(auth(owner)),
+        404,
+        'DOCUMENT_NOT_FOUND',
+      );
     });
 
     it('1.8 RBAC: viewer cannot create/rename/archive; viewer GET is ok', async () => {
@@ -132,16 +154,26 @@ describe('Documents module (e2e)', () => {
       const { id } = expectData<{ id: string }>(created, 201);
 
       expectError(
-        await req(server()).post(docsUrl()).set(auth(viewer)).send({ title: 'Blocked' }),
+        await req(server())
+          .post(docsUrl())
+          .set(auth(viewer))
+          .send({ title: 'Blocked' }),
         403,
         'FORBIDDEN',
       );
       expectError(
-        await req(server()).patch(docUrl(id)).set(auth(viewer)).send({ title: 'Blocked' }),
+        await req(server())
+          .patch(docUrl(id))
+          .set(auth(viewer))
+          .send({ title: 'Blocked' }),
         403,
         'FORBIDDEN',
       );
-      expectError(await req(server()).delete(docUrl(id)).set(auth(viewer)), 403, 'FORBIDDEN');
+      expectError(
+        await req(server()).delete(docUrl(id)).set(auth(viewer)),
+        403,
+        'FORBIDDEN',
+      );
       expectData(await req(server()).get(docUrl(id)).set(auth(viewer)), 200);
     });
 
@@ -164,16 +196,28 @@ describe('Documents module (e2e)', () => {
   describe.skip('§2 Listing & Search', () => {
     it('2.1 cursor walk: 25 docs, page limit 20 → hasMore; page 2 returns remaining', async () => {
       for (let i = 0; i < 25; i++) {
-        await req(server()).post(docsUrl()).set(auth(owner)).send({ title: `Cursor Doc ${i}` });
+        await req(server())
+          .post(docsUrl())
+          .set(auth(owner))
+          .send({ title: `Cursor Doc ${i}` });
       }
       const p1 = expectData<{
         items: Array<{ id: string }>;
         pagination: { cursor: string | null; hasMore: boolean };
-      }>(await req(server()).get(docsUrl()).query({ limit: 20 }).set(auth(owner)), 200);
+      }>(
+        await req(server())
+          .get(docsUrl())
+          .query({ limit: 20 })
+          .set(auth(owner)),
+        200,
+      );
       expect(p1.items).toHaveLength(20);
       expect(p1.pagination.hasMore).toBe(true);
 
-      const p2 = expectData<{ items: Array<{ id: string }>; pagination: { hasMore: boolean } }>(
+      const p2 = expectData<{
+        items: Array<{ id: string }>;
+        pagination: { hasMore: boolean };
+      }>(
         await req(server())
           .get(docsUrl())
           .query({ limit: 20, cursor: p1.pagination.cursor })
@@ -186,7 +230,10 @@ describe('Documents module (e2e)', () => {
 
     it('2.4 archived docs are excluded from listing', async () => {
       const { id } = expectData<{ id: string }>(
-        await req(server()).post(docsUrl()).set(auth(owner)).send({ title: 'Will Archive' }),
+        await req(server())
+          .post(docsUrl())
+          .set(auth(owner))
+          .send({ title: 'Will Archive' }),
         201,
       );
       await req(server()).delete(docUrl(id)).set(auth(owner));
@@ -230,7 +277,9 @@ describe('Documents module (e2e)', () => {
 
     it('3.3 GET /snapshots returns array ordered newest-first, metadata only', async () => {
       const items = expectData<Array<{ id: string; name: string }>>(
-        await req(server()).get(`${docUrl(docId)}/snapshots`).set(auth(owner)),
+        await req(server())
+          .get(`${docUrl(docId)}/snapshots`)
+          .set(auth(owner)),
         200,
       );
       expect(Array.isArray(items)).toBe(true);
@@ -239,7 +288,9 @@ describe('Documents module (e2e)', () => {
     it('3.5 RBAC: viewer restore attempt → 403 FORBIDDEN', async () => {
       expectError(
         await req(server())
-          .post(`${docUrl(docId)}/snapshots/00000000-0000-4000-8000-000000000000/restore`)
+          .post(
+            `${docUrl(docId)}/snapshots/00000000-0000-4000-8000-000000000000/restore`,
+          )
           .set(auth(viewer)),
         403,
         'FORBIDDEN',

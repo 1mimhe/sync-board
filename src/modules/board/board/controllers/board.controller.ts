@@ -130,7 +130,10 @@ export class BoardController {
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Query() query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<BoardResponseDto>> {
-    const result = await this.boardService.listArchivedBoardsPaginated(workspaceId, query);
+    const result = await this.boardService.listArchivedBoardsPaginated(
+      workspaceId,
+      query,
+    );
     return {
       items: result.items.map(toBoardResponseDto),
       pagination: result.pagination,

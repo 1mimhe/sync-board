@@ -290,8 +290,6 @@ export class BroadcastRelayService {
     });
   }
 
-
-
   // --- Card Assignee Events ---
 
   @OnEvent(CARD_EVENTS.assigneeAdded)

@@ -55,7 +55,10 @@ export function diffUpdate(ydoc: Y.Doc, stateVector?: Uint8Array): Uint8Array {
 }
 
 /** Diff update V2 (smaller wire format). */
-export function diffUpdateV2(ydoc: Y.Doc, stateVector?: Uint8Array): Uint8Array {
+export function diffUpdateV2(
+  ydoc: Y.Doc,
+  stateVector?: Uint8Array,
+): Uint8Array {
   return Y.encodeStateAsUpdateV2(ydoc, stateVector);
 }
 

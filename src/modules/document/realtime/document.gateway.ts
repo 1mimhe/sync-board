@@ -274,7 +274,10 @@ export class DocumentGateway implements OnGatewayInit, OnGatewayDisconnect {
    * Synchronous state cleanup runs before the async room leave so disconnect
    * (which voids the promise) still updates presence immediately.
    */
-  private async leaveDocument(client: Socket, documentId: string): Promise<void> {
+  private async leaveDocument(
+    client: Socket,
+    documentId: string,
+  ): Promise<void> {
     this.manager.removeConnection(documentId, client.id);
     const removed = this.editorPresence.removeEditor(documentId, client.id);
     if (removed) {
@@ -295,8 +298,8 @@ export class DocumentGateway implements OnGatewayInit, OnGatewayDisconnect {
    */
   private toUint8Array(data: unknown): Uint8Array | null {
     if (data instanceof Uint8Array) return data;
-    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data as never)) {
-      return new Uint8Array(data as Buffer);
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) {
+      return new Uint8Array(data);
     }
     if (data instanceof ArrayBuffer) return new Uint8Array(data);
     if (

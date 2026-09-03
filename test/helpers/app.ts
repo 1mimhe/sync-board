@@ -54,9 +54,13 @@ export async function createTestApp(
     };
     builder.overrideProvider(getStorageToken()).useValue(bypassStorage);
     builder.overrideProvider(ThrottlerStorageService).useValue(bypassStorage);
-    builder.overrideProvider(WsRateLimiterService).useValue({ checkRateLimit: async () => true });
+    builder
+      .overrideProvider(WsRateLimiterService)
+      .useValue({ checkRateLimit: async () => true });
     builder.overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true });
-    builder.overrideGuard(WsRateLimitGuard).useValue({ canActivate: () => true });
+    builder
+      .overrideGuard(WsRateLimitGuard)
+      .useValue({ canActivate: () => true });
   }
 
   const module = await builder.compile();

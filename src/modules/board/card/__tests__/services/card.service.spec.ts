@@ -644,7 +644,9 @@ describe('CardService', () => {
 
       const result = await service.listWorkspaceArchivedCards('ws-uuid');
 
-      expect(cardRepo.findArchivedByWorkspaceId).toHaveBeenCalledWith('ws-uuid');
+      expect(cardRepo.findArchivedByWorkspaceId).toHaveBeenCalledWith(
+        'ws-uuid',
+      );
       expect(result).toHaveLength(2);
     });
   });

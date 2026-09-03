@@ -53,9 +53,22 @@ describe('Files (S3) module (e2e)', () => {
     await addMemberViaInvitation(app, owner, viewer, workspaceId, 'viewer');
     const board = await createBoard(app, owner, workspaceId, 'File Board');
     boardId = board.id;
-    const list = await createList(app, owner, workspaceId, boardId, 'File List');
+    const list = await createList(
+      app,
+      owner,
+      workspaceId,
+      boardId,
+      'File List',
+    );
     listId = list.id;
-    const card = await createCard(app, owner, workspaceId, boardId, listId, 'File Card');
+    const card = await createCard(
+      app,
+      owner,
+      workspaceId,
+      boardId,
+      listId,
+      'File Card',
+    );
     cardId = card.id;
   });
 
@@ -178,7 +191,9 @@ describe('Files (S3) module (e2e)', () => {
           entityId: cardId,
         });
       const { fileId } = expectData<{ fileId: string }>(presigned, 200);
-      await req(server()).post(`${filesUrl()}/${fileId}/confirm`).set(auth(owner));
+      await req(server())
+        .post(`${filesUrl()}/${fileId}/confirm`)
+        .set(auth(owner));
       const second = await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
         .set(auth(owner));
@@ -200,9 +215,13 @@ describe('Files (S3) module (e2e)', () => {
           entityId: cardId,
         });
       const { fileId } = expectData<{ fileId: string }>(presigned, 200);
-      await req(server()).post(`${filesUrl()}/${fileId}/confirm`).set(auth(owner));
+      await req(server())
+        .post(`${filesUrl()}/${fileId}/confirm`)
+        .set(auth(owner));
 
-      const dl = await req(server()).get(`${filesUrl()}/${fileId}/download`).set(auth(owner));
+      const dl = await req(server())
+        .get(`${filesUrl()}/${fileId}/download`)
+        .set(auth(owner));
       const data = expectData<{ downloadUrl: string }>(dl, 200);
       expect(data.downloadUrl).toContain('http');
     });
@@ -229,11 +248,16 @@ describe('Files (S3) module (e2e)', () => {
           entityId: cardId,
         });
       const { fileId } = expectData<{ fileId: string }>(presigned, 200);
-      await req(server()).post(`${filesUrl()}/${fileId}/confirm`).set(auth(owner));
-      expect((await req(server()).delete(`${filesUrl()}/${fileId}`).set(auth(owner))).status).toBe(
-        204,
-      );
-      const dl = await req(server()).get(`${filesUrl()}/${fileId}/download`).set(auth(owner));
+      await req(server())
+        .post(`${filesUrl()}/${fileId}/confirm`)
+        .set(auth(owner));
+      expect(
+        (await req(server()).delete(`${filesUrl()}/${fileId}`).set(auth(owner)))
+          .status,
+      ).toBe(204);
+      const dl = await req(server())
+        .get(`${filesUrl()}/${fileId}/download`)
+        .set(auth(owner));
       expect(dl.status).toBe(404);
     });
 
@@ -249,8 +273,12 @@ describe('Files (S3) module (e2e)', () => {
           entityId: cardId,
         });
       const { fileId } = expectData<{ fileId: string }>(presigned, 200);
-      await req(server()).post(`${filesUrl()}/${fileId}/confirm`).set(auth(owner));
-      const del = await req(server()).delete(`${filesUrl()}/${fileId}`).set(auth(member));
+      await req(server())
+        .post(`${filesUrl()}/${fileId}/confirm`)
+        .set(auth(owner));
+      const del = await req(server())
+        .delete(`${filesUrl()}/${fileId}`)
+        .set(auth(member));
       expectError(del, 403, 'FORBIDDEN');
     });
   });

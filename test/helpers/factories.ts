@@ -61,7 +61,11 @@ export interface Card {
 export async function registerUser(
   testApp: TestApp,
   label: string,
-  overrides: Partial<{ email: string; password: string; displayName: string }> = {},
+  overrides: Partial<{
+    email: string;
+    password: string;
+    displayName: string;
+  }> = {},
 ): Promise<TestUser & { raw: Response; apiUser: ApiUser }> {
   const email = overrides.email ?? uniqueEmail(label);
   const password = overrides.password ?? DEFAULT_PASSWORD;
@@ -110,7 +114,10 @@ export async function loginUser(
  * Registration-issued tokens carry `isEmailVerified: false`, so callers must
  * re-login afterwards to obtain a verified access token.
  */
-export async function verifyUserEmail(testApp: TestApp, email: string): Promise<void> {
+export async function verifyUserEmail(
+  testApp: TestApp,
+  email: string,
+): Promise<void> {
   const token = await waitForMailToken(email, 'verify');
   const res = await req(testApp.app.getHttpServer())
     .post('/api/auth/verify-email')
@@ -152,7 +159,7 @@ export async function createWorkspace(
     slug: string;
     ownerId: string;
   }>(res, 201);
-  return data as Workspace;
+  return data;
 }
 
 /** Invite an email to a workspace through the real API (response carries the HASHED token). */
@@ -237,7 +244,9 @@ export async function createCard(
   title?: string,
 ): Promise<Card> {
   const res = await req(testApp.app.getHttpServer())
-    .post(`/api/workspaces/${workspaceId}/boards/${boardId}/lists/${listId}/cards`)
+    .post(
+      `/api/workspaces/${workspaceId}/boards/${boardId}/lists/${listId}/cards`,
+    )
     .set('Authorization', `Bearer ${user.accessToken}`)
     .send({ title: title ?? `Card ${randomBytes(2).toString('hex')}` });
   return expectData(res, 201);
@@ -280,12 +289,36 @@ export async function createWorkspaceBundle(
   const actors = await createActors(testApp);
   const workspace = await createWorkspace(testApp, actors.owner);
 
-  await addMemberViaInvitation(testApp, actors.owner, actors.admin, workspace.id, 'admin');
-  await addMemberViaInvitation(testApp, actors.owner, actors.member, workspace.id, 'member');
-  await addMemberViaInvitation(testApp, actors.owner, actors.viewer, workspace.id, 'viewer');
+  await addMemberViaInvitation(
+    testApp,
+    actors.owner,
+    actors.admin,
+    workspace.id,
+    'admin',
+  );
+  await addMemberViaInvitation(
+    testApp,
+    actors.owner,
+    actors.member,
+    workspace.id,
+    'member',
+  );
+  await addMemberViaInvitation(
+    testApp,
+    actors.owner,
+    actors.viewer,
+    workspace.id,
+    'viewer',
+  );
 
   const board = await createBoard(testApp, actors.owner, workspace.id);
-  const list = await createList(testApp, actors.owner, workspace.id, board.id, 'To Do');
+  const list = await createList(
+    testApp,
+    actors.owner,
+    workspace.id,
+    board.id,
+    'To Do',
+  );
   const card = await createCard(
     testApp,
     actors.owner,
