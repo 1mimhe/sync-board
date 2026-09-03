@@ -118,7 +118,7 @@ export class BoardService {
     const [totalLists, totalCards, availableLabels] = await Promise.all([
       this.boardRepo.countLists(boardId),
       this.boardRepo.countCards(boardId),
-      this.labelRepo.findAvailableLabels(workspaceId, boardId),
+      this.labelRepo.findAvailableLabels(workspaceId),
     ]);
 
     return {

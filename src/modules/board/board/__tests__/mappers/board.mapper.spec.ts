@@ -40,6 +40,7 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
         updatedAt: now,
         archivedAt: null,
+        deletedAt: null,
       };
 
       expect(toBoardResponseDto(board)).toEqual({
@@ -52,6 +53,7 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
         updatedAt: now,
         archivedAt: null,
+        deletedAt: null,
       });
     });
   });
@@ -66,6 +68,7 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
         updatedAt: now,
         archivedAt: null,
+        deletedAt: null,
       };
 
       expect(toListResponseDto(list)).toEqual(list);
@@ -77,6 +80,7 @@ describe('BoardMapper Functions', () => {
       const label: any = {
         id: 'lbl-1',
         workspaceId: 'ws-1',
+        boardId: null,
         name: 'Urgent',
         color: '#ff0000',
         createdAt: now,
@@ -101,6 +105,7 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
         updatedAt: now,
         archivedAt: null,
+        deletedAt: null,
       };
 
       expect(toCardResponseDto(card)).toEqual(card);

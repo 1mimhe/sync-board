@@ -69,27 +69,11 @@ describe('LabelRepository', () => {
   });
 
   describe('findAvailableLabels', () => {
-    it('should find both workspace and board-specific labels when boardId is provided', async () => {
+    it('should find all available workspace labels', async () => {
       const mockLabels = [
         { id: 'lbl-1', name: 'Shared' },
         { id: 'lbl-2', name: 'Board-only' },
       ];
-      prismaService.label.findMany.mockResolvedValue(mockLabels);
-
-      const result = await repository.findAvailableLabels('ws-1', 'board-1');
-
-      expect(prismaService.label.findMany).toHaveBeenCalledWith({
-        where: {
-          workspaceId: 'ws-1',
-          OR: [{ boardId: null }, { boardId: 'board-1' }],
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      expect(result).toEqual(mockLabels);
-    });
-
-    it('should find only workspace-level labels when boardId is omitted', async () => {
-      const mockLabels = [{ id: 'lbl-1', name: 'Shared' }];
       prismaService.label.findMany.mockResolvedValue(mockLabels);
 
       const result = await repository.findAvailableLabels('ws-1');
@@ -97,7 +81,6 @@ describe('LabelRepository', () => {
       expect(prismaService.label.findMany).toHaveBeenCalledWith({
         where: {
           workspaceId: 'ws-1',
-          boardId: null,
         },
         orderBy: { createdAt: 'asc' },
       });
@@ -105,28 +88,15 @@ describe('LabelRepository', () => {
     });
   });
 
-  describe('findWorkspaceLabels and findBoardLabels', () => {
+  describe('findWorkspaceLabels', () => {
     it('should find only workspace-level labels', async () => {
-      const mockLabels = [{ id: 'lbl-1', boardId: null }];
+      const mockLabels = [{ id: 'lbl-1' }];
       prismaService.label.findMany.mockResolvedValue(mockLabels);
 
       const result = await repository.findWorkspaceLabels('ws-1');
 
       expect(prismaService.label.findMany).toHaveBeenCalledWith({
-        where: { workspaceId: 'ws-1', boardId: null },
-        orderBy: { createdAt: 'asc' },
-      });
-      expect(result).toEqual(mockLabels);
-    });
-
-    it('should find only board-specific labels', async () => {
-      const mockLabels = [{ id: 'lbl-2', boardId: 'board-1' }];
-      prismaService.label.findMany.mockResolvedValue(mockLabels);
-
-      const result = await repository.findBoardLabels('board-1');
-
-      expect(prismaService.label.findMany).toHaveBeenCalledWith({
-        where: { boardId: 'board-1' },
+        where: { workspaceId: 'ws-1' },
         orderBy: { createdAt: 'asc' },
       });
       expect(result).toEqual(mockLabels);

@@ -61,7 +61,12 @@ describe('ListRepository', () => {
       const result = await repository.findActiveById('l-1', 'b-1');
 
       expect(prismaService.list.findFirst).toHaveBeenCalledWith({
-        where: { id: 'l-1', archivedAt: null, boardId: 'b-1' },
+        where: {
+          id: 'l-1',
+          archivedAt: null,
+          deletedAt: null,
+          boardId: 'b-1',
+        },
       });
       expect(result).toEqual(mockList);
     });
@@ -87,7 +92,7 @@ describe('ListRepository', () => {
       const result = await repository.findLastInBoard('b-1');
 
       expect(prismaService.list.findFirst).toHaveBeenCalledWith({
-        where: { boardId: 'b-1', archivedAt: null },
+        where: { boardId: 'b-1', archivedAt: null, deletedAt: null },
         orderBy: { rank: 'desc' },
       });
       expect(result).toEqual(lastList);
@@ -103,7 +108,7 @@ describe('ListRepository', () => {
       const result = await repository.findBoardLists('b-1');
 
       expect(prismaService.list.findMany).toHaveBeenCalledWith({
-        where: { boardId: 'b-1', archivedAt: null },
+        where: { boardId: 'b-1', archivedAt: null, deletedAt: null },
         orderBy: { rank: 'asc' },
       });
       expect(result).toEqual(lists);
