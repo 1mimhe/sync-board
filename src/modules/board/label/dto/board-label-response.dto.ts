@@ -21,7 +21,7 @@ export class LabelResponseDto {
     example: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     nullable: true,
   })
-  boardId!: string | null;
+  boardId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Label name',

@@ -1,5 +1,5 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
-import { WsRateLimitCategory } from 'src/modules/board/realtime/ws-events.constants';
+import { WsRateLimitCategory } from '../../modules/board/realtime/ws-events.constants';
 
 export const WS_RATE_LIMIT_KEY = 'ws_rate_limit';
 

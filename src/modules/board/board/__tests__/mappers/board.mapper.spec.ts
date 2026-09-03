@@ -80,7 +80,6 @@ describe('BoardMapper Functions', () => {
       const label: any = {
         id: 'lbl-1',
         workspaceId: 'ws-1',
-        boardId: null,
         name: 'Urgent',
         color: '#ff0000',
         createdAt: now,

@@ -99,7 +99,6 @@ export function toLabelResponseDto(label: Label): LabelResponseDto {
   return {
     id: label.id,
     workspaceId: label.workspaceId,
-    boardId: label.boardId,
     name: label.name,
     color: label.color,
     createdAt: label.createdAt,
