@@ -39,9 +39,27 @@ describe('Workspace module (e2e)', () => {
     app = await createTestApp();
     actors = await createActors(app);
     workspace = await createWorkspace(app, actors.owner);
-    await addMemberViaInvitation(app, actors.owner, actors.admin, workspace.id, 'admin');
-    await addMemberViaInvitation(app, actors.owner, actors.member, workspace.id, 'member');
-    await addMemberViaInvitation(app, actors.owner, actors.viewer, workspace.id, 'viewer');
+    await addMemberViaInvitation(
+      app,
+      actors.owner,
+      actors.admin,
+      workspace.id,
+      'admin',
+    );
+    await addMemberViaInvitation(
+      app,
+      actors.owner,
+      actors.member,
+      workspace.id,
+      'member',
+    );
+    await addMemberViaInvitation(
+      app,
+      actors.owner,
+      actors.viewer,
+      workspace.id,
+      'viewer',
+    );
   });
 
   afterAll(async () => {
@@ -92,12 +110,18 @@ describe('Workspace module (e2e)', () => {
         ['missing name', { description: 'test' }],
         ['name too short', { name: 'A' }],
         ['name too long', { name: 'x'.repeat(101) }],
-        ['description too long', { name: 'Valid Name', description: 'x'.repeat(501) }],
+        [
+          'description too long',
+          { name: 'Valid Name', description: 'x'.repeat(501) },
+        ],
         ['invalid avatarUrl', { name: 'Valid Name', avatarUrl: 'not-a-url' }],
         ['unknown field', { name: 'Valid Name', bogus: 1 }],
       ];
       for (const [label, body] of rows) {
-        const res = await req(server).post('/api/workspaces').set(auth).send(body);
+        const res = await req(server)
+          .post('/api/workspaces')
+          .set(auth)
+          .send(body);
         expect(res.status).toBe(400);
         expect(res.body.error.code).toBe('VALIDATION_ERROR');
         expect(res.body.error.details.errors).toEqual(
@@ -213,7 +237,11 @@ describe('Workspace module (e2e)', () => {
 
   describe('§7 Leave workspace', () => {
     it('7.2.1 blocks the sole owner with 422 CANNOT_LEAVE_AS_SOLE_OWNER', async () => {
-      const target = await createWorkspace(app, actors.outsider, 'Sole Owner WS');
+      const target = await createWorkspace(
+        app,
+        actors.outsider,
+        'Sole Owner WS',
+      );
       const res = await req(app.app.getHttpServer())
         .delete(`/api/workspaces/${target.id}/leave`)
         .set('Authorization', `Bearer ${actors.outsider.accessToken}`);
@@ -272,7 +300,12 @@ describe('Workspace module (e2e)', () => {
         .get(`/api/workspaces/${workspace.id}/members`)
         .set('Authorization', `Bearer ${token}`);
       return expectData<
-        Array<{ id: string; userId: string; role: string; user: { email: string } }>
+        Array<{
+          id: string;
+          userId: string;
+          role: string;
+          user: { email: string };
+        }>
       >(res, 200);
     }
 
@@ -314,7 +347,13 @@ describe('Workspace module (e2e)', () => {
     it('11.x admin cannot remove the owner; member removal works and revokes access', async () => {
       // Fresh member joins via the real invitation flow
       const fresh = await registerUser(app, 'rejoiner');
-      await addMemberViaInvitation(app, actors.admin, fresh, workspace.id, 'member');
+      await addMemberViaInvitation(
+        app,
+        actors.admin,
+        fresh,
+        workspace.id,
+        'member',
+      );
 
       const members = await getMembers(actors.admin.accessToken);
       const freshMember = members.find((m) => m.userId === fresh.id)!;
@@ -367,7 +406,13 @@ describe('Workspace module (e2e)', () => {
 
     it('12.3 rejects a duplicate pending invitation → 422 INVITATION_ALREADY_SENT', async () => {
       const inviteeEmail = uniqueLocalEmail('invite-dup');
-      await inviteMember(app, actors.admin, workspace.id, inviteeEmail, 'viewer');
+      await inviteMember(
+        app,
+        actors.admin,
+        workspace.id,
+        inviteeEmail,
+        'viewer',
+      );
       const res = await req(app.app.getHttpServer())
         .post(`/api/workspaces/${workspace.id}/invitations`)
         .set('Authorization', `Bearer ${actors.admin.accessToken}`)
@@ -404,7 +449,13 @@ describe('Workspace module (e2e)', () => {
   describe('§14 Accept invitation', () => {
     it('14.1 accepts via the RAW token from the invitation email (MailHog) and grants the role', async () => {
       const invitee = await registerUser(app, 'accepter');
-      await inviteMember(app, actors.admin, workspace.id, invitee.email, 'member');
+      await inviteMember(
+        app,
+        actors.admin,
+        workspace.id,
+        invitee.email,
+        'member',
+      );
       const token = await getInvitationToken(invitee.email);
 
       const res = await acceptInvitation(app, invitee, token);
@@ -415,7 +466,13 @@ describe('Workspace module (e2e)', () => {
 
     it('14.2 rejects a token addressed to a different email → 422 INVITATION_EMAIL_MISMATCH', async () => {
       const inviteeEmail = uniqueLocalEmail('mismatch-target');
-      await inviteMember(app, actors.admin, workspace.id, inviteeEmail, 'viewer');
+      await inviteMember(
+        app,
+        actors.admin,
+        workspace.id,
+        inviteeEmail,
+        'viewer',
+      );
       const token = await getInvitationToken(inviteeEmail);
 
       const wrongUser = await registerUser(app, 'mismatch-actor');
@@ -431,7 +488,13 @@ describe('Workspace module (e2e)', () => {
 
     it('14.4 replays a consumed token → 422 INVITATION_EXPIRED (single use)', async () => {
       const invitee = await registerUser(app, 'replay');
-      await inviteMember(app, actors.admin, workspace.id, invitee.email, 'viewer');
+      await inviteMember(
+        app,
+        actors.admin,
+        workspace.id,
+        invitee.email,
+        'viewer',
+      );
       const token = await getInvitationToken(invitee.email);
       expectData(await acceptInvitation(app, invitee, token), 200);
 

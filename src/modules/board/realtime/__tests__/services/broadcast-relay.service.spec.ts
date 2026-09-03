@@ -496,8 +496,6 @@ describe('BroadcastRelayService', () => {
     );
   });
 
-
-
   it('should broadcast card:assignee-added on CardAssigneeAddedEvent', () => {
     const event = new CardAssigneeAddedEvent(
       'c-1',

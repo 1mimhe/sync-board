@@ -62,7 +62,6 @@ export class LabelRepository {
     });
   }
 
-
   /**
    * Updates an existing label.
    *
@@ -74,6 +73,93 @@ export class LabelRepository {
     return this.prisma.label.update({
       where: { id },
       data,
+    });
+  }
+
+  /**
+   * Creates a new label and optionally attaches it to a card within a transaction.
+   *
+   * @param data - Label creation payload
+   * @param cardId - Optional card UUID to attach
+   * @returns The created label
+   */
+  async createWithCard(
+    data: Prisma.LabelUncheckedCreateInput,
+    cardId?: string,
+  ): Promise<Label> {
+    if (!cardId) {
+      return this.prisma.label.create({ data });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const label = await tx.label.create({ data });
+      await tx.cardLabel.create({
+        data: {
+          cardId,
+          labelId: label.id,
+        },
+      });
+      return label;
+    });
+  }
+
+  /**
+   * Finds all active cards tagged with a specific label in a workspace.
+   *
+   * @param labelId - Label UUID
+   * @param workspaceId - Workspace UUID
+   * @returns Array of active cards with list, board, and relation graphs
+   */
+  async findCardsForLabel(
+    labelId: string,
+    workspaceId: string,
+  ): Promise<any[]> {
+    return this.prisma.card.findMany({
+      where: {
+        labels: { some: { labelId } },
+        list: {
+          board: { workspaceId, deletedAt: null, archivedAt: null },
+          deletedAt: null,
+          archivedAt: null,
+        },
+        deletedAt: null,
+        archivedAt: null,
+      },
+      include: {
+        list: {
+          select: {
+            id: true,
+            title: true,
+            boardId: true,
+            board: {
+              select: {
+                id: true,
+                title: true,
+                workspaceId: true,
+              },
+            },
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+        labels: {
+          include: { label: true },
+        },
+        attachments: {
+          where: { archivedAt: null },
+          include: {
+            uploadedBy: {
+              select: { id: true, displayName: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

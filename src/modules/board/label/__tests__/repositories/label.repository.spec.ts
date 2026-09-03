@@ -52,6 +52,71 @@ describe('LabelRepository', () => {
       });
       expect(result).toEqual(mockLabel);
     });
+
+    it('should create label record with card association in transaction', async () => {
+      const mockLabel = {
+        id: 'lbl-1',
+        name: 'Bug',
+        color: '#ff0000',
+        workspaceId: 'ws-1',
+      };
+      const txMock = {
+        label: { create: jest.fn().mockResolvedValue(mockLabel) },
+        cardLabel: { create: jest.fn().mockResolvedValue({}) },
+      };
+      prismaService.$transaction = jest.fn((cb: any) => cb(txMock));
+
+      const result = await repository.createWithCard(
+        { name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' },
+        'card-1',
+      );
+
+      expect(prismaService.$transaction).toHaveBeenCalled();
+      expect(txMock.label.create).toHaveBeenCalledWith({
+        data: { name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' },
+      });
+      expect(txMock.cardLabel.create).toHaveBeenCalledWith({
+        data: { cardId: 'card-1', labelId: 'lbl-1' },
+      });
+      expect(result).toEqual(mockLabel);
+    });
+
+    it('should create label record without card association if cardId omitted', async () => {
+      const mockLabel = { id: 'lbl-1', name: 'Bug' };
+      prismaService.label.create.mockResolvedValue(mockLabel);
+
+      const result = await repository.createWithCard({
+        name: 'Bug',
+        color: '#ff0000',
+        workspaceId: 'ws-1',
+      });
+
+      expect(prismaService.label.create).toHaveBeenCalledWith({
+        data: { name: 'Bug', color: '#ff0000', workspaceId: 'ws-1' },
+      });
+      expect(result).toEqual(mockLabel);
+    });
+  });
+
+  describe('findCardsForLabel', () => {
+    it('should find active cards for a label in workspace', async () => {
+      prismaService.card = {
+        findMany: jest.fn().mockResolvedValue([{ id: 'card-1' }]),
+      };
+
+      const result = await repository.findCardsForLabel('lbl-1', 'ws-1');
+
+      expect(prismaService.card.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            labels: { some: { labelId: 'lbl-1' } },
+            deletedAt: null,
+            archivedAt: null,
+          }),
+        }),
+      );
+      expect(result).toEqual([{ id: 'card-1' }]);
+    });
   });
 
   describe('findById', () => {

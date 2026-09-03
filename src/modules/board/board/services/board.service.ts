@@ -10,7 +10,10 @@ import {
   BoardContentQueryDto,
   CursorPaginationQueryDto,
 } from '../dto';
-import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
+import {
+  EntityNotFoundException,
+  BusinessRuleException,
+} from '../../../../common/exceptions/app.exception';
 import { buildCursorPagination } from '../../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import {
@@ -272,7 +275,11 @@ export class BoardService {
     query: CursorPaginationQueryDto = {},
   ): Promise<PaginatedResult<Board>> {
     const limit = query.limit ?? 20;
-    const result = await this.boardRepo.findArchivedBoardsPage(workspaceId, query.cursor, limit);
+    const result = await this.boardRepo.findArchivedBoardsPage(
+      workspaceId,
+      query.cursor,
+      limit,
+    );
     return result;
   }
 
@@ -292,7 +299,10 @@ export class BoardService {
     workspaceId: string,
     userId: string,
   ): Promise<void> {
-    const board = await this.boardRepo.findByIdIncludingDeleted(boardId, workspaceId);
+    const board = await this.boardRepo.findByIdIncludingDeleted(
+      boardId,
+      workspaceId,
+    );
     if (!board) {
       throw new EntityNotFoundException('Board', boardId);
     }

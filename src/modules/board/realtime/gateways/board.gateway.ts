@@ -27,7 +27,11 @@ import { WsRateLimit } from '../../../../common/decorators/ws-rate-limit.decorat
 import { WsUser } from '../../../../common/decorators/ws-user.decorator';
 import { WsWorkspaceMemberGuard } from '../../../workspace/guards/ws-workspace-member.guard';
 import { WsBoardAccessGuard } from '../guards/ws-board-access.guard';
-import { WS_EVENTS, WS_RATE_LIMITS, PRESENCE_CONFIG } from '../ws-events.constants';
+import {
+  WS_EVENTS,
+  WS_RATE_LIMITS,
+  PRESENCE_CONFIG,
+} from '../ws-events.constants';
 import {
   WsWorkspaceJoinDto,
   WsWorkspaceLeaveDto,
@@ -189,7 +193,8 @@ export class BoardGateway
       );
     } catch (error) {
       // 7. Handle token expiration or invalid signature errors and terminate socket
-      const msg = error instanceof Error ? error.message : 'Authentication failed';
+      const msg =
+        error instanceof Error ? error.message : 'Authentication failed';
       const code = msg.includes('TOKEN_EXPIRED')
         ? 'TOKEN_EXPIRED'
         : 'TOKEN_INVALID';
@@ -278,7 +283,8 @@ export class BoardGateway
     const { workspaceId } = payload;
 
     // 2. Leave previously active workspace room if switching workspaces
-    const previousWorkspaceId = (client.data as AuthenticatedSocketData).currentWorkspaceId;
+    const previousWorkspaceId = (client.data as AuthenticatedSocketData)
+      .currentWorkspaceId;
     if (previousWorkspaceId && previousWorkspaceId !== workspaceId) {
       await client.leave(`workspace:${previousWorkspaceId}`);
     }
@@ -363,7 +369,8 @@ export class BoardGateway
     const { boardId } = payload;
 
     // 2. Leave any previously active board room before switching
-    const currentBoardId = (client.data as AuthenticatedSocketData).currentBoardId;
+    const currentBoardId = (client.data as AuthenticatedSocketData)
+      .currentBoardId;
     if (currentBoardId && currentBoardId !== boardId) {
       await this.leaveBoardRoom(client, currentBoardId);
     }
@@ -420,7 +427,8 @@ export class BoardGateway
    */
   @SubscribeMessage(WS_EVENTS.PRESENCE_HEARTBEAT)
   async handleHeartbeat(@ConnectedSocket() client: Socket): Promise<void> {
-    const currentBoardId = (client.data as AuthenticatedSocketData)?.currentBoardId;
+    const currentBoardId = (client.data as AuthenticatedSocketData)
+      ?.currentBoardId;
     if (currentBoardId) {
       await this.presenceService.updateHeartbeat(currentBoardId, client.id);
     }
@@ -442,7 +450,8 @@ export class BoardGateway
     const currentUser = user || (client.data as AuthenticatedSocketData)?.user;
     if (!currentUser) return;
 
-    const viewers = (await this.presenceService.getBoardViewers(payload.boardId)) || [];
+    const viewers =
+      (await this.presenceService.getBoardViewers(payload.boardId)) || [];
     const viewer = viewers.find((v) => v.userId === currentUser.sub);
 
     client.to(`board:${payload.boardId}`).emit(WS_EVENTS.BOARD_CURSOR, {

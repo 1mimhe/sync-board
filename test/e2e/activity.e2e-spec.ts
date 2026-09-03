@@ -54,7 +54,13 @@ describe('Activity module (e2e)', () => {
     await addMemberViaInvitation(app, owner, viewer, workspaceId, 'viewer');
     const board = await createBoard(app, owner, workspaceId, 'Activity Board');
     boardId = board.id;
-    const list = await createList(app, owner, workspaceId, boardId, 'Activity List');
+    const list = await createList(
+      app,
+      owner,
+      workspaceId,
+      boardId,
+      'Activity List',
+    );
     listId = list.id;
   });
 
@@ -72,7 +78,14 @@ describe('Activity module (e2e)', () => {
     beforeAll(async () => {
       // Seed: 25 card creations to produce activity rows
       for (let i = 0; i < 25; i++) {
-        await createCard(app, alice, workspaceId, boardId, listId, `Activity Card ${i}`);
+        await createCard(
+          app,
+          alice,
+          workspaceId,
+          boardId,
+          listId,
+          `Activity Card ${i}`,
+        );
       }
     });
 
@@ -81,7 +94,10 @@ describe('Activity module (e2e)', () => {
         items: Array<{ id: unknown }>;
         pagination: { cursor: string | null; hasMore: boolean };
       }>(
-        await req(server()).get(wsActivityUrl()).query({ limit: 20 }).set(auth(owner)),
+        await req(server())
+          .get(wsActivityUrl())
+          .query({ limit: 20 })
+          .set(auth(owner)),
         200,
       );
       expect(p1.items.length).toBeLessThanOrEqual(20);
@@ -139,10 +155,14 @@ describe('Activity module (e2e)', () => {
     });
 
     it('2.6 RBAC: viewer can read; outsider → 403/404; unauthenticated → 401', async () => {
-      const viewerRes = await req(server()).get(wsActivityUrl()).set(auth(viewer));
+      const viewerRes = await req(server())
+        .get(wsActivityUrl())
+        .set(auth(viewer));
       expectData(viewerRes, 200);
 
-      const outsiderRes = await req(server()).get(wsActivityUrl()).set(auth(outsider));
+      const outsiderRes = await req(server())
+        .get(wsActivityUrl())
+        .set(auth(outsider));
       expect([403, 404]).toContain(outsiderRes.status);
 
       const unauthRes = await req(server()).get(wsActivityUrl());
@@ -153,7 +173,13 @@ describe('Activity module (e2e)', () => {
       const data = expectData<{
         items: Array<{ id: unknown; createdAt: string }>;
         pagination: Record<string, unknown>;
-      }>(await req(server()).get(wsActivityUrl()).query({ limit: 1 }).set(auth(owner)), 200);
+      }>(
+        await req(server())
+          .get(wsActivityUrl())
+          .query({ limit: 1 })
+          .set(auth(owner)),
+        200,
+      );
       if (data.items.length > 0) {
         expect(typeof data.items[0].id).toBe('string');
         expect(data.items[0].createdAt).toMatch(

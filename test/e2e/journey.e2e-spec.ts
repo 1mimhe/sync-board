@@ -74,17 +74,28 @@ describe('Golden journey (e2e)', () => {
     sockA = await connect(app.url, alice.accessToken);
     await new Promise<void>((resolve, reject) => {
       sockA!.once('workspace:joined', () => resolve());
-      sockA!.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
+      sockA!.once('error', (e: unknown) =>
+        reject(new Error(JSON.stringify(e))),
+      );
       sockA!.emit('workspace:join', { workspaceId });
     });
     await new Promise<void>((resolve, reject) => {
       sockA!.once('board:joined', () => resolve());
-      sockA!.once('error', (e: unknown) => reject(new Error(JSON.stringify(e))));
+      sockA!.once('error', (e: unknown) =>
+        reject(new Error(JSON.stringify(e))),
+      );
       sockA!.emit('board:join', { boardId });
     });
 
-    const relay = collect(sockA!, 'card:created');
-    const card = await createCard(app, bob, workspaceId, boardId, listId, 'Journey Card');
+    const relay = collect(sockA, 'card:created');
+    const card = await createCard(
+      app,
+      bob,
+      workspaceId,
+      boardId,
+      listId,
+      'Journey Card',
+    );
     cardId = card.id;
 
     const events = await relay.waitForCount(1);
@@ -105,7 +116,9 @@ describe('Golden journey (e2e)', () => {
   it('step 7: A moves the card to a second list', async () => {
     const second = await createList(app, alice, workspaceId, boardId, 'Done');
     const move = await req(server())
-      .patch(`/api/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/move`)
+      .patch(
+        `/api/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/move`,
+      )
       .set(auth(alice))
       .send({ targetListId: second.id });
     expect(expectData<{ listId: string }>(move, 200).listId).toBe(second.id);
@@ -124,7 +137,10 @@ describe('Golden journey (e2e)', () => {
     const p1 = expectData<{
       items: Array<{ content: string }>;
       pagination: { cursor: string | null; hasMore: boolean };
-    }>(await req(server()).get(commentsUrl).query({ limit: 2 }).set(auth(bob)), 200);
+    }>(
+      await req(server()).get(commentsUrl).query({ limit: 2 }).set(auth(bob)),
+      200,
+    );
     expect(p1.items).toHaveLength(2);
     expect(p1.pagination.hasMore).toBe(true);
 
@@ -162,7 +178,9 @@ describe('Golden journey (e2e)', () => {
   });
 
   it('step 11: A logs out everywhere; the next protected call is 401 TOKEN_REVOKED', async () => {
-    const logout = await req(server()).post('/api/auth/logout-all').set(auth(alice));
+    const logout = await req(server())
+      .post('/api/auth/logout-all')
+      .set(auth(alice));
     expect(logout.status).toBe(204);
 
     const probe = await req(server()).get('/api/auth/me').set(auth(alice));

@@ -140,7 +140,10 @@ describe('Documents collaboration (ws)', () => {
       const receiverB = collect(sockB, DOC_EVENTS.AWARENESS);
       const echoA = collect(sockA, DOC_EVENTS.AWARENESS);
 
-      sockA.emit(DOC_EVENTS.AWARENESS, { docId, state: { cursor: { anchor: 0 } } });
+      sockA.emit(DOC_EVENTS.AWARENESS, {
+        docId,
+        state: { cursor: { anchor: 0 } },
+      });
 
       const evts = await receiverB.waitForCount(1, 3000);
       expect(evts[0]).toHaveProperty('docId', docId);
@@ -187,7 +190,9 @@ describe('Documents collaboration (ws)', () => {
       const sock = await connect(app.url, outsider.accessToken);
       const errors = collect(sock, 'error');
       sock.emit(DOC_EVENTS.JOIN, { docId });
-      const evts = await errors.waitForCount(1, 5000).catch(() => errors.events);
+      const evts = await errors
+        .waitForCount(1, 5000)
+        .catch(() => errors.events);
       const found = evts.some(
         (e) => e.code === DOC_EVENTS.ACCESS_DENIED || e.code === 'FORBIDDEN',
       );

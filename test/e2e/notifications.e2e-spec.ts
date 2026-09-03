@@ -45,9 +45,22 @@ describe('Notifications module (e2e)', () => {
     await addMemberViaInvitation(app, actor, recipient, workspaceId, 'member');
     const board = await createBoard(app, actor, workspaceId, 'Notif Board');
     boardId = board.id;
-    const list = await createList(app, actor, workspaceId, boardId, 'Notif List');
+    const list = await createList(
+      app,
+      actor,
+      workspaceId,
+      boardId,
+      'Notif List',
+    );
     listId = list.id;
-    const card = await createCard(app, actor, workspaceId, boardId, listId, 'Notif Card');
+    const card = await createCard(
+      app,
+      actor,
+      workspaceId,
+      boardId,
+      listId,
+      'Notif Card',
+    );
     cardId = card.id;
   });
 
@@ -60,9 +73,18 @@ describe('Notifications module (e2e)', () => {
     it('3.1 GET /notifications → cursor walk: 30 seeded → page 20 hasMore; page 2 completes', async () => {
       // Seed notifications by assigning recipient to cards 30 times
       for (let i = 0; i < 30; i++) {
-        const c = await createCard(app, actor, workspaceId, boardId, listId, `Card ${i}`);
+        const c = await createCard(
+          app,
+          actor,
+          workspaceId,
+          boardId,
+          listId,
+          `Card ${i}`,
+        );
         await req(server())
-          .post(`/api/workspaces/${workspaceId}/boards/${boardId}/cards/${c.id}/assignees/${recipient.id}`)
+          .post(
+            `/api/workspaces/${workspaceId}/boards/${boardId}/cards/${c.id}/assignees/${recipient.id}`,
+          )
           .set(auth(actor));
       }
 
@@ -70,7 +92,10 @@ describe('Notifications module (e2e)', () => {
         items: Array<{ id: string; isRead: boolean }>;
         pagination: { cursor: string | null; hasMore: boolean };
       }>(
-        await req(server()).get(notifUrl()).query({ limit: 20 }).set(auth(recipient)),
+        await req(server())
+          .get(notifUrl())
+          .query({ limit: 20 })
+          .set(auth(recipient)),
         200,
       );
       expect(p1.items.length).toBeLessThanOrEqual(20);
@@ -88,7 +113,10 @@ describe('Notifications module (e2e)', () => {
 
     it('3.2 unreadOnly filter returns only isRead=false rows', async () => {
       const items = expectData<{ items: Array<{ isRead: boolean }> }>(
-        await req(server()).get(notifUrl()).query({ unreadOnly: true }).set(auth(recipient)),
+        await req(server())
+          .get(notifUrl())
+          .query({ unreadOnly: true })
+          .set(auth(recipient)),
         200,
       ).items;
       for (const n of items) {
@@ -98,7 +126,9 @@ describe('Notifications module (e2e)', () => {
 
     it('3.3 unread count endpoint matches actual unread count', async () => {
       const countRes = expectData<{ count: number }>(
-        await req(server()).get(`${notifUrl()}/unread-count`).set(auth(recipient)),
+        await req(server())
+          .get(`${notifUrl()}/unread-count`)
+          .set(auth(recipient)),
         200,
       );
       expect(typeof countRes.count).toBe('number');
@@ -122,7 +152,9 @@ describe('Notifications module (e2e)', () => {
     it('3.6 mark-all-read clears unread; subsequent count=0', async () => {
       await req(server()).post(`${notifUrl()}/read-all`).set(auth(recipient));
       const countRes = expectData<{ count: number }>(
-        await req(server()).get(`${notifUrl()}/unread-count`).set(auth(recipient)),
+        await req(server())
+          .get(`${notifUrl()}/unread-count`)
+          .set(auth(recipient)),
         200,
       );
       expect(countRes.count).toBe(0);

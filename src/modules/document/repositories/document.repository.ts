@@ -203,9 +203,7 @@ export class DocumentRepository {
    * @param cardId - Parent card UUID
    * @returns Array of active documents
    */
-  async findByCard(
-    cardId: string,
-  ): Promise<DocumentWithParentCard[]> {
+  async findByCard(cardId: string): Promise<DocumentWithParentCard[]> {
     return this.prisma.document.findMany({
       where: { parentCardId: cardId, status: DocumentStatus.active },
       select: {

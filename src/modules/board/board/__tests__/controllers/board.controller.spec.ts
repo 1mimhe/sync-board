@@ -254,9 +254,12 @@ describe('BoardController', () => {
         pagination: { cursor: null, hasMore: false },
       });
 
-      const result = await controller.listArchived('ws-1', {} as any);
+      const result = await controller.listArchived('ws-1', {});
 
-      expect(boardService.listArchivedBoardsPaginated).toHaveBeenCalledWith('ws-1', {});
+      expect(boardService.listArchivedBoardsPaginated).toHaveBeenCalledWith(
+        'ws-1',
+        {},
+      );
       expect(result.items).toHaveLength(1);
       expect(result.items[0].id).toBe('board-1');
     });

@@ -44,9 +44,7 @@ export class DocumentActivityListener {
    * Logs document rename activity.
    */
   @OnEvent(DOCUMENT_EVENTS.renamed)
-  async handleDocumentRenamedEvent(
-    event: DocumentRenamedEvent,
-  ): Promise<void> {
+  async handleDocumentRenamedEvent(event: DocumentRenamedEvent): Promise<void> {
     try {
       await this.activityRepo.create({
         boardId: null,

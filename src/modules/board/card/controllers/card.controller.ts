@@ -121,7 +121,11 @@ export class CardController {
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Query() query: CursorPaginationQueryDto,
   ): Promise<PaginatedResult<CardWithDetailsResponseDto>> {
-    const result = await this.cardService.listArchivedCardsPaginated(boardId, workspaceId, query);
+    const result = await this.cardService.listArchivedCardsPaginated(
+      boardId,
+      workspaceId,
+      query,
+    );
     return {
       items: result.items.map(toCardWithDetailsResponseDto),
       pagination: result.pagination,
@@ -381,7 +385,12 @@ export class CardController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    await this.cardService.deletePermanently(boardId, workspaceId, cardId, user.sub);
+    await this.cardService.deletePermanently(
+      boardId,
+      workspaceId,
+      cardId,
+      user.sub,
+    );
   }
 
   /**

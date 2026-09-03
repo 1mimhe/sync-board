@@ -161,11 +161,19 @@ describe('Auth module (e2e)', () => {
       ],
       [
         'password missing number',
-        { email: uniqueEmail('v5'), password: 'SecureP@ss', displayName: 'Test' },
+        {
+          email: uniqueEmail('v5'),
+          password: 'SecureP@ss',
+          displayName: 'Test',
+        },
       ],
       [
         'password missing special char',
-        { email: uniqueEmail('v6'), password: 'SecurePass123', displayName: 'Test' },
+        {
+          email: uniqueEmail('v6'),
+          password: 'SecurePass123',
+          displayName: 'Test',
+        },
       ],
       [
         'display name too short',
@@ -173,12 +181,15 @@ describe('Auth module (e2e)', () => {
       ],
     ];
 
-    it.each(cases)('rejects %s with 400 VALIDATION_ERROR', async (_name, body) => {
-      const res = await req(app.app.getHttpServer())
-        .post('/api/auth/register')
-        .send(body);
-      expectError(res, 400, 'VALIDATION_ERROR');
-    });
+    it.each(cases)(
+      'rejects %s with 400 VALIDATION_ERROR',
+      async (_name, body) => {
+        const res = await req(app.app.getHttpServer())
+          .post('/api/auth/register')
+          .send(body);
+        expectError(res, 400, 'VALIDATION_ERROR');
+      },
+    );
 
     it('13.5.3 (corrected) rejects unknown extra fields: forbidNonWhitelisted → 400', async () => {
       const res = await req(app.app.getHttpServer())
@@ -258,7 +269,9 @@ describe('Auth module (e2e)', () => {
       const probe = await req(app.app.getHttpServer())
         .get('/api/auth/me')
         .set('Authorization', `Bearer ${user.accessToken}`);
-      expect(expectData<ApiUserShape>(probe, 200).displayName).toBe('Renamed User');
+      expect(expectData<ApiUserShape>(probe, 200).displayName).toBe(
+        'Renamed User',
+      );
     });
 
     it('11.2 rejects an invalid avatarUrl with 400', async () => {
@@ -398,7 +411,10 @@ describe('Auth module (e2e)', () => {
       const res = await req(app.app.getHttpServer())
         .post('/api/auth/reset-password')
         .send({ token: resetToken, newPassword: 'NewSecure@1' });
-      const data = expectData<{ accessToken: string; expiresIn: number }>(res, 200);
+      const data = expectData<{ accessToken: string; expiresIn: number }>(
+        res,
+        200,
+      );
       expect(data.expiresIn).toBe(900);
 
       // Old password dead, new password works (12.1.2/12.1.3 analogue)
@@ -526,7 +542,10 @@ describe('Auth module (e2e)', () => {
       const res = await req(app.app.getHttpServer())
         .patch('/api/auth/me/password')
         .set('Authorization', `Bearer ${user.accessToken}`)
-        .send({ currentPassword: 'WrongCurrent@1', newPassword: 'NewSecure@1' });
+        .send({
+          currentPassword: 'WrongCurrent@1',
+          newPassword: 'NewSecure@1',
+        });
       expectError(res, 401, 'INVALID_CREDENTIALS');
     });
 

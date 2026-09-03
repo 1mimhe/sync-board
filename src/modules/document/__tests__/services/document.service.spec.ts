@@ -142,7 +142,12 @@ describe('DocumentService', () => {
         limit: 2,
       });
 
-      expect(repo.searchPage).toHaveBeenCalledWith('ws-1', 'alpha', undefined, 2);
+      expect(repo.searchPage).toHaveBeenCalledWith(
+        'ws-1',
+        'alpha',
+        undefined,
+        2,
+      );
       expect(result.items).toHaveLength(2);
       expect(result.pagination.hasMore).toBe(true);
       expect(result.pagination.cursor).toBe(

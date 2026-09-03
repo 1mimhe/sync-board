@@ -8,7 +8,10 @@ import { LabelRepository } from '../../label/repositories/label.repository';
 import { LexorankService } from '../../lexorank/services/lexorank.service';
 import { WorkspaceService } from '../../../workspace/services/workspace.service';
 import { CreateCardDto, UpdateCardDto, MoveCardDto } from '../dto';
-import { EntityNotFoundException, BusinessRuleException } from '../../../../common/exceptions/app.exception';
+import {
+  EntityNotFoundException,
+  BusinessRuleException,
+} from '../../../../common/exceptions/app.exception';
 import {
   CardCreatedEvent,
   CardMovedEvent,
@@ -388,7 +391,11 @@ export class CardService {
       throw new EntityNotFoundException('Board', boardId);
     }
     const limit = query.limit ?? 20;
-    const result = await this.cardRepo.findArchivedByBoardIdPage(boardId, query.cursor, limit);
+    const result = await this.cardRepo.findArchivedByBoardIdPage(
+      boardId,
+      query.cursor,
+      limit,
+    );
     return result;
   }
 

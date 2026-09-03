@@ -61,7 +61,7 @@ export class BoardRepository {
     });
   }
 
-/**
+  /**
    * Finds a board by ID with its nested relational structure (lists, cards, available labels, and pagination metadata).
    *
    * @param id - Board UUID
@@ -91,7 +91,9 @@ export class BoardRepository {
           take: query.listTake,
           include: {
             _count: {
-              select: { cards: { where: { archivedAt: null, deletedAt: null } } },
+              select: {
+                cards: { where: { archivedAt: null, deletedAt: null } },
+              },
             },
             cards: {
               where: { archivedAt: null, deletedAt: null },

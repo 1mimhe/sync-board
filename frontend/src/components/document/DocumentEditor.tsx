@@ -183,7 +183,7 @@ export function DocumentEditor({
       if (ack.state) {
         try {
           const raw = ack.state instanceof Uint8Array ? ack.state : new Uint8Array(ack.state)
-          Y.applyUpdate(ydoc, raw)
+          Y.applyUpdate(ydoc, raw, 'remote')
           setText(yText.toString())
         } catch (e) {
           console.error('Failed to apply initial doc state', e)
@@ -228,7 +228,7 @@ export function DocumentEditor({
           payload.update instanceof Uint8Array
             ? payload.update
             : new Uint8Array(payload.update)
-        Y.applyUpdate(ydoc, raw)
+        Y.applyUpdate(ydoc, raw, 'remote')
         setText(yText.toString())
       } catch (e) {
         console.error('Failed to apply remote doc update', e)

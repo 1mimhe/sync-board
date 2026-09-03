@@ -70,7 +70,7 @@ describe('DocumentRepository', () => {
       workspaceId: 'ws-1',
       title: 'Doc',
       createdBy: 'u-1',
-    } as any);
+    });
 
     expect(prisma.document.create).toHaveBeenCalledWith({
       data: { workspaceId: 'ws-1', title: 'Doc', createdBy: 'u-1' },

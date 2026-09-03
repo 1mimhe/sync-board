@@ -12,28 +12,33 @@ potential future service boundary.
 - **Workspaces & RBAC** — multi-tenant workspaces with a four-level role hierarchy
   (owner / admin / member / viewer) enforced per request, never from stale token claims.
 - **Kanban boards** — lists and cards ordered by **Lexorank** fractional indexing, so moving a
-  card writes exactly one row instead of re-indexing a list.
-- **Collaborative documents** — rich-text editing over **Yjs CRDT**, merged server-side,
-  debounced persistence to PostgreSQL, snapshot versioning.
+  card writes exactly one row instead of re-indexing a list. Supports soft-delete archiving,
+  restoring, and permanent hard-deletion.
+- **Unified Workspace Labels** — workspace-wide labels attachable to cards across boards, with
+  real-time card tagging and cross-board tagged cards exploration.
+- **Collaborative documents** — rich-text and markdown editing over **Yjs CRDT**, live cursors
+  and awareness, merged server-side, debounced persistence to PostgreSQL, snapshot versioning.
 - **Real-time engine** — Socket.IO rooms per board/document/user, Redis-backed presence with
   heartbeats and stale sweeps, live cursors, and a Redis adapter for horizontal scaling.
+- **Frontend SPA Client** — modern React 19, TypeScript, Vite, Socket.IO client, Yjs editor,
+  and sleek glassmorphism UI located in `frontend/`.
 - **Authentication** — JWT access tokens (RS256), refresh tokens delivered as HTTP-only
   cookies with **rotation chains and reuse detection**, Google OAuth, Redis token blacklist.
 - **Activity audit trail** — append-only activity events written through domain-event listeners,
   isolated from request paths by design.
-- **Planned (Phase 5–7)** — RabbitMQ pipeline with outbox-style reliability and DLQs,
+- **Planned (Phase 6–7)** — RabbitMQ pipeline with outbox-style reliability and DLQs,
   notifications with @mentions, S3 presigned two-phase uploads, CI/CD and deployment.
 
 ## Architecture
 
 ```
-Client ──▶ Nginx ──▶ REST (NestJS controllers)
-                └──▶ WebSocket (Socket.IO gateways)
-                              │
+Client (React 19 SPA) ──▶ Nginx ──▶ REST (NestJS controllers)
+                                └──▶ WebSocket (Socket.IO gateways)
+                                                │
         Application core: auth · workspace · board · document ·
                           activity · notification · file · mail
-                              │
-   PostgreSQL ── Redis ── RabbitMQ (planned) ── S3 (planned)
+                                                │
+    PostgreSQL ── Redis ── RabbitMQ (planned) ── S3 (planned)
 ```
 
 Modules communicate through exported services only; cross-module side effects (activity logs,
@@ -61,7 +66,8 @@ Each of these has a dedicated doc with the reasoning — the "why" behind the co
 
 | Layer | Technology |
 |-------|------------|
-| Runtime / framework | Node.js 20, NestJS 11, TypeScript strict mode |
+| Backend runtime / framework | Node.js 20, NestJS 11, TypeScript strict mode |
+| Frontend client | React 19, TypeScript, Vite, Socket.IO client, Yjs |
 | Database | PostgreSQL 16, Prisma ORM, migrations with hand-written partial/GIN SQL |
 | Cache & realtime infra | Redis 7 (ioredis), Socket.IO + `@socket.io/redis-adapter` |
 | Auth | Passport.js, JWT RS256, Google OAuth 2.0, bcrypt |
@@ -78,8 +84,10 @@ Each of these has a dedicated doc with the reasoning — the "why" behind the co
 | 1 | Foundation & auth | done |
 | 2 | Workspaces, boards, cards, comments, attachments | done |
 | 3 | Real-time engine (rooms, presence, cursors) | done |
-| 4A–4D | Hardening: migrations & indexes, rotation chain, checklists, module refactor, event registry, email service | next |
-| 5 | Collaborative documents (CRDT) | planned |
+| 4A–4D | Hardening: migrations & indexes, rotation chain, checklists, module refactor, email service | done |
+| 5 | Collaborative documents (Yjs CRDT, snapshots, live awareness) | done |
+| Soft Delete | Archival & restore for boards/lists/cards + permanent deletion | done |
+| Frontend | React 19 SPA client with live Kanban, collaborative doc editor, modals & tabs | done |
 | 6 | RabbitMQ async pipeline, notifications, S3 files | planned |
 | 7 | CI/CD, replica + PgBouncer, Nginx, deployment | planned |
 
@@ -112,6 +120,8 @@ guides) and `docs/project-kit/` (reusable templates used to bootstrap projects l
 
 ## Getting started
 
+### 1. Start Infrastructure & Backend
+
 ```bash
 cp .env.example .env             # fill values
 docker compose up -d             # PostgreSQL + Redis (+ MailHog)
@@ -125,6 +135,14 @@ npm run start:dev
 Without key files the app falls back to HS256 with `JWT_SECRET`; production builds require
 RS256 key files via config validation.
 
+### 2. Start Frontend Client
+
+```bash
+cd frontend
+npm install
+npm run dev                      # starts Vite dev server at http://localhost:5173
+```
+
 ## API documentation
 
 Interactive Swagger UI at **http://localhost:3000/api/docs** once the app is running.
@@ -134,6 +152,7 @@ Interactive Swagger UI at **http://localhost:3000/api/docs** once the app is run
 ```bash
 npm test            # unit suite, 100% coverage gate enforced in CI config
 npm run test:e2e    # HTTP journeys + WebSocket suites (needs docker compose up)
+cd frontend && npm run build  # verifies frontend type check & production bundle
 ```
 
 Scenario catalogs and generation guides are described in `docs/test-cases/README.md`.

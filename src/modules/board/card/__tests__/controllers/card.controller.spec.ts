@@ -254,7 +254,7 @@ describe('CardController', () => {
         pagination: { cursor: null, hasMore: false },
       });
 
-      const result = await controller.listArchived('ws-1', 'board-1', {} as any);
+      const result = await controller.listArchived('ws-1', 'board-1', {});
 
       expect(cardService.listArchivedCardsPaginated).toHaveBeenCalledWith(
         'board-1',
