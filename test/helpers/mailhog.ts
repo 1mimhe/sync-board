@@ -43,16 +43,17 @@ function messageMatches(item: MailhogItem, email: string): boolean {
   const [localPart, domain] = email.toLowerCase().split('@');
   return item.To.some(
     (r) =>
-      r.Mailbox.toLowerCase() === localPart && r.Domain.toLowerCase() === domain,
+      r.Mailbox.toLowerCase() === localPart &&
+      r.Domain.toLowerCase() === domain,
   );
 }
 
 export type MailTokenKind = 'verify' | 'invite' | 'reset';
 
 const TOKEN_PATTERNS: Record<MailTokenKind, RegExp> = {
-  verify: /verify-email\?token=([A-Za-z0-9_\-]+)/,
+  verify: /verify-email\?token=([A-Za-z0-9_-]+)/,
   invite: /invitations\/([0-9a-f]{64})\/accept/,
-  reset: /reset-password\?token=([A-Za-z0-9_\-]+)/,
+  reset: /reset-password\?token=([A-Za-z0-9_-]+)/,
 };
 
 /**

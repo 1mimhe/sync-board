@@ -15,8 +15,7 @@ export async function connect(
   token: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<Socket> {
-  const serverPort =
-    typeof baseUrl === 'string' ? baseUrl : `http://127.0.0.1:${baseUrl}`;
+  const serverPort = baseUrl;
   const sock = io(serverPort, {
     auth: { token },
     transports: ['websocket'],
