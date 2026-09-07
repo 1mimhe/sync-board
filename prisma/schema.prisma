@@ -56,6 +56,36 @@ enum AttachmentType {
   @@map("attachment_type")
 }
 
+enum CardPriority {
+  lowest
+  low
+  medium
+  high
+  urgent
+
+  @@map("card_priority")
+}
+
+enum CardStatus {
+  not_started
+  active
+  done
+  closed
+
+  @@map("card_status")
+}
+
+
+enum CardFieldType {
+  text
+  number
+  date
+  select
+  user
+
+  @@map("card_field_type")
+}
+
 model User {
   id                   String                @id @default(uuid()) @db.Uuid
   email                String                @unique @db.VarChar(255)
@@ -80,6 +110,7 @@ model User {
   activities           Activity[]
   createdDocuments     Document[]           @relation("DocumentCreator")
   documentSnapshots    DocumentSnapshot[]   @relation("SnapshotCreator")
+  timeEntries          CardTimeEntry[]
 
   @@index([googleId], map: "idx_users_google_id")
   @@map("users")
@@ -124,6 +155,7 @@ model Workspace {
   boards      Board[]
   labels      Label[]
   documents   Document[]
+  fieldDefs   CardFieldDef[]
 
   @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
@@ -230,29 +262,43 @@ model List {
 }
 
 model Card {
-  id            String    @id @default(uuid()) @db.Uuid
-  listId        String    @map("list_id") @db.Uuid
-  title         String    @db.VarChar(500)
-  description   Json?     @db.JsonB
-  rank          String    @db.VarChar(50)
-  dueDate       DateTime? @map("due_date") @db.Timestamptz
-  isComplete    Boolean   @default(false) @map("is_complete")
-  coverImageUrl String?   @map("cover_image_url") @db.Text
-  createdBy     String    @map("created_by") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  archivedAt    DateTime? @map("archived_at") @db.Timestamptz
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
+  id              String       @id @default(uuid()) @db.Uuid
+  listId          String       @map("list_id") @db.Uuid
+  title           String       @db.VarChar(500)
+  description     Json?        @db.JsonB
+  rank            String       @db.VarChar(50)
+  dueDate         DateTime?    @map("due_date") @db.Timestamptz
+  isComplete      Boolean      @default(false) @map("is_complete")
+  coverImageUrl   String?      @map("cover_image_url") @db.Text
+  priority        CardPriority @default(medium)
+  status          CardStatus   @default(not_started)
+  parentCardId    String?      @map("parent_card_id") @db.Uuid
+  estimateMinutes Int?         @map("estimate_minutes")
+  loggedMinutes   Int          @default(0) @map("logged_minutes")
+  createdBy       String       @map("created_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt      DateTime?    @map("archived_at") @db.Timestamptz
+  deletedAt       DateTime?    @map("deleted_at") @db.Timestamptz
 
   list        List             @relation(fields: [listId], references: [id], onDelete: Cascade)
   creator     User             @relation("CardCreator", fields: [createdBy], references: [id])
+  parent      Card?            @relation("CardSubcards", fields: [parentCardId], references: [id], onDelete: SetNull)
+  subcards    Card[]           @relation("CardSubcards")
   assignees   CardAssignee[]
   labels      CardLabel[]
   comments    CardComment[]
   attachments CardAttachment[]
   checklists  CardChecklist[]
   documents   Document[]
+  fieldValues CardFieldValue[]
+  timeEntries CardTimeEntry[]
 
+  @@index([parentCardId], map: "idx_cards_parent")
+  @@index([status], map: "idx_cards_status")
+  @@index([priority], map: "idx_cards_priority")
+  @@index([listId, status], map: "idx_cards_list_status")
+  @@index([dueDate], map: "idx_cards_due_date")
   @@map("cards")
 }
 
@@ -281,17 +327,21 @@ model CardLabel {
 }
 
 model CardComment {
-  id        String    @id @default(uuid()) @db.Uuid
-  cardId    String    @map("card_id") @db.Uuid
-  authorId  String    @map("author_id") @db.Uuid
-  content   String    @db.Text
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  id               String    @id @default(uuid()) @db.Uuid
+  cardId           String    @map("card_id") @db.Uuid
+  authorId         String    @map("author_id") @db.Uuid
+  content          String    @db.Text
+  parentCommentId  String?   @map("parent_comment_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
 
-  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id])
+  card            Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author          User @relation(fields: [authorId], references: [id])
+  parent          CardComment? @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         CardComment[] @relation("CommentReplies")
 
+  @@index([parentCommentId], map: "idx_comments_parent")
   @@map("card_comments")
 }
 
@@ -409,4 +459,53 @@ model DocumentSnapshot {
 
   @@index([documentId], map: "idx_snapshots_document")
   @@map("document_snapshots")
+}
+
+model CardFieldDef {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  name        String        @db.VarChar(100)
+  fieldType   CardFieldType @map("field_type")
+  options     Json?         @db.JsonB
+  required    Boolean       @default(false)
+  position    Int           @default(0)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  values    CardFieldValue[]
+
+  @@unique([workspaceId, name], map: "unique_field_def_name")
+  @@index([workspaceId], map: "idx_field_defs_workspace")
+  @@map("card_field_defs")
+}
+
+model CardFieldValue {
+  id        String   @id @default(uuid()) @db.Uuid
+  fieldId   String   @map("field_id") @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  value     Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  field CardFieldDef @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  card  Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, cardId], map: "unique_field_value")
+  @@index([cardId], map: "idx_field_values_card")
+  @@map("card_field_values")
+}
+
+model CardTimeEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  minutes   Int
+  note      String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([cardId], map: "idx_time_entries_card")
+  @@map("card_time_entries")
 }
