@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CardCommentController } from './controllers/comment.controller';
 import { CardCommentService } from './services/comment.service';
 import { CardCommentRepository } from './repositories/comment.repository';
-import { BoardSubModule } from '../board/board.module';
+import { BoardSubModule } from '../core/board.module';
 import { CardSubModule } from '../card/card.module';
 import { AuthModule } from '../../auth/auth.module';
 import { WorkspaceModule } from '../../workspace/workspace.module';
