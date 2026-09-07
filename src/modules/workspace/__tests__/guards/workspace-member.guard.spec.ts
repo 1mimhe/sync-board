@@ -60,6 +60,30 @@ describe('WorkspaceMemberGuard', () => {
     );
   });
 
+  it('should accept array workspaceId params by using the first entry', async () => {
+    const mockMember = {
+      id: '4c57a2e8-6e0a-4f5e-9c1b-7f0a2e3d4c5b',
+      workspaceId: 'f0e8d7c6-b5a4-4938-a2b1-0c1d2e3f4a5b',
+      userId: '3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d',
+      role: WorkspaceRole.member,
+      joinedAt: new Date(),
+    };
+
+    (memberRepo.findMember as jest.Mock).mockResolvedValue(mockMember);
+
+    const context = createMockContext(
+      { workspaceId: ['f0e8d7c6-b5a4-4938-a2b1-0c1d2e3f4a5b'] } as any,
+      { sub: '3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d' },
+    );
+    const canActivate = await guard.canActivate(context);
+
+    expect(canActivate).toBe(true);
+    expect(memberRepo.findMember).toHaveBeenCalledWith(
+      'f0e8d7c6-b5a4-4938-a2b1-0c1d2e3f4a5b',
+      '3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d',
+    );
+  });
+
   it('should throw ForbiddenException if user is not a member', async () => {
     (memberRepo.findMember as jest.Mock).mockResolvedValue(null);
 
