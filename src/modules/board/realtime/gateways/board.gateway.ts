@@ -31,7 +31,7 @@ import {
   WS_EVENTS,
   WS_RATE_LIMITS,
   PRESENCE_CONFIG,
-} from '../ws-events.constants';
+} from '../events/ws-events.constants';
 import {
   WsWorkspaceJoinDto,
   WsWorkspaceLeaveDto,

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server } from 'socket.io';
-import { WS_EVENTS } from '../ws-events.constants';
-import { BOARD_EVENTS } from '../../board/events/board-events.constants';
+import { WS_EVENTS } from '../events/ws-events.constants';
+import { BOARD_EVENTS } from '../../core/events/board-events.constants';
 import { LIST_EVENTS } from '../../list/events/list-events.constants';
 import { CARD_EVENTS } from '../../card/events/card-events.constants';
 import { COMMENT_EVENTS } from '../../comment/events/comment-events.constants';
@@ -14,7 +14,7 @@ import type {
   BoardArchivedEvent,
   BoardUnarchivedEvent,
   BoardDeletedEvent,
-} from '../../board/events/board.events';
+} from '../../core/events/board.events';
 import type {
   ListCreatedEvent,
   ListUpdatedEvent,
@@ -30,6 +30,10 @@ import type {
   CardArchivedEvent,
   CardUnarchivedEvent,
   CardDeletedEvent,
+  CardPriorityChangedEvent,
+  CardStatusChangedEvent,
+  CardSubcardCreatedEvent,
+  CardTimeLoggedEvent,
 } from '../../card/events/card.events';
 import type { CommentCreatedEvent } from '../../comment/events/comment.events';
 import type {
@@ -355,6 +359,55 @@ export class BroadcastRelayService {
       checklistId: event.checklistId,
       cardId: event.cardId,
       deletedBy: { id: event.deletedBy },
+    });
+  }
+
+  @OnEvent(CARD_EVENTS.priorityChanged)
+  broadcastCardPriorityChanged(event: CardPriorityChangedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_PRIORITY_CHANGED, {
+      cardId: event.cardId,
+      boardId: event.boardId,
+      from: event.from,
+      to: event.to,
+      changedBy: { id: event.changedBy },
+    });
+  }
+
+  @OnEvent(CARD_EVENTS.statusChanged)
+  broadcastCardStatusChanged(event: CardStatusChangedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_STATUS_CHANGED, {
+      cardId: event.cardId,
+      boardId: event.boardId,
+      from: event.from,
+      to: event.to,
+      isComplete: event.isComplete,
+      changedBy: { id: event.changedBy },
+    });
+  }
+
+  @OnEvent(CARD_EVENTS.subcardCreated)
+  broadcastCardSubcardCreated(event: CardSubcardCreatedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_CREATED, {
+      parentCardId: event.parentCardId,
+      childCardId: event.childCardId,
+      createdBy: { id: event.createdBy },
+    });
+    this.toBoard(event.boardId, WS_EVENTS.CARD_SUBCARD_CREATED, {
+      parentCardId: event.parentCardId,
+      childCardId: event.childCardId,
+      createdBy: { id: event.createdBy },
+    });
+  }
+
+  @OnEvent(CARD_EVENTS.timeLogged)
+  broadcastCardTimeLogged(event: CardTimeLoggedEvent): void {
+    this.toBoard(event.boardId, WS_EVENTS.CARD_TIME_LOGGED, {
+      cardId: event.cardId,
+      boardId: event.boardId,
+      minutes: event.minutes,
+      loggedTotal: event.loggedTotal,
+      entryId: event.entryId,
+      loggedBy: { id: event.loggedBy },
     });
   }
 }
