@@ -22,20 +22,25 @@ import {
 } from '@nestjs/swagger';
 import { CardService } from '../services/card.service';
 import {
+  AttachSubcardDto,
   CreateCardDto,
   UpdateCardDto,
+  UpdateCardPriorityDto,
+  UpdateCardStatusDto,
   MoveCardDto,
   CardResponseDto,
   CardWithDetailsResponseDto,
+  CardWithSubcardsResponseDto,
 } from '../dto';
 import {
   toCardResponseDto,
   toCardWithDetailsResponseDto,
-} from '../../board/mappers/board.mapper';
+  toCardWithSubcardsResponseDto,
+} from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
-import { CursorPaginationQueryDto } from '../../board/dto';
+import { CursorPaginationQueryDto } from '../../core/dto';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
@@ -218,6 +223,272 @@ export class CardController {
       workspaceId,
       cardId,
       dto,
+      user.sub,
+    );
+    return toCardResponseDto(card);
+  }
+
+  /**
+   * Changes a card's priority stage.
+   */
+  @Patch('cards/:cardId/priority')
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Change card priority stage' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Card UUID',
+  })
+  @ApiOkResponse({ description: 'Priority updated', type: CardResponseDto })
+  @ApiResponse({ status: 404, description: 'Card not found' })
+  async updatePriority(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: UpdateCardPriorityDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CardResponseDto> {
+    const card = await this.cardService.updatePriority(
+      boardId,
+      workspaceId,
+      cardId,
+      dto,
+      user.sub,
+    );
+    return toCardResponseDto(card);
+  }
+
+  /**
+   * Moves a card through the status workflow (derives isComplete).
+   */
+  @Patch('cards/:cardId/status')
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Change card status (derives isComplete)' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Card UUID',
+  })
+  @ApiOkResponse({ description: 'Status updated', type: CardResponseDto })
+  @ApiResponse({ status: 404, description: 'Card not found' })
+  async updateStatus(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: UpdateCardStatusDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CardResponseDto> {
+    const card = await this.cardService.updateStatus(
+      boardId,
+      workspaceId,
+      cardId,
+      dto,
+      user.sub,
+    );
+    return toCardResponseDto(card);
+  }
+
+  /**
+   * Creates a subcard under a parent on the same board.
+   */
+  @Post('cards/:cardId/subcards')
+  @HttpCode(HttpStatus.CREATED)
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Create a subcard under a parent card' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Parent Card UUID',
+  })
+  @ApiCreatedResponse({
+    description: 'Subcard created',
+    type: CardWithDetailsResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Parent not found' })
+  @ApiResponse({ status: 422, description: 'MAX_DEPTH violated' })
+  async createSubcard(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: CreateCardDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CardWithDetailsResponseDto> {
+    const card = await this.cardService.createSubcard(
+      boardId,
+      workspaceId,
+      cardId,
+      dto,
+      user.sub,
+    );
+    return toCardWithDetailsResponseDto(card);
+  }
+
+  /**
+   * Attaches an existing card as a subcard.
+   */
+  @Post('cards/:cardId/subcards/attach')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Attach an existing card as a subcard' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Parent Card UUID',
+  })
+  @ApiOkResponse({ description: 'Subcard attached', type: CardResponseDto })
+  @ApiResponse({ status: 404, description: 'Parent or child not found' })
+  @ApiResponse({
+    status: 422,
+    description: 'CYCLE, MAX_DEPTH, ALREADY_HAS_PARENT, or HAS_SUBCARDS',
+  })
+  async attachSubcard(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Body() dto: AttachSubcardDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CardResponseDto> {
+    const card = await this.cardService.attachSubcard(
+      boardId,
+      workspaceId,
+      cardId,
+      dto.subcardId,
+      user.sub,
+    );
+    return toCardResponseDto(card);
+  }
+
+  /**
+   * Returns a parent with active subcards and rollup totals.
+   */
+  @Get('cards/:cardId/with-subcards')
+  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @ApiOperation({ summary: 'Get parent card with subcards and rollup' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Parent Card UUID',
+  })
+  @ApiOkResponse({
+    description: 'Parent with subcards',
+    type: CardWithSubcardsResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Card not found' })
+  async getWithSubcards(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+  ): Promise<CardWithSubcardsResponseDto> {
+    const card = await this.cardService.getWithSubcards(
+      boardId,
+      workspaceId,
+      cardId,
+    );
+    return toCardWithSubcardsResponseDto(card);
+  }
+
+  /**
+   * Detaches a subcard from its parent.
+   */
+  @Delete('cards/:cardId/parent')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Detach a subcard from its parent' })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Subcard UUID',
+  })
+  @ApiOkResponse({ description: 'Subcard detached', type: CardResponseDto })
+  @ApiResponse({ status: 404, description: 'Card not found' })
+  async detachSubcard(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<CardResponseDto> {
+    const card = await this.cardService.detachSubcard(
+      boardId,
+      workspaceId,
+      cardId,
       user.sub,
     );
     return toCardResponseDto(card);
