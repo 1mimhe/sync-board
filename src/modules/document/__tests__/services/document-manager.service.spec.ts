@@ -85,6 +85,9 @@ describe('DocumentManagerService', () => {
   });
 
   describe('debounced persistence', () => {
+    it('should ignore scheduleSave for documents that are not loaded', () => {
+      expect(() => (manager as any).scheduleSave('missing-doc')).not.toThrow();
+    });
     it('persists state + preview after the debounce window and emits saved', async () => {
       repo.findWithState.mockResolvedValue(null);
       const ydoc = await manager.getOrLoad(DOC);
