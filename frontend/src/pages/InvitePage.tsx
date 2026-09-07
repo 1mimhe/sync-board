@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { workspaceApi } from '../api/endpoints'
+import { workspaceApi, authApi } from '../api/endpoints'
 import { useAuth } from '../stores/auth.store'
 import { useToast } from '../stores/toast.store'
 import { IconMail } from '../components/common/Icons'
@@ -43,7 +43,10 @@ export function InvitePage() {
     }
   }
 
-  const handleSwitchAccount = () => {
+  const handleSwitchAccount = async () => {
+    try {
+      await authApi.logout()
+    } catch {}
     clearAuth()
     navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
   }

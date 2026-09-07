@@ -34,7 +34,20 @@ export function LoginPage() {
     setLoading(true)
     setError('')
 
-    const res = await authApi.login({ email, password })
+    let res = await authApi.login({ email, password })
+
+    // Auto-recovery if stale browser cookie caused ALREADY_AUTHENTICATED:
+    // clear stale session and retry login with the entered credentials
+    if (
+      !res.success &&
+      (res.error?.code === 'ALREADY_AUTHENTICATED' ||
+        res.error?.message === 'ALREADY_AUTHENTICATED' ||
+        res.error?.message?.includes('already authenticated'))
+    ) {
+      await authApi.logout().catch(() => {})
+      res = await authApi.login({ email, password })
+    }
+
     setLoading(false)
 
     if (res.success && res.data) {

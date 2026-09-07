@@ -35,11 +35,28 @@ export function RegisterPage() {
     setLoading(true)
     setError('')
 
-    const res = await authApi.register({
+    let res = await authApi.register({
       displayName: displayName.trim(),
       email: email.trim(),
       password,
     })
+
+    // Auto-recovery if stale browser cookie caused ALREADY_AUTHENTICATED:
+    // clear stale session and retry registration
+    if (
+      !res.success &&
+      (res.error?.code === 'ALREADY_AUTHENTICATED' ||
+        res.error?.message === 'ALREADY_AUTHENTICATED' ||
+        res.error?.message?.includes('already authenticated'))
+    ) {
+      await authApi.logout().catch(() => {})
+      res = await authApi.register({
+        displayName: displayName.trim(),
+        email: email.trim(),
+        password,
+      })
+    }
+
     setLoading(false)
 
     if (res.success && res.data) {

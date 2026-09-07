@@ -30,7 +30,7 @@ export function AuthCallbackPage() {
         setToken(token)
         setStatusMessage('Loading user profile…')
 
-        const profileRes = await authApi.getProfile()
+        const profileRes = await authApi.getProfile(token)
         if (isCancelled) return
 
         if (profileRes.success && profileRes.data) {
@@ -47,7 +47,7 @@ export function AuthCallbackPage() {
       if (isCancelled) return
 
       if (freshToken) {
-        const profileRes = await authApi.getProfile()
+        const profileRes = await authApi.getProfile(freshToken)
         if (profileRes.success && profileRes.data) {
           setUser(profileRes.data)
           addToast(`Welcome, ${profileRes.data.displayName}!`, 'success')

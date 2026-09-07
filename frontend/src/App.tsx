@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -60,56 +60,57 @@ function PageLoadingSpinner() {
  * If user has an active refresh token cookie, silently restore session before rendering routes.
  */
 function AuthBootstrapper({ children }: { children: React.ReactNode }) {
-  const { setToken, setUser } = useAuth()
-  const [checking, setChecking] = useState(() => !useAuth.getState().token)
-  const hasCheckedRef = useRef(false)
+  const { setToken, setUser, clearAuth } = useAuth()
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    if (hasCheckedRef.current) return
-    hasCheckedRef.current = true
+    let active = true
 
-    let isCancelled = false
-
-    const checkExistingSession = async () => {
+    const bootstrap = async () => {
       try {
         const currentToken = useAuth.getState().token
         const currentUser = useAuth.getState().user
 
         if (currentToken && !currentUser) {
           const profileRes = await authApi.getProfile(currentToken)
-          if (!isCancelled && profileRes.success && profileRes.data) {
+          if (active && profileRes.success && profileRes.data) {
             setUser(profileRes.data)
+          } else if (active && !profileRes.success) {
+            clearAuth()
           }
-          return
-        }
-
-        if (!currentToken) {
+        } else if (!currentToken) {
           const freshToken = await refreshAccessToken()
-          if (isCancelled) return
-
-          if (freshToken) {
+          if (active && freshToken) {
             setToken(freshToken)
             const profileRes = await authApi.getProfile(freshToken)
-            if (!isCancelled && profileRes.success && profileRes.data) {
+            if (active && profileRes.success && profileRes.data) {
               setUser(profileRes.data)
             }
           }
         }
       } catch {
-        // No valid session cookie found
+        // Guest user or network failure — proceed to render routes
       } finally {
-        if (!isCancelled) {
+        if (active) {
           setChecking(false)
         }
       }
     }
 
-    checkExistingSession()
+    bootstrap()
+
+    // Failsafe timer: ensure loading screen never stays indefinitely
+    const failsafe = setTimeout(() => {
+      if (active) {
+        setChecking(false)
+      }
+    }, 2000)
 
     return () => {
-      isCancelled = true
+      active = false
+      clearTimeout(failsafe)
     }
-  }, [setToken, setUser])
+  }, [setToken, setUser, clearAuth])
 
   if (checking) {
     return (
