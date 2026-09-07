@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../../../common/redis/redis.service';
-import { PRESENCE_CONFIG, COLLABORATOR_COLORS } from '../ws-events.constants';
+import {
+  PRESENCE_CONFIG,
+  COLLABORATOR_COLORS,
+} from '../events/ws-events.constants';
 import type {
   PresenceEntry,
   PresenceUser,
@@ -83,58 +86,6 @@ export class PresenceService {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Removes ALL presence entries for a given user across a specific board.
-   * Executes atomic removal across dual keys in a single pipeline.
-   *
-   * @param boardId - Board UUID
-   * @param userId - User UUID
-   * @returns Array of removed PresenceEntry objects
-   */
-  async removeUserPresence(
-    boardId: string,
-    userId: string,
-  ): Promise<PresenceEntry[]> {
-    const activeKey = this.getActiveKey(boardId);
-    const metaKey = this.getMetaKey(boardId);
-
-    const allMeta = await this.redis.hgetall(metaKey);
-    if (!allMeta || Object.keys(allMeta).length === 0) {
-      return [];
-    }
-
-    const removed: PresenceEntry[] = [];
-    const socketsToRemove: string[] = [];
-
-    for (const [socketId, rawEntry] of Object.entries(allMeta)) {
-      try {
-        const entry = JSON.parse(rawEntry) as PresenceEntry;
-        if (entry.userId === userId) {
-          removed.push(entry);
-          socketsToRemove.push(socketId);
-        }
-      } catch {
-        // Skip malformed entries
-      }
-    }
-
-    if (socketsToRemove.length > 0) {
-      const pipeline = this.redis.pipeline();
-      pipeline.zrem(activeKey, ...socketsToRemove);
-      pipeline.hdel(metaKey, ...socketsToRemove);
-      pipeline.zcard(activeKey);
-
-      const results = await pipeline.exec();
-      const remainingCount = results?.[2]?.[1] as number;
-
-      if (remainingCount === 0) {
-        await this.redis.srem(PRESENCE_CONFIG.ACTIVE_BOARDS_KEY, boardId);
-      }
-    }
-
-    return removed;
   }
 
   /**
