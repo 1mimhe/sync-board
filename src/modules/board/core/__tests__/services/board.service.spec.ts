@@ -172,6 +172,19 @@ describe('BoardService', () => {
         20,
       );
     });
+
+    it('should default limit when query omitted', async () => {
+      boardRepo.findWorkspaceBoardsPage.mockResolvedValue([]);
+
+      await service.listWorkspaceBoards('ws-1', 'u-1');
+
+      expect(boardRepo.findWorkspaceBoardsPage).toHaveBeenCalledWith(
+        'ws-1',
+        'u-1',
+        undefined,
+        20,
+      );
+    });
   });
 
   describe('update', () => {
@@ -332,6 +345,19 @@ describe('BoardService', () => {
       expect(result.pagination).toEqual({ cursor: null, hasMore: false });
     });
 
+    it('should default limit when query omitted', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
+      activityRepo.findByBoardIdPage.mockResolvedValue([]);
+
+      await service.getBoardActivities('b-1', 'ws-1');
+
+      expect(activityRepo.findByBoardIdPage).toHaveBeenCalledWith(
+        'b-1',
+        undefined,
+        20,
+      );
+    });
+
     it('should throw EntityNotFoundException if board not found when getting activities', async () => {
       boardRepo.findById.mockResolvedValue(null);
 
@@ -341,22 +367,87 @@ describe('BoardService', () => {
     });
   });
 
-  describe('listArchivedBoards', () => {
-    it('should return archived boards from repository', async () => {
-      const mockArchived = [
-        {
-          id: 'b-archived',
-          workspaceId: 'ws-1',
-          title: 'Archived Board',
-          archivedAt: new Date(),
-        },
-      ];
-      boardRepo.findArchivedBoards.mockResolvedValue(mockArchived as any);
+  describe('listArchivedBoardsPaginated', () => {
+    it('should return archived page', async () => {
+      boardRepo.findArchivedBoardsPage.mockResolvedValue({
+        items: [{ id: 'b-1' }],
+        pagination: { cursor: null, hasMore: false },
+      } as any);
 
-      const result = await service.listArchivedBoards('ws-1');
+      const result = await service.listArchivedBoardsPaginated('ws-1', {});
 
-      expect(boardRepo.findArchivedBoards).toHaveBeenCalledWith('ws-1');
-      expect(result).toEqual(mockArchived);
+      expect(result.items).toHaveLength(1);
+      expect(boardRepo.findArchivedBoardsPage).toHaveBeenCalledWith(
+        'ws-1',
+        undefined,
+        20,
+      );
+    });
+
+    it('should pass explicit cursor and limit through', async () => {
+      boardRepo.findArchivedBoardsPage.mockResolvedValue({
+        items: [{ id: 'b-1' }, { id: 'b-2' }],
+        pagination: { cursor: 'b-1', hasMore: true },
+      } as any);
+
+      const result = await service.listArchivedBoardsPaginated('ws-1', {
+        cursor: 'c-0',
+        limit: 1,
+      });
+
+      expect(boardRepo.findArchivedBoardsPage).toHaveBeenCalledWith(
+        'ws-1',
+        'c-0',
+        1,
+      );
+      expect(result.pagination.hasMore).toBe(true);
+    });
+
+    it('should default query when omitted', async () => {
+      boardRepo.findArchivedBoardsPage.mockResolvedValue({
+        items: [],
+        pagination: { cursor: null, hasMore: false },
+      });
+
+      await service.listArchivedBoardsPaginated('ws-1');
+
+      expect(boardRepo.findArchivedBoardsPage).toHaveBeenCalledWith(
+        'ws-1',
+        undefined,
+        20,
+      );
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should permanently delete board', async () => {
+      boardRepo.findByIdIncludingDeleted.mockResolvedValue({
+        id: 'b-1',
+        deletedAt: null,
+      } as any);
+
+      await service.deletePermanently('b-1', 'ws-1', 'user-1');
+
+      expect(boardRepo.deletePermanently).toHaveBeenCalledWith('b-1');
+    });
+
+    it('should throw when board not found', async () => {
+      boardRepo.findByIdIncludingDeleted.mockResolvedValue(null);
+
+      await expect(
+        service.deletePermanently('b-x', 'ws-1', 'user-1'),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should throw when already deleted', async () => {
+      boardRepo.findByIdIncludingDeleted.mockResolvedValue({
+        id: 'b-1',
+        deletedAt: new Date(),
+      } as any);
+
+      await expect(
+        service.deletePermanently('b-1', 'ws-1', 'user-1'),
+      ).rejects.toThrow('Board is already deleted');
     });
   });
 });

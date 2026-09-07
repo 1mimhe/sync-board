@@ -1,6 +1,6 @@
 import { BoardController } from '../../controllers/board.controller';
 import { BoardService } from '../../services/board.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('BoardController', () => {
   let controller: BoardController;
@@ -77,6 +77,7 @@ describe('BoardController', () => {
       starBoard: jest.fn(),
       unstarBoard: jest.fn(),
       getBoardActivities: jest.fn(),
+      deletePermanently: jest.fn(),
     } as unknown as jest.Mocked<BoardService>;
 
     controller = new BoardController(boardService);
@@ -262,6 +263,18 @@ describe('BoardController', () => {
       );
       expect(result.items).toHaveLength(1);
       expect(result.items[0].id).toBe('board-1');
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should delete board permanently', async () => {
+      await controller.deletePermanently('ws-1', 'board-1', mockUser);
+
+      expect(boardService.deletePermanently).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'user-uuid-1',
+      );
     });
   });
 });

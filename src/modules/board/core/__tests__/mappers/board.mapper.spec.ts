@@ -11,6 +11,7 @@ import {
   toBoardContentPaginationDto,
   toCardCommentResponseDto,
   toActivityResponseDto,
+  toCardWithSubcardsResponseDto,
 } from '../../mappers/board.mapper';
 import { AttachmentType } from '@prisma/client';
 
@@ -98,8 +99,13 @@ describe('BoardMapper Functions', () => {
         description: 'Description',
         rank: '0|a:',
         dueDate: now,
-        isComplete: true,
+        isComplete: false,
         coverImageUrl: 'https://example.com/cover.png',
+        priority: 'medium',
+        status: 'not_started',
+        parentCardId: null,
+        estimateMinutes: null,
+        loggedMinutes: 0,
         createdBy: 'u-1',
         createdAt: now,
         updatedAt: now,
@@ -313,6 +319,7 @@ describe('BoardMapper Functions', () => {
         cardId: 'c-1',
         authorId: 'u-1',
         content: 'Looks good',
+        parentCommentId: null,
         author: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
         createdAt: now,
         updatedAt: now,
@@ -321,7 +328,75 @@ describe('BoardMapper Functions', () => {
     });
   });
 
+  describe('toCardWithSubcardsResponseDto', () => {
+    it('should map parent card with subcards and rollup', () => {
+      const parent: any = {
+        id: 'c-parent',
+        listId: 'l-1',
+        title: 'Parent',
+        description: null,
+        rank: '0|a:',
+        dueDate: null,
+        isComplete: false,
+        coverImageUrl: null,
+        createdBy: 'u-1',
+        createdAt: now,
+        updatedAt: now,
+        archivedAt: null,
+        assignees: [],
+        labels: [],
+        attachments: [],
+        subcards: [
+          {
+            id: 'c-child',
+            listId: 'l-1',
+            title: 'Child',
+            description: null,
+            rank: '0|b:',
+            dueDate: null,
+            isComplete: false,
+            coverImageUrl: null,
+            createdBy: 'u-1',
+            createdAt: now,
+            updatedAt: now,
+            archivedAt: null,
+          },
+        ],
+        subcardRollup: { total: 1, done: 0, estimateSum: 60, loggedSum: 10 },
+      };
+
+      const result = toCardWithSubcardsResponseDto(parent);
+
+      expect(result.id).toBe('c-parent');
+      expect(result.subcards).toHaveLength(1);
+      expect(result.subcards[0].id).toBe('c-child');
+      expect(result.subcardRollup).toEqual({
+        total: 1,
+        done: 0,
+        estimateSum: 60,
+        loggedSum: 10,
+      });
+    });
+  });
+
   describe('toActivityResponseDto', () => {
+    it('should default null boardId to empty string', () => {
+      const activity: any = {
+        id: 'act-1',
+        boardId: null,
+        user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
+        action: 'created',
+        entityType: 'document',
+        entityId: 'd-1',
+        entityTitle: 'Doc',
+        fromListId: null,
+        toListId: null,
+        details: null,
+        createdAt: now,
+      };
+
+      expect(toActivityResponseDto(activity).boardId).toBe('');
+    });
     it('should map activity entity with actor details', () => {
       const activity: any = {
         id: 'act-1',

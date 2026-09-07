@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { BoardRepository } from '../../repositories/board.repository';
 import { PrismaService } from '../../../../../common/database/prisma.service';
 
@@ -85,6 +86,18 @@ describe('BoardRepository', () => {
 
       expect(prismaService.board.findFirst).toHaveBeenCalledWith({
         where: { id: 'b-1' },
+      });
+      expect(result).toEqual(mockBoard);
+    });
+
+    it('should scope archived lookup by workspace when provided', async () => {
+      const mockBoard = { id: 'b-1', archivedAt: new Date() };
+      prismaService.board.findFirst.mockResolvedValue(mockBoard);
+
+      const result = await repository.findByIdIncludingArchived('b-1', 'ws-1');
+
+      expect(prismaService.board.findFirst).toHaveBeenCalledWith({
+        where: { id: 'b-1', workspaceId: 'ws-1' },
       });
       expect(result).toEqual(mockBoard);
     });
@@ -230,7 +243,7 @@ describe('BoardRepository', () => {
     });
   });
 
-  describe('starBoard, unstarBoard, isStarredByUser', () => {
+  describe('starBoard, unstarBoard', () => {
     it('should star board with upsert', async () => {
       prismaService.userStarredBoard.upsert.mockResolvedValue({});
 
@@ -252,24 +265,135 @@ describe('BoardRepository', () => {
         where: { userId: 'u-1', boardId: 'b-1' },
       });
     });
+  });
 
-    it('should return true when board is starred by user', async () => {
-      prismaService.userStarredBoard.findUnique.mockResolvedValue({
-        userId: 'u-1',
-        boardId: 'b-1',
+  describe('findByIdWithContent workspace scoping', () => {
+    it('should scope content lookup by workspace when provided', async () => {
+      prismaService.board.findFirst.mockResolvedValue(null);
+
+      const result = await repository.findByIdWithContent(
+        'b-1',
+        'u-1',
+        {},
+        'ws-1',
+      );
+
+      expect(prismaService.board.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: 'b-1', workspaceId: 'ws-1' }),
+        }),
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findByIdWithContent labels fallback', () => {
+    it('should load workspace labels when label delegate exists', async () => {
+      prismaService.board.findFirst.mockResolvedValue({
+        id: 'b-1',
+        workspaceId: 'ws-1',
+        lists: [],
+        starredBy: [{ userId: 'u-1' }],
       });
+      prismaService.label = {
+        findMany: jest.fn().mockResolvedValue([{ id: 'lbl-1' }]),
+      };
 
-      const result = await repository.isStarredByUser('u-1', 'b-1');
+      const result = await repository.findByIdWithContent('b-1', 'u-1');
 
-      expect(result).toBe(true);
+      expect(result?.labels).toHaveLength(1);
+      expect(result?.isStarred).toBe(true);
+    });
+  });
+
+  describe('findWorkspaceBoardsPage stale cursor', () => {
+    it('should retry without cursor on P2025', async () => {
+      prismaService.board.findMany
+        .mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError('stale', {
+            code: 'P2025',
+            clientVersion: 'x',
+          }),
+        )
+        .mockResolvedValueOnce([{ id: 'b-1' }]);
+
+      const result = await repository.findWorkspaceBoardsPage(
+        'ws-1',
+        'u-1',
+        'stale',
+        20,
+      );
+
+      expect(result).toEqual([{ id: 'b-1' }]);
+      expect(prismaService.board.findMany).toHaveBeenCalledTimes(2);
     });
 
-    it('should return false when board is not starred by user', async () => {
-      prismaService.userStarredBoard.findUnique.mockResolvedValue(null);
+    it('should rethrow non-P2025 errors', async () => {
+      prismaService.board.findMany.mockRejectedValueOnce(new Error('boom'));
 
-      const result = await repository.isStarredByUser('u-1', 'b-1');
+      await expect(
+        repository.findWorkspaceBoardsPage('ws-1', 'u-1', 'c-1', 20),
+      ).rejects.toThrow('boom');
+    });
+  });
 
-      expect(result).toBe(false);
+  describe('findArchivedBoardsPage', () => {
+    it('should return page with next cursor', async () => {
+      prismaService.board.findMany.mockResolvedValue([
+        { id: 'b-1' },
+        { id: 'b-2' },
+      ]);
+
+      const result = await repository.findArchivedBoardsPage(
+        'ws-1',
+        'cursor-0',
+        1,
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination).toEqual({ cursor: 'b-1', hasMore: true });
+    });
+
+    it('should return last page without cursor', async () => {
+      prismaService.board.findMany.mockResolvedValue([{ id: 'b-1' }]);
+
+      const result = await repository.findArchivedBoardsPage(
+        'ws-1',
+        undefined,
+        20,
+      );
+
+      expect(result.pagination.hasMore).toBe(false);
+    });
+  });
+
+  describe('findByIdIncludingDeleted', () => {
+    it('should scope by workspace when provided', async () => {
+      prismaService.board.findFirst.mockResolvedValue({ id: 'b-1' });
+
+      await expect(
+        repository.findByIdIncludingDeleted('b-1', 'ws-1'),
+      ).resolves.toEqual({
+        id: 'b-1',
+      });
+    });
+
+    it('should omit workspace scope when not provided', async () => {
+      prismaService.board.findFirst.mockResolvedValue(null);
+
+      await expect(
+        repository.findByIdIncludingDeleted('b-x'),
+      ).resolves.toBeNull();
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should set deletedAt', async () => {
+      prismaService.board.update.mockResolvedValue({ id: 'b-1' });
+
+      await expect(repository.deletePermanently('b-1')).resolves.toEqual({
+        id: 'b-1',
+      });
     });
   });
 });
