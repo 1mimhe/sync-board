@@ -46,6 +46,7 @@ describe('AuthController', () => {
     mockRes = {
       cookie: jest.fn(),
       clearCookie: jest.fn(),
+      redirect: jest.fn(),
     };
 
     authService = {
@@ -59,6 +60,7 @@ describe('AuthController', () => {
       getGoogleAuthUrl: jest.fn(),
       validateOAuthState: jest.fn(),
       handleGoogleCallback: jest.fn(),
+      getClientUrl: jest.fn().mockReturnValue('http://localhost:5173'),
       getProfile: jest.fn(),
       updateProfile: jest.fn(),
       changePassword: jest.fn(),
@@ -384,7 +386,7 @@ describe('AuthController', () => {
         headers: { 'user-agent': 'jest' },
       } as any;
 
-      const result = await controller.googleCallback(req, mockRes as Response);
+      await controller.googleCallback(req, mockRes as Response);
 
       expect(authService.validateOAuthState).toHaveBeenCalledWith(
         'valid-state',
@@ -394,12 +396,13 @@ describe('AuthController', () => {
         '127.0.0.1',
         'jest',
       );
-      expect(result.user).toEqual({ id: 'u-1', email: 'g@test.com' });
-      expect(result.tokens).toEqual(mockTokenResponse);
       expect(mockRes.cookie).toHaveBeenCalledWith(
         REFRESH_TOKEN_COOKIE_NAME,
         mockTokens.refreshToken,
         expect.any(Object),
+      );
+      expect(mockRes.redirect).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/callback?token=mock-access-token'),
       );
     });
   });

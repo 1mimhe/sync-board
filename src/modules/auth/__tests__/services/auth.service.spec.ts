@@ -729,6 +729,19 @@ describe('AuthService', () => {
       });
       expect(res).toEqual(updated);
     });
+
+    it('should update profile avatar', async () => {
+      const updated = { id: 'u-1', avatarUrl: 'https://example.com/a.png' };
+      userRepositoryMock.updateProfile.mockResolvedValue(updated as any);
+
+      const res = await service.updateProfile('u-1', {
+        avatarUrl: 'https://example.com/a.png',
+      });
+      expect(res).toEqual(updated);
+      expect(userRepositoryMock.updateProfile).toHaveBeenCalledWith('u-1', {
+        avatarUrl: 'https://example.com/a.png',
+      });
+    });
   });
 
   describe('getGoogleAuthUrl', () => {

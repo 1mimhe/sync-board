@@ -21,6 +21,7 @@ import { LoginDto } from '../dto/login.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { AuthResponse, TokenPair } from '../interfaces/auth-response.interface';
+import type { JwtPayload } from '../interfaces/jwt-payload.interface';
 import {
   UserRegisteredEvent,
   UserLoggedInEvent,
@@ -196,12 +197,14 @@ export class AuthService {
    * Revoke a single refresh token (single device logout) and blacklist active access token.
    */
   async logout(
-    refreshToken: string,
+    refreshToken?: string,
     jti?: string,
     jwtExpiresAt?: Date,
   ): Promise<void> {
-    const tokenHash = this.hashToken(refreshToken);
-    await this.tokenRepository.revokeByTokenHash(tokenHash);
+    if (refreshToken) {
+      const tokenHash = this.hashToken(refreshToken);
+      await this.tokenRepository.revokeByTokenHash(tokenHash);
+    }
 
     if (jti && jwtExpiresAt) {
       await this.blacklistService.blacklist(jti, jwtExpiresAt);
@@ -209,6 +212,17 @@ export class AuthService {
     this.logger.debug(
       'User logged out (single device token revoked + JWT blacklisted)',
     );
+  }
+
+  /**
+   * Safely attempt to verify an access token, returning null if invalid or expired.
+   */
+  tryVerifyAccessToken(token: string): JwtPayload | null {
+    try {
+      return this.jwtTokenService.verifyAccessToken(token);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -447,6 +461,13 @@ export class AuthService {
     )}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${scope}&access_type=offline&state=${encodeURIComponent(state)}`;
 
     return { url };
+  }
+
+  /**
+   * Retrieves configured frontend client URL.
+   */
+  getClientUrl(): string {
+    return this.config.get<string>('CLIENT_URL') || 'http://localhost:5173';
   }
 
   /**
