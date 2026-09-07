@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { WsException } from '@nestjs/websockets';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { WsRateLimitGuard } from '../ws-rate-limit.guard';
-import { WsRateLimiterService } from '../../../modules/board/services/ws-rate-limiter.service';
+import { WsRateLimiterService } from '../../../modules/board/realtime/services/ws-rate-limiter.service';
 
 describe('WsRateLimitGuard', () => {
   let guard: WsRateLimitGuard;
@@ -111,5 +111,19 @@ describe('WsRateLimitGuard', () => {
     mockSocket.data = {};
 
     await expect(guard.canActivate(mockContext)).rejects.toThrow(WsException);
+  });
+
+  it('should return false silently if user is not present when silent', async () => {
+    reflector.getAllAndOverride.mockReturnValue({
+      category: 'cursor',
+      limit: 20,
+      windowMs: 1000,
+      silent: true,
+    });
+    mockSocket.data = {};
+
+    const result = await guard.canActivate(mockContext);
+
+    expect(result).toBe(false);
   });
 });
