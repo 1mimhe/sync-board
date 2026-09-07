@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import type { BoardWithContent, Card, ListWithCards, WorkspaceMember } from '../../types'
 import { listApi, cardApi } from '../../api/endpoints'
+import { useToast } from '../../stores/toast.store'
 import { CardModal } from '../card/CardModal'
 import { ConfirmDialog } from '../common/ConfirmDialog'
 import { Avatar } from '../common/Avatar'
+import { QuickDueDatePicker } from '../common/QuickDueDatePicker'
 import {
   IconPlus,
   IconArchive,
@@ -12,6 +14,9 @@ import {
   IconMessageSquare,
   IconPaperclip,
   IconCalendar,
+  IconFlag,
+  IconSubtask,
+  IconClock,
 } from '../common/Icons'
 
 export interface BoardCanvasProps {
@@ -33,11 +38,18 @@ export function BoardCanvas({
   filterAssigneeId,
   onBoardUpdated,
 }: BoardCanvasProps) {
+  const { addToast } = useToast()
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [newListTitle, setNewListTitle] = useState('')
   const [isAddingList, setIsAddingList] = useState(false)
   const [cardInputs, setCardInputs] = useState<Record<string, string>>({})
   const [listToArchive, setListToArchive] = useState<ListWithCards | null>(null)
+  const [datePickerAnchor, setDatePickerAnchor] = useState<{
+    cardId: string
+    currentDueDate?: string | null
+    top: number
+    left: number
+  } | null>(null)
 
   // Optimistic local state for lists and cards to eliminate drag-and-drop glitches
   const [localLists, setLocalLists] = useState<ListWithCards[]>(board.lists || [])
@@ -45,6 +57,28 @@ export function BoardCanvas({
   useEffect(() => {
     setLocalLists(board.lists || [])
   }, [board.lists])
+
+  const handleSaveCardDueDate = async (cardId: string, newDueDate: string | null) => {
+    // Optimistic local list update
+    setLocalLists((prev) =>
+      prev.map((l) => ({
+        ...l,
+        cards: l.cards.map((c) => (c.id === cardId ? { ...c, dueDate: newDueDate } : c)),
+      }))
+    )
+
+    const res = await cardApi.update(workspaceId, board.id, cardId, {
+      dueDate: newDueDate,
+    })
+
+    if (res.success) {
+      addToast(newDueDate ? 'Due date updated' : 'Due date cleared', 'success')
+      onBoardUpdated()
+    } else {
+      addToast(res.error?.message || 'Failed to update due date', 'error')
+      onBoardUpdated()
+    }
+  }
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId, type } = result
@@ -161,6 +195,12 @@ export function BoardCanvas({
   // Filter cards helper
   const filterCards = (cards: Card[] = []) => {
     return cards.filter((card) => {
+      // Hide subcards (cards that have a parentCardId) from top-level Kanban list columns
+      // unless the user is specifically searching for them with the filter input.
+      if (card.parentCardId && !filterQuery) {
+        return false
+      }
+
       // Text match
       if (filterQuery) {
         const q = filterQuery.toLowerCase()
@@ -278,7 +318,7 @@ export function BoardCanvas({
                             onMouseDown={(e) => e.stopPropagation()}
                           >
                             <span className="badge" style={{ fontSize: 11, padding: '2px 7px' }}>
-                              {list.cards?.length || 0}
+                              {visibleCards.length}
                             </span>
                             <button
                               type="button"
@@ -345,6 +385,8 @@ export function BoardCanvas({
                                           : '0 2px 8px rgba(0,0,0,0.2)',
                                         display: 'grid',
                                         gap: 8,
+                                        flexShrink: 0,
+                                        minHeight: 'fit-content',
                                         ...cardProvided.draggableProps.style,
                                       }}
                                     >
@@ -418,19 +460,31 @@ export function BoardCanvas({
                                           color: 'var(--muted)',
                                         }}
                                       >
-                                        {card.dueDate && (() => {
+                                        {card.dueDate ? (() => {
                                           const isDone = card.isComplete ?? card.isCompleted ?? false
-                                          const isOverdue = new Date(card.dueDate) < new Date() && !isDone
+                                          const isOverdue = new Date(card.dueDate).getTime() < Date.now() && !isDone
                                           return (
                                             <span
                                               className="badge"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                const rect = e.currentTarget.getBoundingClientRect()
+                                                setDatePickerAnchor({
+                                                  cardId: card.id,
+                                                  currentDueDate: card.dueDate,
+                                                  top: rect.bottom + 6,
+                                                  left: Math.min(rect.left, window.innerWidth - 260),
+                                                })
+                                              }}
                                               style={{
                                                 fontSize: 10,
                                                 padding: '1px 5px',
                                                 background: isOverdue ? 'rgba(239, 68, 68, 0.15)' : undefined,
                                                 color: isOverdue ? '#fca5a5' : undefined,
                                                 borderColor: isOverdue ? 'rgba(239, 68, 68, 0.3)' : undefined,
+                                                cursor: 'pointer',
                                               }}
+                                              title="Click to edit due date"
                                             >
                                               <IconCalendar size={11} />
                                               {new Date(card.dueDate).toLocaleDateString(undefined, {
@@ -439,7 +493,110 @@ export function BoardCanvas({
                                               })}
                                             </span>
                                           )
+                                        })() : (
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              const rect = e.currentTarget.getBoundingClientRect()
+                                              setDatePickerAnchor({
+                                                cardId: card.id,
+                                                currentDueDate: null,
+                                                top: rect.bottom + 6,
+                                                left: Math.min(rect.left, window.innerWidth - 260),
+                                              })
+                                            }}
+                                            style={{
+                                              fontSize: 10,
+                                              padding: '1px 5px',
+                                              height: 'auto',
+                                              lineHeight: 'normal',
+                                              color: 'var(--muted)',
+                                              border: '1px dashed var(--border)',
+                                              borderRadius: 4,
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 3,
+                                            }}
+                                            title="Set due date"
+                                          >
+                                            <IconCalendar size={10} /> + Date
+                                          </button>
+                                        )}
+
+                                        {/* Priority Badge */}
+                                        {card.priority && card.priority !== 'medium' && (
+                                          <span
+                                            className="badge"
+                                            style={{
+                                              fontSize: 10,
+                                              padding: '1px 5px',
+                                              color:
+                                                card.priority === 'urgent'
+                                                  ? '#ef4444'
+                                                  : card.priority === 'high'
+                                                  ? '#f97316'
+                                                  : card.priority === 'low'
+                                                  ? '#3b82f6'
+                                                  : '#71717a',
+                                              borderColor: 'rgba(255,255,255,0.1)',
+                                            }}
+                                            title={`Priority: ${card.priority}`}
+                                          >
+                                            <IconFlag size={10} />
+                                            {card.priority.charAt(0).toUpperCase() + card.priority.slice(1)}
+                                          </span>
+                                        )}
+
+                                        {/* Subtask Indicator Badge */}
+                                        {card.parentCardId && (
+                                          <span
+                                            className="badge"
+                                            style={{
+                                              fontSize: 10,
+                                              padding: '1px 5px',
+                                              background: 'rgba(124, 58, 237, 0.12)',
+                                              color: 'var(--violet2)',
+                                              borderColor: 'rgba(124, 58, 237, 0.3)',
+                                            }}
+                                            title={card.parent?.title ? `Subtask of "${card.parent.title}"` : 'Subtask'}
+                                          >
+                                            <IconSubtask size={10} /> {card.parent?.title ? `↳ ${card.parent.title}` : 'Subtask'}
+                                          </span>
+                                        )}
+
+                                        {/* Subtasks Count Badge */}
+                                        {card.subcards && card.subcards.length > 0 && (() => {
+                                          const doneCount = card.subcards.filter((s) => s.isComplete || s.status === 'done').length
+                                          const totalCount = card.subcards.length
+                                          const allDone = doneCount === totalCount
+                                          return (
+                                            <span
+                                              className="badge"
+                                              style={{
+                                                fontSize: 10,
+                                                padding: '1px 5px',
+                                                background: allDone ? 'rgba(16, 185, 129, 0.15)' : 'rgba(124, 58, 237, 0.12)',
+                                                color: allDone ? '#34d399' : 'var(--violet2)',
+                                                borderColor: allDone ? 'rgba(16, 185, 129, 0.3)' : 'rgba(124, 58, 237, 0.3)',
+                                              }}
+                                              title={`${doneCount} of ${totalCount} subtasks completed`}
+                                            >
+                                              <IconSubtask size={10} /> {doneCount}/{totalCount}
+                                            </span>
+                                          )
                                         })()}
+
+                                        {/* Time Logged Badge */}
+                                        {card.loggedMinutes !== undefined && card.loggedMinutes > 0 && (
+                                          <span className="badge" style={{ fontSize: 10, padding: '1px 5px', color: 'var(--violet2)' }} title="Logged time">
+                                            <IconClock size={10} />
+                                            {card.loggedMinutes >= 60
+                                              ? `${Math.floor(card.loggedMinutes / 60)}h${card.loggedMinutes % 60 ? ` ${card.loggedMinutes % 60}m` : ''}`
+                                              : `${card.loggedMinutes}m`}
+                                          </span>
+                                        )}
 
                                         {card.checklists && card.checklists.length > 0 && (
                                           <span className="badge" style={{ fontSize: 10, padding: '1px 5px' }}>
@@ -591,6 +748,8 @@ export function BoardCanvas({
           isOpen={!!selectedCard}
           onClose={() => setSelectedCard(null)}
           onCardUpdated={onBoardUpdated}
+          allBoardCards={localLists.flatMap((l) => l.cards || [])}
+          onOpenCard={(c) => setSelectedCard(c)}
         />
       )}
 
@@ -604,6 +763,19 @@ export function BoardCanvas({
           message={`Are you sure you want to archive "${listToArchive.title}" and its ${listToArchive.cards?.length || 0} card(s)? You can restore it anytime from the Board Archive.`}
           confirmLabel="Archive List"
           confirmVariant="danger"
+        />
+      )}
+
+      {/* Floating Board Card Due Date Picker Popover */}
+      {datePickerAnchor && (
+        <QuickDueDatePicker
+          currentDueDate={datePickerAnchor.currentDueDate}
+          anchorPosition={{ top: datePickerAnchor.top, left: datePickerAnchor.left }}
+          onClose={() => setDatePickerAnchor(null)}
+          onSave={(iso) => {
+            handleSaveCardDueDate(datePickerAnchor.cardId, iso)
+            setDatePickerAnchor(null)
+          }}
         />
       )}
     </>
