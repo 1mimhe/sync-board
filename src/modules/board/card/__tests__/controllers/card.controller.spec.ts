@@ -1,6 +1,6 @@
 import { CardController } from '../../controllers/card.controller';
 import { CardService } from '../../services/card.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('CardController', () => {
   let controller: CardController;
@@ -39,6 +39,13 @@ describe('CardController', () => {
       create: jest.fn(),
       getCardDetails: jest.fn(),
       update: jest.fn(),
+      updatePriority: jest.fn(),
+      updateStatus: jest.fn(),
+      createSubcard: jest.fn(),
+      attachSubcard: jest.fn(),
+      getWithSubcards: jest.fn(),
+      detachSubcard: jest.fn(),
+      deletePermanently: jest.fn(),
       move: jest.fn(),
       archive: jest.fn(),
       unarchive: jest.fn(),
@@ -263,6 +270,161 @@ describe('CardController', () => {
       );
       expect(result.items).toHaveLength(1);
       expect(result.items[0].id).toBe('card-1');
+    });
+  });
+
+  describe('updatePriority', () => {
+    it('should update priority and map response', async () => {
+      cardService.updatePriority.mockResolvedValue({
+        ...mockCard,
+        priority: 'high',
+      } as any);
+
+      const result = await controller.updatePriority(
+        'ws-1',
+        'board-1',
+        'card-1',
+        { priority: 'high' },
+        mockUser,
+      );
+
+      expect(cardService.updatePriority).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        { priority: 'high' },
+        'user-uuid-1',
+      );
+      expect(result.id).toBe('card-1');
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update status and map response', async () => {
+      cardService.updateStatus.mockResolvedValue({
+        ...mockCard,
+        status: 'done',
+      } as any);
+
+      const result = await controller.updateStatus(
+        'ws-1',
+        'board-1',
+        'card-1',
+        { status: 'done' },
+        mockUser,
+      );
+
+      expect(cardService.updateStatus).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        { status: 'done' },
+        'user-uuid-1',
+      );
+      expect(result.id).toBe('card-1');
+    });
+  });
+
+  describe('createSubcard', () => {
+    it('should create subcard and map details response', async () => {
+      cardService.createSubcard.mockResolvedValue(mockCardWithDetails as any);
+
+      const result = await controller.createSubcard(
+        'ws-1',
+        'board-1',
+        'card-1',
+        { title: 'Sub' },
+        mockUser,
+      );
+
+      expect(cardService.createSubcard).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        { title: 'Sub' },
+        'user-uuid-1',
+      );
+      expect(result.id).toBe('card-1');
+    });
+  });
+
+  describe('attachSubcard', () => {
+    it('should attach subcard and map response', async () => {
+      cardService.attachSubcard.mockResolvedValue(mockCard as any);
+
+      const result = await controller.attachSubcard(
+        'ws-1',
+        'board-1',
+        'card-1',
+        { subcardId: 'card-2' },
+        mockUser,
+      );
+
+      expect(cardService.attachSubcard).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'card-2',
+        'user-uuid-1',
+      );
+      expect(result.id).toBe('card-1');
+    });
+  });
+
+  describe('getWithSubcards', () => {
+    it('should return parent with subcards', async () => {
+      cardService.getWithSubcards.mockResolvedValue({
+        ...mockCardWithDetails,
+        subcards: [mockCard],
+        subcardRollup: { total: 1, done: 0, estimateSum: 0, loggedSum: 0 },
+      } as any);
+
+      const result = await controller.getWithSubcards(
+        'ws-1',
+        'board-1',
+        'card-1',
+      );
+
+      expect(cardService.getWithSubcards).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+      );
+      expect(result.subcards).toHaveLength(1);
+    });
+  });
+
+  describe('detachSubcard', () => {
+    it('should detach subcard and map response', async () => {
+      cardService.detachSubcard.mockResolvedValue(mockCard as any);
+
+      const result = await controller.detachSubcard(
+        'ws-1',
+        'board-1',
+        'card-2',
+        mockUser,
+      );
+
+      expect(cardService.detachSubcard).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-2',
+        'user-uuid-1',
+      );
+      expect(result.id).toBe('card-1');
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should delete card permanently', async () => {
+      await controller.deletePermanently('ws-1', 'board-1', 'card-1', mockUser);
+
+      expect(cardService.deletePermanently).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'user-uuid-1',
+      );
     });
   });
 });
