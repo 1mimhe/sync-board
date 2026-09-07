@@ -4,8 +4,9 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { ChecklistService } from '../../services/checklist.service';
 import { ChecklistRepository } from '../../repositories/checklist.repository';
 import { CardRepository } from '../../../card/repositories/card.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
-import { LexorankService } from '../../../lexorank/services/lexorank.service';
+import { BoardRepository } from '../../../core/repositories/board.repository';
+import { LexorankService } from '../../../lexorank/lexorank.service';
+import { CardService } from '../../../card/services/card.service';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { CHECKLIST_EVENTS } from '../../events/checklist.events';
 
@@ -14,6 +15,7 @@ describe('ChecklistService', () => {
   let checklistRepo: DeepMockProxy<ChecklistRepository>;
   let cardRepo: DeepMockProxy<CardRepository>;
   let boardRepo: DeepMockProxy<BoardRepository>;
+  let cardService: DeepMockProxy<CardService>;
   let lexorank: LexorankService;
   let eventEmitter: DeepMockProxy<EventEmitter2>;
 
@@ -45,6 +47,7 @@ describe('ChecklistService', () => {
     checklistRepo = mockDeep<ChecklistRepository>();
     cardRepo = mockDeep<CardRepository>();
     boardRepo = mockDeep<BoardRepository>();
+    cardService = mockDeep<CardService>();
     eventEmitter = mockDeep<EventEmitter2>();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,6 +57,7 @@ describe('ChecklistService', () => {
         { provide: ChecklistRepository, useValue: checklistRepo },
         { provide: CardRepository, useValue: cardRepo },
         { provide: BoardRepository, useValue: boardRepo },
+        { provide: CardService, useValue: cardService },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
@@ -312,6 +316,27 @@ describe('ChecklistService', () => {
       );
     });
 
+    it('should update item content', async () => {
+      checklistRepo.findItem.mockResolvedValue(mockItem);
+      checklistRepo.updateItem.mockResolvedValue({
+        ...mockItem,
+        content: 'Updated content',
+      });
+
+      const result = await service.updateItem(
+        ...ARGS,
+        'checklist-uuid',
+        'item-uuid',
+        { content: 'Updated content' },
+        USER,
+      );
+
+      expect(checklistRepo.updateItem).toHaveBeenCalledWith('item-uuid', {
+        content: 'Updated content',
+      });
+      expect(result.content).toBe('Updated content');
+    });
+
     it('should throw EntityNotFoundException when item belongs to another checklist', async () => {
       checklistRepo.findItem.mockResolvedValue({
         ...mockItem,
@@ -351,6 +376,64 @@ describe('ChecklistService', () => {
         service.removeItem(...ARGS, 'checklist-uuid', 'missing-item', USER),
       ).rejects.toThrow(EntityNotFoundException);
       expect(checklistRepo.deleteItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('promoteItemToSubcard', () => {
+    it('should promote item to subcard and mark it done', async () => {
+      checklistRepo.findItem.mockResolvedValue(mockItem);
+      cardService.createSubcard.mockResolvedValue({ id: 'sub-1' } as any);
+      checklistRepo.updateItem.mockResolvedValue({
+        ...mockItem,
+        isDone: true,
+      });
+
+      const result = await service.promoteItemToSubcard(
+        ...ARGS,
+        'checklist-uuid',
+        'item-uuid',
+        USER,
+      );
+
+      expect(cardService.createSubcard).toHaveBeenCalledWith(
+        'board-uuid',
+        'ws-uuid',
+        'card-uuid',
+        { title: 'Code reviewed' },
+        USER,
+      );
+      expect(result).toEqual({ id: 'sub-1' });
+    });
+
+    it('should throw EntityNotFoundException when item not found', async () => {
+      checklistRepo.findItem.mockResolvedValue(null);
+
+      await expect(
+        service.promoteItemToSubcard(
+          ...ARGS,
+          'checklist-uuid',
+          'missing',
+          USER,
+        ),
+      ).rejects.toThrow(EntityNotFoundException);
+      expect(cardService.createSubcard).not.toHaveBeenCalled();
+    });
+
+    it('should throw PROMOTE_FAILED when item cannot be marked done', async () => {
+      checklistRepo.findItem.mockResolvedValue(mockItem);
+      cardService.createSubcard.mockResolvedValue({ id: 'sub-1' } as any);
+      checklistRepo.updateItem.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.promoteItemToSubcard(
+          ...ARGS,
+          'checklist-uuid',
+          'item-uuid',
+          USER,
+        ),
+      ).rejects.toThrow(
+        'Subcard was created but the source item could not be archived',
+      );
     });
   });
 });
