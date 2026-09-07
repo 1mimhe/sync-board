@@ -1,4 +1,4 @@
-import type { Card } from '@prisma/client';
+import type { Card, CardPriority, CardStatus } from '@prisma/client';
 
 /** Event emitted after a new card is created in a list. */
 export class CardCreatedEvent {
@@ -78,5 +78,50 @@ export class CardAssigneeRemovedEvent {
     public readonly boardId: string,
     public readonly userId: string,
     public readonly removedBy: string,
+  ) {}
+}
+
+/** Event emitted after a card's priority stage changes. */
+export class CardPriorityChangedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly from: CardPriority,
+    public readonly to: CardPriority,
+    public readonly changedBy: string,
+  ) {}
+}
+
+/** Event emitted after a card's status changes (carries derived isComplete). */
+export class CardStatusChangedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly from: CardStatus,
+    public readonly to: CardStatus,
+    public readonly isComplete: boolean,
+    public readonly changedBy: string,
+  ) {}
+}
+
+/** Event emitted after a subcard is created/attached. */
+export class CardSubcardCreatedEvent {
+  constructor(
+    public readonly parentCardId: string,
+    public readonly childCardId: string,
+    public readonly boardId: string,
+    public readonly createdBy: string,
+  ) {}
+}
+
+/** Event emitted after time is logged on a card. */
+export class CardTimeLoggedEvent {
+  constructor(
+    public readonly cardId: string,
+    public readonly boardId: string,
+    public readonly minutes: number,
+    public readonly loggedTotal: number,
+    public readonly entryId: string,
+    public readonly loggedBy: string,
   ) {}
 }

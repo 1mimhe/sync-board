@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
+import { CardPriority, CardStatus } from '@prisma/client';
 import {
   IsString,
   MinLength,
@@ -9,6 +10,10 @@ import {
   IsArray,
   IsUUID,
   IsObject,
+  IsInt,
+  Min,
+  Max,
+  IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -72,4 +77,42 @@ export class CreateCardDto {
   @IsArray()
   @IsUUID('4', { each: true })
   labelIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Priority stage',
+    enum: CardPriority,
+    example: 'medium',
+  })
+  @IsOptional()
+  @IsEnum(CardPriority)
+  priority?: CardPriority;
+
+  @ApiPropertyOptional({
+    description: 'Status',
+    enum: CardStatus,
+    example: 'not_started',
+  })
+  @IsOptional()
+  @IsEnum(CardStatus)
+  status?: CardStatus;
+
+  @ApiPropertyOptional({
+    description: 'Parent card ID (for subcard)',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  parentCardId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Estimated minutes',
+    example: 120,
+    minimum: 0,
+    maximum: 100000,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  estimateMinutes?: number;
 }
