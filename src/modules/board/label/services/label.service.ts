@@ -1,7 +1,7 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import type { Label } from '@prisma/client';
 import { LabelRepository } from '../repositories/label.repository';
-import { BoardRepository } from '../../board/repositories/board.repository';
+import { BoardRepository } from '../../core/repositories/board.repository';
 import { CreateLabelDto, UpdateLabelDto } from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
 
