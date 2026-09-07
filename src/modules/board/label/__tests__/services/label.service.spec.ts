@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { LabelService } from '../../services/label.service';
 import { LabelRepository } from '../../repositories/label.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
+import { BoardRepository } from '../../../core/repositories/board.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 
 describe('LabelService', () => {
@@ -209,6 +209,29 @@ describe('LabelService', () => {
     expect(result.name).toBe('Renamed');
   });
 
+  it('should update workspace label color', async () => {
+    labelRepo.findById.mockResolvedValue({
+      id: 'lbl-1',
+      workspaceId: 'ws-1',
+    } as any);
+    labelRepo.update.mockResolvedValue({
+      id: 'lbl-1',
+      color: '#00ff00',
+    } as any);
+
+    const result = await service.updateWorkspaceLabel(
+      'ws-1',
+      'lbl-1',
+      { color: '#00ff00' },
+      'user-1',
+    );
+
+    expect(labelRepo.update).toHaveBeenCalledWith('lbl-1', {
+      color: '#00ff00',
+    });
+    expect(result.color).toBe('#00ff00');
+  });
+
   it('should throw EntityNotFoundException when updating non-existent workspace label', async () => {
     labelRepo.findById.mockResolvedValue(null);
 
@@ -261,6 +284,25 @@ describe('LabelService', () => {
 
     await expect(
       service.deleteLabel('b-1', 'ws-1', 'lbl-99', 'user-1'),
+    ).rejects.toThrow(EntityNotFoundException);
+  });
+
+  it('should throw EntityNotFoundException if workspace label not found', async () => {
+    labelRepo.findById.mockResolvedValue(null);
+
+    await expect(
+      service.deleteWorkspaceLabel('ws-1', 'lbl-x', 'user-1'),
+    ).rejects.toThrow(EntityNotFoundException);
+  });
+
+  it('should throw EntityNotFoundException if workspace label belongs elsewhere', async () => {
+    labelRepo.findById.mockResolvedValue({
+      id: 'lbl-1',
+      workspaceId: 'other-ws',
+    } as any);
+
+    await expect(
+      service.deleteWorkspaceLabel('ws-1', 'lbl-1', 'user-1'),
     ).rejects.toThrow(EntityNotFoundException);
   });
 });

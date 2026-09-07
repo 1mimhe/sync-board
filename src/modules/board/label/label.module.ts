@@ -3,7 +3,7 @@ import { LabelController } from './controllers/label.controller';
 import { WorkspaceLabelController } from './controllers/workspace-label.controller';
 import { LabelService } from './services/label.service';
 import { LabelRepository } from './repositories/label.repository';
-import { BoardSubModule } from '../board/board.module';
+import { BoardSubModule } from '../core/board.module';
 import { AuthModule } from '../../auth/auth.module';
 import { WorkspaceModule } from '../../workspace/workspace.module';
 
