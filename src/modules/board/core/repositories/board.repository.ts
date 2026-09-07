@@ -129,6 +129,22 @@ export class BoardRepository {
                     },
                   },
                 },
+                subcards: {
+                  where: { archivedAt: null, deletedAt: null },
+                  select: {
+                    id: true,
+                    title: true,
+                    isComplete: true,
+                    status: true,
+                    priority: true,
+                  },
+                },
+                parent: {
+                  select: {
+                    id: true,
+                    title: true,
+                  },
+                },
               },
             },
           },
@@ -296,37 +312,6 @@ export class BoardRepository {
   async unstarBoard(userId: string, boardId: string): Promise<void> {
     await this.prisma.userStarredBoard.deleteMany({
       where: { userId, boardId },
-    });
-  }
-
-  /**
-   * Checks if a board is starred by a user.
-   *
-   * @param userId - User UUID
-   * @param boardId - Board UUID
-   * @returns True if starred, false otherwise
-   */
-  async isStarredByUser(userId: string, boardId: string): Promise<boolean> {
-    const star = await this.prisma.userStarredBoard.findUnique({
-      where: { userId_boardId: { userId, boardId } },
-    });
-    return !!star;
-  }
-
-  /**
-   * Finds all archived boards in a workspace.
-   *
-   * @param workspaceId - Workspace UUID
-   * @returns Array of archived boards
-   */
-  async findArchivedBoards(workspaceId: string): Promise<Board[]> {
-    return this.prisma.board.findMany({
-      where: {
-        workspaceId,
-        archivedAt: { not: null },
-        deletedAt: null,
-      },
-      orderBy: { archivedAt: 'desc' },
     });
   }
 

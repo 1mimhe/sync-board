@@ -325,16 +325,6 @@ export class BoardService {
   }
 
   /**
-   * Retrieves all archived boards in a workspace (legacy method).
-   *
-   * @param workspaceId - Workspace UUID
-   * @returns Array of archived boards
-   */
-  async listArchivedBoards(workspaceId: string): Promise<Board[]> {
-    return this.boardRepo.findArchivedBoards(workspaceId);
-  }
-
-  /**
    * Stars a board for the requesting user.
    *
    * @param userId - User UUID

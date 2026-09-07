@@ -10,6 +10,7 @@ import {
   CardLabelItemDto,
   CardResponseDto,
   CardWithDetailsResponseDto,
+  CardWithSubcardsResponseDto,
 } from '../../card/dto/card-response.dto';
 import {
   CommentAuthorDto,
@@ -126,11 +127,40 @@ export function toCardResponseDto(card: Card): CardResponseDto {
     dueDate: card.dueDate,
     isComplete: card.isComplete,
     coverImageUrl: card.coverImageUrl,
+    priority: card.priority,
+    status: card.status,
+    parentCardId: card.parentCardId,
+    estimateMinutes: card.estimateMinutes,
+    loggedMinutes: card.loggedMinutes,
     createdBy: card.createdBy,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
     archivedAt: card.archivedAt,
-    deletedAt: (card as Card & { deletedAt: Date | null }).deletedAt ?? null,
+    deletedAt: card.deletedAt ?? null,
+  };
+}
+
+/**
+ * Maps a parent card with subcards and rollup to CardWithSubcardsResponseDto.
+ *
+ * @param card - Parent card details with subcards and rollup totals
+ * @returns Mapped CardWithSubcardsResponseDto
+ */
+export function toCardWithSubcardsResponseDto(
+  card: CardWithDetails & {
+    subcards: Card[];
+    subcardRollup: {
+      total: number;
+      done: number;
+      estimateSum: number;
+      loggedSum: number;
+    };
+  },
+): CardWithSubcardsResponseDto {
+  return {
+    ...toCardWithDetailsResponseDto(card),
+    subcards: card.subcards.map(toCardResponseDto),
+    subcardRollup: { ...card.subcardRollup },
   };
 }
 
@@ -178,6 +208,10 @@ export function toCardWithDetailsResponseDto(
     attachments: card.attachments
       ? card.attachments.map(toCardAttachmentResponseDto)
       : [],
+    subcards: (card as any).subcards
+      ? (card as any).subcards.map(toCardResponseDto)
+      : [],
+    parent: (card as any).parent ?? null,
   };
 }
 
@@ -248,6 +282,7 @@ export function toCardCommentResponseDto(
     cardId: comment.cardId,
     authorId: comment.authorId,
     content: comment.content,
+    parentCommentId: comment.parentCommentId ?? null,
     author: toCommentAuthorDto(comment.author),
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
@@ -266,7 +301,7 @@ export function toActivityResponseDto(
 ): ActivityResponseDto {
   return {
     id: activity.id,
-    boardId: activity.boardId!,
+    boardId: activity.boardId ?? '',
     user: toCommentAuthorDto(activity.user),
     action: activity.action,
     entityType: activity.entityType,
