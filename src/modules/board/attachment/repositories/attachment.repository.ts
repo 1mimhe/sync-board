@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CardAttachment, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../common/database/prisma.service';
-import type { CardAttachmentWithUser } from '../../board/interfaces/board.interfaces';
+import type { CardAttachmentWithUser } from '../../core/interfaces/board.interfaces';
 
 const AUTHOR_SELECT = {
   id: true,
@@ -78,22 +78,6 @@ export class CardAttachmentRepository {
     return this.prisma.cardAttachment.update({
       where: { id },
       data,
-      include: {
-        uploadedBy: { select: AUTHOR_SELECT },
-      },
-    });
-  }
-
-  /**
-   * Soft-deletes an attachment by setting `archivedAt`.
-   *
-   * @param id - Attachment UUID
-   * @returns The archived attachment with uploader details
-   */
-  async archive(id: string): Promise<CardAttachmentWithUser> {
-    return this.prisma.cardAttachment.update({
-      where: { id },
-      data: { archivedAt: new Date() },
       include: {
         uploadedBy: { select: AUTHOR_SELECT },
       },
