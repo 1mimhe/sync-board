@@ -1,6 +1,6 @@
 import { ListController } from '../../controllers/list.controller';
 import { ListService } from '../../services/list.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('ListController', () => {
   let controller: ListController;
@@ -29,6 +29,8 @@ describe('ListController', () => {
       move: jest.fn(),
       archive: jest.fn(),
       unarchive: jest.fn(),
+      listArchivedListsPaginated: jest.fn(),
+      deletePermanently: jest.fn(),
     } as unknown as jest.Mocked<ListService>;
 
     controller = new ListController(listService);
@@ -140,6 +142,37 @@ describe('ListController', () => {
         'user-uuid-1',
       );
       expect(result.id).toBe('list-1');
+    });
+  });
+
+  describe('listArchived', () => {
+    it('should return archived lists page', async () => {
+      listService.listArchivedListsPaginated.mockResolvedValue({
+        items: [mockList],
+        pagination: { cursor: null, hasMore: false },
+      } as any);
+
+      const result = await controller.listArchived('ws-1', 'board-1', {});
+
+      expect(listService.listArchivedListsPaginated).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        {},
+      );
+      expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should delete list permanently', async () => {
+      await controller.deletePermanently('ws-1', 'board-1', 'list-1', mockUser);
+
+      expect(listService.deletePermanently).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'list-1',
+        'user-uuid-1',
+      );
     });
   });
 });
