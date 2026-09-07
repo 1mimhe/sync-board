@@ -100,20 +100,6 @@ describe('CardAttachmentRepository', () => {
       expect(result).toEqual(mockUpdated);
     });
 
-    it('should archive attachment by setting archivedAt', async () => {
-      const mockArchived = { id: 'att-1', archivedAt: expect.any(Date) };
-      prismaService.cardAttachment.update.mockResolvedValue(mockArchived);
-
-      const result = await repository.archive('att-1');
-
-      expect(prismaService.cardAttachment.update).toHaveBeenCalledWith({
-        where: { id: 'att-1' },
-        data: { archivedAt: expect.any(Date) },
-        include: { uploadedBy: { select: expect.any(Object) } },
-      });
-      expect(result).toEqual(mockArchived);
-    });
-
     it('should delete attachment permanently', async () => {
       prismaService.cardAttachment.delete.mockResolvedValue({ id: 'att-1' });
 

@@ -1,6 +1,6 @@
 import { CardAttachmentController } from '../../controllers/attachment.controller';
 import { CardAttachmentService } from '../../services/attachment.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('CardAttachmentController', () => {
   let controller: CardAttachmentController;
