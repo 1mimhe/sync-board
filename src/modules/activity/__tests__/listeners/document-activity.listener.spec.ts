@@ -88,4 +88,14 @@ describe('DocumentActivityListener', () => {
       ),
     ).resolves.toBeUndefined();
   });
+
+  it('swallows repository failures on rename so the originating request is unaffected', async () => {
+    activityRepo.create.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      listener.handleDocumentRenamedEvent(
+        new DocumentRenamedEvent('d-1', 'Renamed Title', 'u-1'),
+      ),
+    ).resolves.toBeUndefined();
+  });
 });
