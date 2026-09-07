@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LexoRank } from 'lexorank';
-import { BusinessRuleException } from '../../../../common/exceptions/app.exception';
+import { BusinessRuleException } from '../../../common/exceptions/app.exception';
 
 /**
  * Service providing LexoRank calculation for drag-and-drop ordering
