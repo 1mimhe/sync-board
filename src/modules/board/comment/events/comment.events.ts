@@ -6,6 +6,7 @@ export class CommentCreatedEvent {
     public readonly comment: CardComment,
     public readonly boardId: string,
     public readonly authorId: string,
+    public readonly mentionedEmails: string[] = [],
   ) {}
 }
 
