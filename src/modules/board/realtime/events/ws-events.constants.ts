@@ -51,6 +51,10 @@ export const WS_EVENTS = {
   CARD_ATTACHMENT_DELETED: 'card:attachment-deleted',
   CARD_ASSIGNEE_ADDED: 'card:assignee-added',
   CARD_ASSIGNEE_REMOVED: 'card:assignee-removed',
+  CARD_PRIORITY_CHANGED: 'card:priority_changed',
+  CARD_STATUS_CHANGED: 'card:status_changed',
+  CARD_SUBCARD_CREATED: 'card:subcard_created',
+  CARD_TIME_LOGGED: 'card:time_logged',
 
   // Checklists
   CHECKLIST_CREATED: 'checklist:created',
@@ -109,4 +113,4 @@ export const WS_RATE_LIMITS = {
 export type WsRateLimitCategory =
   (typeof WS_RATE_LIMITS)[keyof typeof WS_RATE_LIMITS]['category'];
 
-export { COLLABORATOR_COLORS } from '../../../common/utils/collaborator-color.util';
+export { COLLABORATOR_COLORS } from '../../../../common/utils/collaborator-color.util';
