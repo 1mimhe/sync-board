@@ -178,6 +178,14 @@ describe('WorkspaceRepository', () => {
       expect(prisma.workspace.findMany).toHaveBeenCalledTimes(2);
       expect(res).toEqual([]);
     });
+
+    it('should rethrow non-P2025 errors', async () => {
+      prisma.workspace.findMany.mockRejectedValueOnce(new Error('db down'));
+
+      await expect(
+        repository.findUserWorkspacesPage('u-1', 'c-1', 20),
+      ).rejects.toThrow('db down');
+    });
   });
 
   describe('update', () => {

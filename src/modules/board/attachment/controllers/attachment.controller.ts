@@ -25,7 +25,7 @@ import {
   UpdateCardAttachmentDto,
   CardAttachmentResponseDto,
 } from '../dto';
-import { toCardAttachmentResponseDto } from '../../board/mappers/board.mapper';
+import { toCardAttachmentResponseDto } from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';

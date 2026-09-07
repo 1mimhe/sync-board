@@ -3,7 +3,7 @@ import { ListController } from './controllers/list.controller';
 import { ListService } from './services/list.service';
 import { ListRepository } from './repositories/list.repository';
 import { LexorankSubModule } from '../lexorank/lexorank.module';
-import { BoardSubModule } from '../board/board.module';
+import { BoardSubModule } from '../core/board.module';
 import { AuthModule } from '../../auth/auth.module';
 import { WorkspaceModule } from '../../workspace/workspace.module';
 

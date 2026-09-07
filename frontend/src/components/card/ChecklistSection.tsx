@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import type { Checklist } from '../../types'
 import { checklistApi } from '../../api/endpoints'
 import { useToast } from '../../stores/toast.store'
-import { IconCheckSquare, IconPlus, IconTrash } from '../common/Icons'
+import { IconCheckSquare, IconPlus, IconTrash, IconArrowUpRight } from '../common/Icons'
 
 export interface ChecklistSectionProps {
   workspaceId: string
@@ -10,6 +10,7 @@ export interface ChecklistSectionProps {
   cardId: string
   checklists: Checklist[]
   onUpdated: () => void
+  isSubcard?: boolean
 }
 
 export function ChecklistSection({
@@ -18,6 +19,7 @@ export function ChecklistSection({
   cardId,
   checklists,
   onUpdated,
+  isSubcard = false,
 }: ChecklistSectionProps) {
   const { addToast } = useToast()
   const [newChecklistTitle, setNewChecklistTitle] = useState('')
@@ -79,6 +81,16 @@ export function ChecklistSection({
   const handleRemoveItem = async (checklistId: string, itemId: string) => {
     await checklistApi.removeItem(workspaceId, boardId, cardId, checklistId, itemId)
     onUpdated()
+  }
+
+  const handlePromoteItem = async (checklistId: string, itemId: string) => {
+    const res = await checklistApi.promoteItem(workspaceId, boardId, cardId, checklistId, itemId)
+    if (res.success) {
+      addToast('Checklist item promoted to subcard', 'success')
+      onUpdated()
+    } else {
+      addToast(res.error?.message || 'Failed to promote item to subcard', 'error')
+    }
   }
 
   return (
@@ -192,6 +204,24 @@ export function ChecklistSection({
                     >
                       {item.content}
                     </span>
+                    {!isSubcard && (
+                      <button
+                        type="button"
+                        onClick={() => handlePromoteItem(cl.id, item.id)}
+                        title="Promote to Subcard"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--violet2)',
+                          cursor: 'pointer',
+                          padding: '2px 4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <IconArrowUpRight size={14} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleRemoveItem(cl.id, item.id)}

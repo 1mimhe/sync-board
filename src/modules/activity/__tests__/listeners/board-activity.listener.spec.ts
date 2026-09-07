@@ -6,7 +6,7 @@ import {
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
-} from '../../../board/board/events/board.events';
+} from '../../../board/core/events/board.events';
 import { ActionType, EntityType } from '@prisma/client';
 
 describe('BoardActivityListener', () => {

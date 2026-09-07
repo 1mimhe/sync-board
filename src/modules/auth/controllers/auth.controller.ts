@@ -171,14 +171,13 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout current device (revoke refresh token)' })
   @ApiNoContentResponse({ description: 'Device logged out successfully' })
   async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user?: JwtPayload,
   ): Promise<void> {
     const cookies = req.cookies as Record<string, unknown> | undefined;
     const rawToken =
@@ -186,11 +185,23 @@ export class AuthController {
         ? cookies[REFRESH_TOKEN_COOKIE_NAME]
         : undefined;
 
+    let jti = user?.jti;
+    let expDate = user?.exp ? new Date(user.exp * 1000) : undefined;
+
+    if (!jti && req.headers.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      const payload = this.authService.tryVerifyAccessToken(token);
+      if (payload) {
+        jti = payload.jti;
+        expDate = new Date(payload.exp * 1000);
+      }
+    }
+
     if (rawToken) {
       await this.authService.logout(
         rawToken,
-        user.jti,
-        new Date(user.exp * 1000),
+        jti,
+        expDate,
       );
     }
     res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
@@ -332,32 +343,26 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback handler' })
-  @ApiOkResponse({
-    type: AuthResponseDto,
-    description: 'Google OAuth login successful',
-  })
   async googleCallback(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
+    @Res() res: Response,
+  ): Promise<void> {
     const state = req.query?.state as string | undefined;
     await this.authService.validateOAuthState(state);
 
     const user = req.user as User;
-    const { user: profile, tokens } =
+    const { tokens } =
       await this.authService.handleGoogleCallback(
         user,
         req.ip,
         req.headers['user-agent'],
       );
     this.setAuthCookie(res, tokens.refreshToken);
-    return {
-      user: profile,
-      tokens: {
-        accessToken: tokens.accessToken,
-        expiresIn: tokens.expiresIn,
-      },
-    };
+
+    const clientUrl = this.authService.getClientUrl();
+    res.redirect(
+      `${clientUrl}/auth/callback?token=${encodeURIComponent(tokens.accessToken)}&redirect=${encodeURIComponent('/workspaces')}`,
+    );
   }
 
   @Get('me')

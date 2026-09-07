@@ -53,4 +53,18 @@ describe('RbacGuard', () => {
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
+
+  it('should treat unknown member roles as weight zero', () => {
+    reflector.getAllAndOverride.mockReturnValue([WorkspaceRole.viewer]);
+    const context = createMockContext({ role: 'unknown-role' });
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  it('should treat unknown required roles as weight zero', () => {
+    reflector.getAllAndOverride.mockReturnValue(['unknown-role']);
+    const context = createMockContext({ role: WorkspaceRole.viewer });
+
+    expect(guard.canActivate(context)).toBe(true);
+  });
 });

@@ -1,6 +1,6 @@
 import { ChecklistController } from '../../controllers/checklist.controller';
 import { ChecklistService } from '../../services/checklist.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('ChecklistController', () => {
   let controller: ChecklistController;
@@ -41,6 +41,7 @@ describe('ChecklistController', () => {
       addItem: jest.fn(),
       updateItem: jest.fn(),
       removeItem: jest.fn(),
+      promoteItemToSubcard: jest.fn(),
     } as unknown as jest.Mocked<ChecklistService>;
 
     controller = new ChecklistController(checklistService);
@@ -216,6 +217,28 @@ describe('ChecklistController', () => {
     });
   });
 
+  describe('promoteItem', () => {
+    it('should delegate promotion to subcard', async () => {
+      await controller.promoteItem(
+        'ws-1',
+        'board-1',
+        'card-1',
+        'checklist-uuid',
+        'item-uuid',
+        mockUser,
+      );
+
+      expect(checklistService.promoteItemToSubcard).toHaveBeenCalledWith(
+        'ws-1',
+        'board-1',
+        'card-1',
+        'checklist-uuid',
+        'item-uuid',
+        'user-uuid-1',
+      );
+    });
+  });
+
   describe('route metadata (status codes + RBAC roles)', () => {
     const routeTable: {
       handler: keyof ChecklistController;
@@ -228,6 +251,7 @@ describe('ChecklistController', () => {
       { handler: 'addItem', status: 201 },
       { handler: 'updateItem' },
       { handler: 'removeItem', status: 204 },
+      { handler: 'promoteItem', status: 201 },
     ];
 
     it.each(routeTable)(

@@ -5,20 +5,20 @@ import { BoardGateway } from '../../gateways/board.gateway';
 import { JwtTokenService } from '../../../../auth/services/jwt-token.service';
 import { TokenBlacklistService } from '../../../../auth/services/token-blacklist.service';
 import { WorkspaceMemberRepository } from '../../../../workspace/repositories/workspace-member.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
+import { BoardRepository } from '../../../core/repositories/board.repository';
 import { PresenceService } from '../../services/presence.service';
 import { BroadcastRelayService } from '../../services/broadcast-relay.service';
 import { WsRateLimiterService } from '../../services/ws-rate-limiter.service';
 import { WsWorkspaceMemberGuard } from '../../../../workspace/guards/ws-workspace-member.guard';
 import { WsBoardAccessGuard } from '../../guards/ws-board-access.guard';
-import { WS_EVENTS, PRESENCE_CONFIG } from '../../ws-events.constants';
+import { WS_EVENTS, PRESENCE_CONFIG } from '../../events/ws-events.constants';
 import { GATEWAY_OPTIONS } from '@nestjs/websockets/constants';
 import {
   BoardCreatedEvent,
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
-} from '../../../board/events/board.events';
+} from '../../../core/events/board.events';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
@@ -239,6 +239,52 @@ describe('BoardGateway', () => {
       });
       expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
     });
+
+    it('should authenticate with raw token from authorization header without Bearer prefix', async () => {
+      mockSocket.handshake.auth = {};
+      mockSocket.handshake.headers = { authorization: 'raw-header-token' };
+      jwtTokenService.verifyAccessToken.mockReturnValue(validJwtPayload);
+      blacklistService.isBlacklisted.mockResolvedValue(false);
+
+      await gateway.handleConnection(mockSocket as Socket);
+
+      expect(jwtTokenService.verifyAccessToken).toHaveBeenCalledWith(
+        'raw-header-token',
+      );
+      expect(mockSocket.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('should emit TOKEN_INVALID when verification throws a non-Error', async () => {
+      mockSocket.handshake.auth = { token: 'bad-token' };
+      jwtTokenService.verifyAccessToken.mockImplementation(() => {
+        // Intentional non-Error to cover the gateway's defensive fallback
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw 'corrupt';
+      });
+
+      await gateway.handleConnection(mockSocket as Socket);
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        code: 'TOKEN_INVALID',
+        message: 'Authentication failed',
+      });
+      expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
+    });
+
+    it('should emit TOKEN_INVALID message from Error without expiry marker', async () => {
+      mockSocket.handshake.auth = { token: 'bad-token' };
+      jwtTokenService.verifyAccessToken.mockImplementation(() => {
+        throw new Error('bad signature');
+      });
+
+      await gateway.handleConnection(mockSocket as Socket);
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        code: 'TOKEN_INVALID',
+        message: 'bad signature',
+      });
+      expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
+    });
   });
 
   describe('handleDisconnect', () => {
@@ -314,6 +360,18 @@ describe('BoardGateway', () => {
     beforeEach(() => {
       mockSocket.data = { user: validJwtPayload };
       rateLimiter.checkRateLimit.mockResolvedValue(true);
+    });
+
+    it('should return early without user in socket session', async () => {
+      mockSocket.data = {};
+
+      await gateway.handleWorkspaceJoin(
+        mockSocket as Socket,
+        { workspaceId: validWorkspaceId },
+        undefined,
+      );
+
+      expect(mockSocket.join).not.toHaveBeenCalled();
     });
 
     it('should allow workspace member to join workspace room and emit joined and member-online events', async () => {
@@ -419,6 +477,18 @@ describe('BoardGateway', () => {
     beforeEach(() => {
       mockSocket.data = { user: validJwtPayload };
       rateLimiter.checkRateLimit.mockResolvedValue(true);
+    });
+
+    it('should return early without user in socket session', async () => {
+      mockSocket.data = {};
+
+      await gateway.handleBoardJoin(
+        mockSocket as Socket,
+        { boardId: validBoardId },
+        undefined,
+      );
+
+      expect(mockSocket.join).not.toHaveBeenCalled();
     });
 
     it('should join board room, register presence in Redis, and broadcast presence update', async () => {
@@ -566,6 +636,34 @@ describe('BoardGateway', () => {
 
   describe('handleCursor', () => {
     const validBoardId = '123e4567-e89b-42d3-a456-426614174000';
+
+    it('should return early without user in socket session', async () => {
+      mockSocket.data = {};
+
+      await gateway.handleCursor(
+        mockSocket as Socket,
+        { boardId: validBoardId, x: 1, y: 2 },
+        undefined,
+      );
+
+      expect(presenceService.getBoardViewers).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to default color when viewer roster is null', async () => {
+      mockSocket.data = { user: validJwtPayload };
+      presenceService.getBoardViewers.mockResolvedValue(null as any);
+
+      await gateway.handleCursor(mockSocket as Socket, {
+        boardId: validBoardId,
+        x: 10,
+        y: 20,
+      });
+
+      expect(mockSocket.emit).toHaveBeenCalledWith(
+        WS_EVENTS.BOARD_CURSOR,
+        expect.objectContaining({ color: '#888888' }),
+      );
+    });
 
     it('should broadcast cursor position to board room when within rate limit', async () => {
       mockSocket.data = { user: validJwtPayload };

@@ -1,9 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import type { Socket } from 'socket.io';
-import { BoardRepository } from '../../board/repositories/board.repository';
+import { BoardRepository } from '../../core/repositories/board.repository';
 import { WorkspaceMemberRepository } from '../../../workspace/repositories/workspace-member.repository';
-import { WS_EVENTS } from '../ws-events.constants';
+import { WS_EVENTS } from '../events/ws-events.constants';
 import type { AuthenticatedSocketData } from '../../../../common/interfaces/ws.interface';
 
 /**

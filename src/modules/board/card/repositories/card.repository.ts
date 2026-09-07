@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Card, Prisma } from '@prisma/client';
+import { Card, CardPriority, CardStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../common/database/prisma.service';
-import type { CardWithDetails } from '../../board/interfaces/board.interfaces';
+import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import type { CardWithDetails } from '../../core/interfaces/board.interfaces';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 
 /**
@@ -255,43 +256,6 @@ export class CardRepository {
   }
 
   /**
-   * Finds all archived (non-deleted) cards in a board.
-   *
-   * @param boardId - Board UUID
-   * @returns Array of archived cards with details
-   */
-  async findArchivedByBoardId(boardId: string): Promise<CardWithDetails[]> {
-    return this.prisma.card.findMany({
-      where: {
-        archivedAt: { not: null },
-        deletedAt: null,
-        list: { boardId },
-      },
-      include: {
-        assignees: {
-          include: {
-            user: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
-        },
-        labels: {
-          include: { label: true },
-        },
-        attachments: {
-          where: { archivedAt: null },
-          include: {
-            uploadedBy: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
-        },
-      },
-      orderBy: { archivedAt: 'desc' },
-    });
-  }
-
-  /**
    * Finds a cursor page of archived (non-deleted) cards in a board.
    *
    * @param boardId - Board UUID
@@ -346,45 +310,6 @@ export class CardRepository {
   }
 
   /**
-   * Finds all archived (non-deleted) cards across a workspace.
-   *
-   * @param workspaceId - Workspace UUID
-   * @returns Array of archived cards with details
-   */
-  async findArchivedByWorkspaceId(
-    workspaceId: string,
-  ): Promise<CardWithDetails[]> {
-    return this.prisma.card.findMany({
-      where: {
-        archivedAt: { not: null },
-        deletedAt: null,
-        list: { board: { workspaceId } },
-      },
-      include: {
-        assignees: {
-          include: {
-            user: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
-        },
-        labels: {
-          include: { label: true },
-        },
-        attachments: {
-          where: { archivedAt: null },
-          include: {
-            uploadedBy: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
-        },
-      },
-      orderBy: { archivedAt: 'desc' },
-    });
-  }
-
-  /**
    * Finds a card by ID including deleted cards, optionally scoped to a board.
    *
    * @param id - Card UUID
@@ -414,6 +339,112 @@ export class CardRepository {
     return this.prisma.card.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+  }
+
+  /**
+   * Updates a card's priority stage.
+   *
+   * @param id - Card UUID
+   * @param priority - New priority value
+   * @returns The updated card
+   */
+  async updatePriority(id: string, priority: CardPriority): Promise<Card> {
+    try {
+      return await this.prisma.card.update({
+        where: { id },
+        data: { priority },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new EntityNotFoundException('Card', id);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Updates a card's status and derived isComplete.
+   *
+   * @param id - Card UUID
+   * @param status - New status value
+   * @param isComplete - Derived completion flag
+   * @returns The updated card
+   * @throws {EntityNotFoundException} If the card does not exist
+   */
+  async updateStatus(
+    id: string,
+    status: CardStatus,
+    isComplete: boolean,
+  ): Promise<Card> {
+    try {
+      return await this.prisma.card.update({
+        where: { id },
+        data: { status, isComplete },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new EntityNotFoundException('Card', id);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Finds active subcards of a parent card.
+   *
+   * @param parentId - Parent card UUID
+   * @returns Array of active subcards ordered by rank
+   */
+  async findSubcards(parentId: string): Promise<Card[]> {
+    return this.prisma.card.findMany({
+      where: { parentCardId: parentId, archivedAt: null, deletedAt: null },
+      orderBy: { rank: 'asc' },
+    });
+  }
+
+  /**
+   * Attaches an existing card as a subcard to a parent.
+   *
+   * @param childId - Child card UUID
+   * @param parentId - Parent card UUID
+   * @returns The updated child card
+   */
+  async attachSubcard(childId: string, parentId: string): Promise<Card> {
+    return this.prisma.card.update({
+      where: { id: childId },
+      data: { parentCardId: parentId },
+    });
+  }
+
+  /**
+   * Detaches a subcard from its parent (sets parentCardId to null).
+   *
+   * @param childId - Child card UUID
+   * @returns The updated child card
+   */
+  async detachSubcard(childId: string): Promise<Card> {
+    return this.prisma.card.update({
+      where: { id: childId },
+      data: { parentCardId: null },
+    });
+  }
+
+  /**
+   * Counts active subcards of a parent.
+   *
+   * @param parentId - Parent card UUID
+   * @returns Number of active subcards
+   */
+  async countSubcards(parentId: string): Promise<number> {
+    return this.prisma.card.count({
+      where: { parentCardId: parentId, archivedAt: null, deletedAt: null },
     });
   }
 }

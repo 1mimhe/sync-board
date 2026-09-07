@@ -132,6 +132,59 @@ export interface List {
   updatedAt: string
 }
 
+export type CardPriority = 'lowest' | 'low' | 'medium' | 'high' | 'urgent'
+export type CardStatus = 'not_started' | 'active' | 'done' | 'closed'
+export type CardFieldType = 'text' | 'number' | 'date' | 'select' | 'user'
+
+export interface CardFieldDef {
+  id: string
+  workspaceId: string
+  name: string
+  fieldType: CardFieldType
+  options?: { options: string[] } | string[] | null
+  required: boolean
+  position: number
+  createdAt?: string
+}
+
+export interface CardFieldValue {
+  id: string
+  fieldId: string
+  cardId: string
+  value: unknown
+  createdAt?: string
+  updatedAt?: string
+  field?: CardFieldDef
+}
+
+export interface CardTimeEntry {
+  id: string
+  cardId: string
+  userId: string
+  minutes: number
+  note?: string | null
+  createdAt: string
+  user?: {
+    id: string
+    displayName: string
+    avatarUrl?: string | null
+    email?: string
+  }
+}
+
+export interface TimeTrackingSummary {
+  estimate: number | null
+  logged: number
+  remaining: number
+  entries: {
+    items: CardTimeEntry[]
+    pagination: {
+      cursor: string | null
+      hasMore: boolean
+    }
+  }
+}
+
 export interface ListWithCards extends List {
   cards: Card[]
 }
@@ -145,6 +198,13 @@ export interface Card {
   dueDate?: string | null
   isCompleted?: boolean
   isComplete?: boolean
+  priority?: CardPriority
+  status?: CardStatus
+  parentCardId?: string | null
+  parent?: Card | null
+  subcards?: Card[]
+  estimateMinutes?: number | null
+  loggedMinutes?: number
   coverUrl?: string | null
   coverImageUrl?: string | null
   archivedAt?: string | null
@@ -157,6 +217,16 @@ export interface Card {
   comments?: CardComment[]
   attachments?: CardAttachment[]
   documents?: Document[]
+  fieldValues?: CardFieldValue[]
+  timeEntries?: CardTimeEntry[]
+}
+
+export interface CardWithSubcards extends Card {
+  subcards: Card[]
+  rollup: {
+    totalSubcards: number
+    completedSubcards: number
+  }
 }
 
 export type CardWithDetails = Card & {
@@ -229,6 +299,7 @@ export interface CardComment {
   cardId: string
   authorId: string
   content: string
+  parentCommentId?: string | null
   createdAt: string
   updatedAt?: string
   author?: {
@@ -237,6 +308,8 @@ export interface CardComment {
     email: string
     avatarUrl?: string | null
   }
+  parent?: CardComment | null
+  replies?: CardComment[]
 }
 
 export interface CardAttachment {
@@ -337,3 +410,30 @@ export interface ToastMessage {
   type: 'success' | 'error' | 'info' | 'warning'
   duration?: number
 }
+
+// ── Board Projections / Views ────────────────────────────────────────────────
+
+export type BoardViewMode = 'board' | 'table' | 'calendar' | 'timeline'
+
+export interface CalendarViewQuery {
+  startDate: string
+  endDate: string
+  cursor?: string
+  limit?: number
+}
+
+export interface TimelineViewQuery {
+  cursor?: string
+  limit?: number
+}
+
+export interface TableViewQuery {
+  cursor?: string
+  limit?: number
+  status?: CardStatus
+  priority?: CardPriority
+  search?: string
+  sortBy?: 'rank' | 'dueDate' | 'createdAt' | 'priority' | 'status' | 'title'
+  sortOrder?: 'asc' | 'desc'
+}
+

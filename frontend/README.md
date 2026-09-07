@@ -60,28 +60,74 @@ _Full audit trail of workspace and board modifications streaming over WebSockets
 
 ---
 
+### 7. Alternate Board Views (Table, Calendar, Timeline)
+_Switch seamlessly between Kanban, spreadsheet Table view, monthly Calendar, and chronological Timeline._
+
+![Alternate Board Views](public/screenshots/07-board-views.png)
+<!-- Screenshot guide: Use the ViewSwitcher in the Board header to toggle between Board, Table, Calendar, and Timeline -->
+
+---
+
+### 8. Subtasks, Time Tracking & Custom Fields
+_Break down work into subtasks, log time against estimates, and customize cards with workspace-defined fields._
+
+![Card Enrichment](public/screenshots/08-card-enrichment.png)
+<!-- Screenshot guide: Open CardModal and navigate through Subtasks, Time Tracking, and Custom Fields -->
+
+---
+
 ## ✨ Features
 
 - **Multi-Tenant Workspaces**:
   - Slug-based and UUID-based routing (`/workspaces/:slugOrId`).
   - Granular Role-Based Access Control (RBAC): `owner`, `admin`, `member`, and `viewer`.
   - Email invitation dispatch with secure token handling and MailHog acceptance.
-  - Workspace-level shared labels and customizable settings.
+  - Workspace-level shared labels, custom field definitions, and customizable settings.
+
+- **Multiple Board Projections**:
+  - **Segmented View Switcher**: Instant switching between Kanban Board, Table, Calendar, and Timeline modes.
+  - **Table View**: Spreadsheet-like data grid with live query search, multi-column sorting (Title, Status, Priority, Due Date, Time Logged), status and priority filters, and quick card editing.
+  - **Calendar View**: Monthly calendar grid displaying cards on their due dates with overdue warnings and month navigation.
+  - **Timeline View**: Chronological Gantt-style roadmap with status swimlanes and priority indicators.
 
 - **Real-Time Collaborative Kanban**:
   - Fluid Drag & Drop for lists and cards using `@hello-pangea/dnd`.
   - Deterministic LexoRank ordering for zero-conflict reordering at scale.
-  - WebSocket synchronization (`board:join`, `board:leave`, `board:presence`, mutations relay).
+  - WebSocket synchronization (`board:join`, `board:leave`, `board:presence`, entity mutations relay).
   - Multi-user presence badges and live cursor broadcast relay.
   - Soft-delete (archiving) with two-step restoration or permanent deletion.
 
-- **Comprehensive Card Features**:
+- **Subcards & Hierarchy-Lite**:
+  - Create new subcards or attach existing cards (depth ≤ 2).
+  - Visual rollup progress bar showing completed vs total subtasks.
+  - Promote checklist items to standalone subcards with a single click.
+  - Detach subcards back to top-level cards.
+
+- **Card Status Machine & Priority Matrix**:
+  - 4-state workflow lifecycle (`not_started`, `active`, `done`, `closed`).
+  - 5-stage priority flags (`lowest`, `low`, `medium`, `high`, `urgent`).
+  - Color-coded flags and status pills rendered across Kanban cards, Table rows, Timeline bars, and CardModal.
+
+- **Time Tracking & Work Logs**:
+  - Set estimated effort in minutes with hour/minute conversions.
+  - Quick time-logging modal with duration and optional notes.
+  - Dynamic completion progress bar and chronological work log history with user attribution.
+
+- **Custom Fields Engine**:
+  - Workspace-level custom field definitions supporting multiple data types (`text`, `number`, `date`, `select`, `user`).
+  - Dedicated "Custom Fields" management tab in Workspace Settings.
+  - Auto-persisting custom field values directly within each card.
+
+- **Threaded Discussions & @Mentions**:
+  - 1-level threaded comment replies with inline reply inputs.
+  - Interactive `@email` mention chips and automatic email highlight rendering.
+
+- **Comprehensive Card Details**:
   - Title, description, due date tracking, and completion toggles.
   - Workspace and board label assignment with color indicators.
   - Member assignees with user avatar tooltips.
   - Checklists with interactive progress indicators.
   - File attachments and URL link bookmarks.
-  - Real-time discussion thread with comment history and author attribution.
   - Linked workspace documents directly accessible from the card modal.
 
 - **Real-Time Markdown Documents**:
@@ -266,3 +312,28 @@ frontend/
 2. Click **+ New Document** to create a rich markdown document.
 3. Multiple users can edit the document concurrently with live presence indicators showing active cursor positions.
 4. Use **Snapshot History** to inspect earlier versions or restore prior milestones.
+
+### 5. Switching Board Projections
+1. At the top of any board, locate the **View Switcher** toolbar (`Board`, `Table`, `Calendar`, `Timeline`).
+2. Click **Table** for a structured spreadsheet view with sorting by Priority, Status, or Logged Time.
+3. Click **Calendar** to view tasks mapped against their scheduled due dates, highlighting overdue deadlines in red.
+4. Click **Timeline** to view horizontal roadmap bars representing card lifecycles.
+5. Click any card in any view to open the full interactive detail modal.
+
+### 6. Subtasks & Checklist Promotion
+1. Open any card modal and select the **Subtasks** tab.
+2. Add a new subtask or attach an existing board card.
+3. Mark subtasks complete to watch the parent card's rollup progress meter automatically update.
+4. In the **Checklists** tab, click **Promote to Subtask** on any checklist item to instantly convert it into a full standalone subcard.
+
+### 7. Time Tracking & Logging Work
+1. Navigate to the **Time Tracking** tab inside a card modal.
+2. Enter an estimated duration (e.g. `240` minutes for 4 hours).
+3. Click **+ Log Work** to record elapsed time along with work notes.
+4. Review the visual progress bar showing logged vs remaining time and browse the complete chronological log audit history.
+
+### 8. Custom Fields Configuration
+1. Navigate to **Workspace Settings** -> **Custom Fields** tab (available to workspace `owner` and `admin`).
+2. Click **+ Add Field** to create fields typed as `text`, `number`, `date`, `select` (with predefined options), or `user`.
+3. Open any board card to view and fill out the custom field values, which automatically save upon editing.
+

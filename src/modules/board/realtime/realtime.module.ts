@@ -8,7 +8,7 @@ import { PresenceService } from './services/presence.service';
 import { WsRateLimiterService } from './services/ws-rate-limiter.service';
 import { WsBoardAccessGuard } from './guards/ws-board-access.guard';
 import { WsRateLimitGuard } from '../../../common/guards/ws-rate-limit.guard';
-import { BoardSubModule } from '../board/board.module';
+import { BoardSubModule } from '../core/board.module';
 
 /**
  * Realtime slice: Socket.IO gateway (client handlers), domain-event broadcast

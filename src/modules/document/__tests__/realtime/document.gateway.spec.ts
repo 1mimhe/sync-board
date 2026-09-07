@@ -112,6 +112,29 @@ describe('DocumentGateway', () => {
       expect(ack.documentId).toBe(DOC);
     });
 
+    it('requests a state-vector diff when the client provides one', async () => {
+      const socket = mkSocket({ user: USER });
+      documentService.findById.mockResolvedValue({
+        id: DOC,
+        workspaceId: WS,
+      } as any);
+      workspaceService.isUserMember.mockResolvedValue(true);
+      editorPresence.assignColor.mockReturnValue('#E11D48');
+      editorPresence.getEditors.mockReturnValue([]);
+      manager.encodeDiff.mockReturnValue(new Uint8Array([1, 2, 3]));
+
+      await gateway.handleJoin(socket, {
+        documentId: DOC,
+        workspaceId: WS,
+        stateVector: Buffer.from([0]),
+      });
+
+      expect(manager.encodeDiff).toHaveBeenCalledWith(
+        DOC,
+        expect.any(Uint8Array),
+      );
+    });
+
     it('performs leave cleanup when switching documents', async () => {
       const socket = mkSocket({ user: USER, currentDocumentId: 'old-doc' });
       documentService.findById.mockResolvedValue({
@@ -228,6 +251,20 @@ describe('DocumentGateway', () => {
       );
       expect(manager.applyUpdate).not.toHaveBeenCalled();
     });
+
+    it('passes through non-binary awareness payloads untouched', async () => {
+      const socket = mkSocket({ user: USER });
+
+      await gateway.handleAwareness(socket, {
+        documentId: DOC,
+        data: 'opaque-state',
+      });
+
+      expect((socket as any).__room.emit).toHaveBeenCalledWith(
+        DOC_WS.AWARENESS,
+        { documentId: DOC, data: 'opaque-state' },
+      );
+    });
   });
 
   describe('handleLeave / handleDisconnect', () => {
@@ -306,6 +343,27 @@ describe('DocumentGateway', () => {
       expect(() =>
         gateway.handleDocumentSaved(new DocumentSavedEvent(DOC, new Date())),
       ).not.toThrow();
+    });
+
+    it('still emits saved when diff encoding fails (pruned document)', () => {
+      const room = { emit: jest.fn() };
+      (gateway as any).server = {
+        to: jest.fn().mockReturnValue(room),
+      };
+      (gateway as any).manager = {
+        encodeDiff: jest.fn(() => {
+          throw new Error('not loaded');
+        }),
+      };
+      const savedAt = new Date();
+
+      expect(() =>
+        gateway.handleDocumentSaved(new DocumentSavedEvent(DOC, savedAt)),
+      ).not.toThrow();
+      expect(room.emit).toHaveBeenCalledWith(DOC_WS.SAVED, {
+        documentId: DOC,
+        savedAt,
+      });
     });
   });
 

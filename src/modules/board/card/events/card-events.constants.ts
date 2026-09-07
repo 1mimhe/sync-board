@@ -10,4 +10,8 @@ export const CARD_EVENTS = {
   deleted: 'card.deleted',
   assigneeAdded: 'card.assignee_added',
   assigneeRemoved: 'card.assignee_removed',
+  priorityChanged: 'card.priority_changed',
+  statusChanged: 'card.status_changed',
+  subcardCreated: 'card.subcard_created',
+  timeLogged: 'card.time_logged',
 } as const;

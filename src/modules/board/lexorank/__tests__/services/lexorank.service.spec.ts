@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LexorankService } from '../../services/lexorank.service';
+import { LexorankService } from '../../lexorank.service';
 import { BusinessRuleException } from '../../../../../common/exceptions/app.exception';
 
 describe('LexorankService', () => {

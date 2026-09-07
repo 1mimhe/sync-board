@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { LabelService } from '../services/label.service';
 import { CreateLabelDto, UpdateLabelDto, BoardLabelResponseDto } from '../dto';
-import { toBoardLabelResponseDto } from '../../board/mappers/board.mapper';
+import { toBoardLabelResponseDto } from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';

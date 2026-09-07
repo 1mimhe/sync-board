@@ -3,8 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { ListService } from '../../services/list.service';
 import { ListRepository } from '../../repositories/list.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
-import { LexorankService } from '../../../lexorank/services/lexorank.service';
+import { BoardRepository } from '../../../core/repositories/board.repository';
+import { LexorankService } from '../../../lexorank/lexorank.service';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 
 describe('ListService', () => {
@@ -276,6 +276,64 @@ describe('ListService', () => {
           'user-uuid',
         ),
       ).rejects.toThrow(EntityNotFoundException);
+    });
+  });
+
+  describe('listArchivedListsPaginated', () => {
+    it('should return archived page', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+      listRepo.findArchivedByBoardIdPage.mockResolvedValue({
+        items: [{ id: 'l-1' }],
+        pagination: { cursor: null, hasMore: false },
+      } as any);
+
+      const result = await service.listArchivedListsPaginated(
+        'board-uuid',
+        'ws-uuid',
+        {},
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(listRepo.findArchivedByBoardIdPage).toHaveBeenCalledWith(
+        'board-uuid',
+        undefined,
+        20,
+      );
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should permanently delete list', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+      listRepo.findByIdIncludingArchived.mockResolvedValue({
+        id: 'l-1',
+        deletedAt: null,
+      } as any);
+
+      await service.deletePermanently('board-uuid', 'ws-uuid', 'l-1', 'user-1');
+
+      expect(listRepo.deletePermanently).toHaveBeenCalledWith('l-1');
+    });
+
+    it('should throw when list not found', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+      listRepo.findByIdIncludingArchived.mockResolvedValue(null);
+
+      await expect(
+        service.deletePermanently('board-uuid', 'ws-uuid', 'l-x', 'user-1'),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should throw when already deleted', async () => {
+      boardRepo.findById.mockResolvedValue({ id: 'board-uuid' } as any);
+      listRepo.findByIdIncludingArchived.mockResolvedValue({
+        id: 'l-1',
+        deletedAt: new Date(),
+      } as any);
+
+      await expect(
+        service.deletePermanently('board-uuid', 'ws-uuid', 'l-1', 'user-1'),
+      ).rejects.toThrow('List is already deleted');
     });
   });
 });

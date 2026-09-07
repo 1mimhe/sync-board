@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { BoardWithContent, PresenceViewer } from '../../types'
+import type { BoardWithContent, PresenceViewer, BoardViewMode } from '../../types'
 import { boardApi } from '../../api/endpoints'
 import { useToast } from '../../stores/toast.store'
 import { Avatar } from '../common/Avatar'
+import { ViewSwitcher } from './views/ViewSwitcher'
 import {
   IconStar,
   IconActivity,
@@ -11,6 +12,8 @@ import {
   IconTag,
   IconDocument,
   IconArchive,
+  IconTable,
+  IconLink,
 } from '../common/Icons'
 
 export interface BoardHeaderProps {
@@ -18,6 +21,8 @@ export interface BoardHeaderProps {
   workspaceId: string
   isConnected: boolean
   viewers: PresenceViewer[]
+  activeView?: BoardViewMode
+  onViewChange?: (view: BoardViewMode) => void
   onBoardUpdated: () => void
   onToggleActivity: () => void
   onToggleArchived?: () => void
@@ -32,6 +37,8 @@ export function BoardHeader({
   workspaceId,
   isConnected,
   viewers,
+  activeView,
+  onViewChange,
   onBoardUpdated,
   onToggleActivity,
   onToggleArchived,
@@ -137,6 +144,13 @@ export function BoardHeader({
         </span>
       </div>
 
+      {/* View Switcher (Board, Table, Calendar, Timeline) */}
+      {activeView && onViewChange && (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
+        </div>
+      )}
+
       {/* Collaborators & Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {/* Active Board Viewers Avatars */}
@@ -228,6 +242,28 @@ export function BoardHeader({
             <IconArchive size={15} /> Archive
           </button>
         )}
+
+        {/* Custom Fields Shortcut */}
+        <Link
+          to={`/workspaces/${workspaceId}?tab=fields`}
+          className="btn btn-ghost btn-sm"
+          title="Manage Workspace Custom Fields"
+        >
+          <IconTable size={15} /> Fields
+        </Link>
+
+        {/* Share Link */}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href)
+            addToast('Board link copied to clipboard', 'info')
+          }}
+          title="Copy board link"
+        >
+          <IconLink size={15} /> Share
+        </button>
 
         {/* Back to Workspace */}
         <Link to={`/workspaces/${workspaceId}`} className="btn btn-ghost btn-sm">

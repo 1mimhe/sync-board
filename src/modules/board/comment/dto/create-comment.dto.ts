@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { sanitizePlainText } from '../../../../common/utils/sanitize-text.util';
 
@@ -20,4 +26,12 @@ export class CreateCommentDto {
     typeof value === 'string' ? sanitizePlainText(value) : value,
   )
   content!: string;
+
+  @ApiPropertyOptional({
+    description: 'Parent comment UUID (for threaded replies, max depth 1)',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  parentCommentId?: string;
 }

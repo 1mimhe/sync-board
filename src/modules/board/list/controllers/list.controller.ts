@@ -28,7 +28,7 @@ import {
   ListResponseDto,
 } from '../dto';
 import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
-import { toListResponseDto } from '../../board/mappers/board.mapper';
+import { toListResponseDto } from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';

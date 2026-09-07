@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { CardRepository } from '../../repositories/card.repository';
 import { PrismaService } from '../../../../../common/database/prisma.service';
+import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 
 describe('CardRepository', () => {
   let repository: CardRepository;
@@ -256,6 +258,192 @@ describe('CardRepository', () => {
       expect(prismaService.cardLabel.deleteMany).toHaveBeenCalledWith({
         where: { cardId: 'c-1', labelId: 'lbl-1' },
       });
+    });
+  });
+
+  describe('findArchivedByBoardIdPage', () => {
+    it('should return paginated archived cards with cursor', async () => {
+      prismaService.card.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'c-1' }, { id: 'c-2' }]);
+
+      const result = await repository.findArchivedByBoardIdPage(
+        'b-1',
+        'cursor-0',
+        1,
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination).toEqual({ cursor: 'c-1', hasMore: true });
+      expect(prismaService.card.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 2,
+          cursor: { id: 'cursor-0' },
+          skip: 1,
+        }),
+      );
+    });
+
+    it('should return last page without cursor', async () => {
+      prismaService.card.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'c-1' }]);
+
+      const result = await repository.findArchivedByBoardIdPage(
+        'b-1',
+        undefined,
+        20,
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination.hasMore).toBe(false);
+    });
+  });
+
+  describe('findByIdIncludingDeleted', () => {
+    it('should scope by board when provided', async () => {
+      prismaService.card.findFirst.mockResolvedValue({ id: 'c-1' });
+
+      await expect(
+        repository.findByIdIncludingDeleted('c-1', 'b-1'),
+      ).resolves.toEqual({ id: 'c-1' });
+      expect(prismaService.card.findFirst).toHaveBeenCalledWith({
+        where: { id: 'c-1', list: { boardId: 'b-1' } },
+      });
+    });
+
+    it('should omit board scope when not provided', async () => {
+      prismaService.card.findFirst.mockResolvedValue(null);
+
+      await expect(
+        repository.findByIdIncludingDeleted('c-x'),
+      ).resolves.toBeNull();
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should set deletedAt', async () => {
+      prismaService.card.update.mockResolvedValue({ id: 'c-1' });
+
+      await expect(repository.deletePermanently('c-1')).resolves.toEqual({
+        id: 'c-1',
+      });
+    });
+  });
+
+  describe('updatePriority', () => {
+    it('should update priority', async () => {
+      prismaService.card.update.mockResolvedValue({
+        id: 'c-1',
+        priority: 'high',
+      });
+
+      await expect(
+        repository.updatePriority('c-1', 'high' as any),
+      ).resolves.toEqual({
+        id: 'c-1',
+        priority: 'high',
+      });
+    });
+
+    it('should map P2025 to EntityNotFoundException', async () => {
+      prismaService.card.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('missing', {
+          code: 'P2025',
+          clientVersion: 'x',
+        }),
+      );
+
+      await expect(
+        repository.updatePriority('c-x', 'high' as any),
+      ).rejects.toBeInstanceOf(EntityNotFoundException);
+    });
+
+    it('should rethrow unknown errors', async () => {
+      prismaService.card.update.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        repository.updatePriority('c-1', 'high' as any),
+      ).rejects.toThrow('boom');
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update status with derived isComplete', async () => {
+      prismaService.card.update.mockResolvedValue({
+        id: 'c-1',
+        status: 'done',
+      });
+
+      await expect(
+        repository.updateStatus('c-1', 'done' as any, true),
+      ).resolves.toEqual({
+        id: 'c-1',
+        status: 'done',
+      });
+    });
+
+    it('should map P2025 to EntityNotFoundException', async () => {
+      prismaService.card.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('missing', {
+          code: 'P2025',
+          clientVersion: 'x',
+        }),
+      );
+
+      await expect(
+        repository.updateStatus('c-x', 'done' as any, true),
+      ).rejects.toBeInstanceOf(EntityNotFoundException);
+    });
+
+    it('should rethrow unknown errors', async () => {
+      prismaService.card.update.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        repository.updateStatus('c-1', 'done' as any, true),
+      ).rejects.toThrow('boom');
+    });
+  });
+
+  describe('subcards', () => {
+    it('should find active subcards ordered by rank', async () => {
+      prismaService.card.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'c-sub' }]);
+
+      await expect(repository.findSubcards('p-1')).resolves.toEqual([
+        { id: 'c-sub' },
+      ]);
+    });
+
+    it('should attach subcard', async () => {
+      prismaService.card.update.mockResolvedValue({ id: 'c-1' });
+
+      await expect(repository.attachSubcard('c-1', 'p-1')).resolves.toEqual({
+        id: 'c-1',
+      });
+      expect(prismaService.card.update).toHaveBeenCalledWith({
+        where: { id: 'c-1' },
+        data: { parentCardId: 'p-1' },
+      });
+    });
+
+    it('should detach subcard', async () => {
+      prismaService.card.update.mockResolvedValue({ id: 'c-1' });
+
+      await expect(repository.detachSubcard('c-1')).resolves.toEqual({
+        id: 'c-1',
+      });
+      expect(prismaService.card.update).toHaveBeenCalledWith({
+        where: { id: 'c-1' },
+        data: { parentCardId: null },
+      });
+    });
+
+    it('should count subcards', async () => {
+      prismaService.card.count = jest.fn().mockResolvedValue(3);
+
+      await expect(repository.countSubcards('p-1')).resolves.toBe(3);
     });
   });
 });

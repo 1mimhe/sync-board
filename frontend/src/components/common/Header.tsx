@@ -26,9 +26,15 @@ export function Header() {
     }
   }, [user, setUser])
 
-  const handleLogout = () => {
-    clearAuth()
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (err) {
+      console.warn('Logout network call failed:', err)
+    } finally {
+      clearAuth()
+      navigate('/login')
+    }
   }
 
   return (

@@ -1,17 +1,19 @@
 import { BroadcastRelayService } from '../../services/broadcast-relay.service';
-import { WS_EVENTS } from '../../ws-events.constants';
+import { WS_EVENTS } from '../../events/ws-events.constants';
 import {
   BoardCreatedEvent,
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
-} from '../../../board/events/board.events';
+  BoardDeletedEvent,
+} from '../../../core/events/board.events';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
   ListMovedEvent,
   ListArchivedEvent,
   ListUnarchivedEvent,
+  ListDeletedEvent,
 } from '../../../list/events/list.events';
 import {
   CardCreatedEvent,
@@ -19,6 +21,11 @@ import {
   CardMovedEvent,
   CardArchivedEvent,
   CardUnarchivedEvent,
+  CardDeletedEvent,
+  CardPriorityChangedEvent,
+  CardStatusChangedEvent,
+  CardSubcardCreatedEvent,
+  CardTimeLoggedEvent,
 } from '../../../card/events/card.events';
 import { CommentCreatedEvent } from '../../../comment/events/comment.events';
 import {
@@ -536,6 +543,125 @@ describe('BroadcastRelayService', () => {
     );
   });
 
+  it('should broadcast board:deleted on BoardDeletedEvent', () => {
+    const event = new BoardDeletedEvent('b-1', 'ws-1', 'user-1');
+
+    relay.broadcastBoardDeleted(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.BOARD_DELETED, {
+      boardId: 'b-1',
+      deletedBy: { id: 'user-1' },
+    });
+  });
+
+  it('should broadcast list:deleted on ListDeletedEvent', () => {
+    const event = new ListDeletedEvent('l-1', 'b-1', 'user-1');
+
+    relay.broadcastListDeleted(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.LIST_DELETED, {
+      listId: 'l-1',
+      deletedBy: { id: 'user-1' },
+    });
+  });
+
+  it('should broadcast card:deleted on CardDeletedEvent', () => {
+    const event = new CardDeletedEvent('c-1', 'b-1', 'l-1', 'user-1');
+
+    relay.broadcastCardDeleted(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CARD_DELETED, {
+      cardId: 'c-1',
+      listId: 'l-1',
+      deletedBy: { id: 'user-1' },
+    });
+  });
+
+  it('should broadcast card:priority_changed on CardPriorityChangedEvent', () => {
+    const event = new CardPriorityChangedEvent(
+      'c-1',
+      'b-1',
+      'low',
+      'high',
+      'user-1',
+    );
+
+    relay.broadcastCardPriorityChanged(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(
+      WS_EVENTS.CARD_PRIORITY_CHANGED,
+      {
+        cardId: 'c-1',
+        boardId: 'b-1',
+        from: 'low',
+        to: 'high',
+        changedBy: { id: 'user-1' },
+      },
+    );
+  });
+
+  it('should broadcast card:status_changed on CardStatusChangedEvent', () => {
+    const event = new CardStatusChangedEvent(
+      'c-1',
+      'b-1',
+      'active',
+      'done',
+      true,
+      'user-1',
+    );
+
+    relay.broadcastCardStatusChanged(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(
+      WS_EVENTS.CARD_STATUS_CHANGED,
+      {
+        cardId: 'c-1',
+        boardId: 'b-1',
+        from: 'active',
+        to: 'done',
+        isComplete: true,
+        changedBy: { id: 'user-1' },
+      },
+    );
+  });
+
+  it('should broadcast card:subcard_created on CardSubcardCreatedEvent', () => {
+    const event = new CardSubcardCreatedEvent('p-1', 'c-1', 'b-1', 'user-1');
+
+    relay.broadcastCardSubcardCreated(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(
+      WS_EVENTS.CARD_SUBCARD_CREATED,
+      {
+        parentCardId: 'p-1',
+        childCardId: 'c-1',
+        createdBy: { id: 'user-1' },
+      },
+    );
+  });
+
+  it('should broadcast card:time_logged on CardTimeLoggedEvent', () => {
+    const event = new CardTimeLoggedEvent(
+      'c-1',
+      'b-1',
+      30,
+      90,
+      'e-1',
+      'user-1',
+    );
+
+    relay.broadcastCardTimeLogged(event);
+
+    expect(mockServer.emit).toHaveBeenCalledWith(WS_EVENTS.CARD_TIME_LOGGED, {
+      cardId: 'c-1',
+      boardId: 'b-1',
+      minutes: 30,
+      loggedTotal: 90,
+      entryId: 'e-1',
+      loggedBy: { id: 'user-1' },
+    });
+  });
+
   it('should gracefully drop events when server is not attached across all broadcaster methods', () => {
     // Re-create without attachServer → all relays take the warn-and-drop path
     relay = new BroadcastRelayService();
@@ -553,6 +679,7 @@ describe('BroadcastRelayService', () => {
       relay.broadcastBoardUnarchived(
         new BoardUnarchivedEvent({ id: 'b-1' } as any, 'u-1'),
       );
+      relay.broadcastBoardDeleted(new BoardDeletedEvent('b-1', 'ws-1', 'u-1'));
       relay.broadcastListCreated(
         new ListCreatedEvent({ boardId: 'b-1' } as any, 'u-1'),
       );
@@ -564,6 +691,7 @@ describe('BroadcastRelayService', () => {
       relay.broadcastListUnarchived(
         new ListUnarchivedEvent({ id: 'l-1', boardId: 'b-1' } as any, 'u-1'),
       );
+      relay.broadcastListDeleted(new ListDeletedEvent('l-1', 'b-1', 'u-1'));
       relay.broadcastCardCreated(
         new CardCreatedEvent({} as any, 'b-1', 'l-1', 'u-1'),
       );
@@ -578,6 +706,21 @@ describe('BroadcastRelayService', () => {
       );
       relay.broadcastCardUnarchived(
         new CardUnarchivedEvent({ id: 'c-1' } as any, 'b-1', 'l-1', 'u-1'),
+      );
+      relay.broadcastCardDeleted(
+        new CardDeletedEvent('c-1', 'b-1', 'l-1', 'u-1'),
+      );
+      relay.broadcastCardPriorityChanged(
+        new CardPriorityChangedEvent('c-1', 'b-1', 'low', 'high', 'u-1'),
+      );
+      relay.broadcastCardStatusChanged(
+        new CardStatusChangedEvent('c-1', 'b-1', 'active', 'done', true, 'u-1'),
+      );
+      relay.broadcastCardSubcardCreated(
+        new CardSubcardCreatedEvent('p-1', 'c-1', 'b-1', 'u-1'),
+      );
+      relay.broadcastCardTimeLogged(
+        new CardTimeLoggedEvent('c-1', 'b-1', 30, 90, 'e-1', 'u-1'),
       );
       relay.broadcastCommentCreated(
         new CommentCreatedEvent({} as any, 'b-1', 'u-1'),

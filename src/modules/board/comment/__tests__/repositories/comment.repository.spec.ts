@@ -175,4 +175,21 @@ describe('CardCommentRepository', () => {
       });
     });
   });
+
+  describe('findRepliesByParentId', () => {
+    it('should return active replies ordered by creation date', async () => {
+      prismaService.cardComment.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'reply-1' }]);
+
+      const result = await repository.findRepliesByParentId('comm-1');
+
+      expect(result).toEqual([{ id: 'reply-1' }]);
+      expect(prismaService.cardComment.findMany).toHaveBeenCalledWith({
+        where: { parentCommentId: 'comm-1', deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        include: { author: expect.anything() },
+      });
+    });
+  });
 });

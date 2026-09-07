@@ -52,6 +52,13 @@ export class CardCommentResponseDto {
   })
   content!: string;
 
+  @ApiPropertyOptional({
+    description: 'Parent comment UUID for replies',
+    format: 'uuid',
+    nullable: true,
+  })
+  parentCommentId!: string | null;
+
   @ApiProperty({
     description: 'Comment author details',
     type: CommentAuthorDto,

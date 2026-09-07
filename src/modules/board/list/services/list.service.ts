@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { List } from '@prisma/client';
 import { ListRepository } from '../repositories/list.repository';
-import { BoardRepository } from '../../board/repositories/board.repository';
-import { LexorankService } from '../../lexorank/services/lexorank.service';
+import { BoardRepository } from '../../core/repositories/board.repository';
+import { LexorankService } from '../../lexorank/lexorank.service';
 import { CreateListDto, UpdateListDto, MoveListDto } from '../dto';
 import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../../common/exceptions/app.exception';
+import { assertBoardInWorkspace } from '../../shared/board-access.util';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
@@ -19,7 +20,7 @@ import {
 } from '../events/list.events';
 import { LIST_EVENTS } from '../events/list-events.constants';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
-import { CursorPaginationQueryDto } from '../../board/dto';
+import { CursorPaginationQueryDto } from '../../core/dto';
 
 /**
  * Service handling business logic for board lists (creation, renaming, LexoRank reordering, archiving).
@@ -46,10 +47,7 @@ export class ListService {
     boardId: string,
     workspaceId?: string,
   ): Promise<void> {
-    const board = await this.boardRepo.findById(boardId, workspaceId);
-    if (!board) {
-      throw new EntityNotFoundException('Board', boardId);
-    }
+    await assertBoardInWorkspace(this.boardRepo, boardId, workspaceId);
   }
 
   /**

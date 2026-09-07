@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { PresenceService } from '../../services/presence.service';
 import { RedisService } from '../../../../../common/redis/redis.service';
-import { COLLABORATOR_COLORS } from '../../ws-events.constants';
+import { COLLABORATOR_COLORS } from '../../events/ws-events.constants';
 import type { PresenceEntry } from '../../../../../common/interfaces/ws.interface';
 
 describe('PresenceService', () => {
@@ -150,6 +150,14 @@ describe('PresenceService', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null when pipeline exec returns null', async () => {
+      mockPipeline.exec.mockResolvedValue(null);
+
+      const result = await service.removePresence('board-1', 'sock-1');
+
+      expect(result).toBeNull();
+    });
+
     it('should return null when entry in redis is corrupted/invalid JSON', async () => {
       mockPipeline.exec.mockResolvedValue([
         [null, 'INVALID_JSON_CORRUPTED'],
@@ -164,59 +172,6 @@ describe('PresenceService', () => {
       );
 
       expect(result).toBeNull();
-    });
-  });
-
-  describe('removeUserPresence', () => {
-    it('should remove ALL sockets for a given userId and srem active_boards if empty', async () => {
-      const entry1: PresenceEntry = {
-        userId: 'user-1',
-        socketId: 'sock-tab-1',
-        displayName: 'Alice',
-        avatarUrl: null,
-        color: '#E74C3C',
-        connectedAt: '2026-08-18T10:00:00.000Z',
-      };
-
-      redisService.hgetall.mockResolvedValue({
-        'sock-tab-1': JSON.stringify(entry1),
-      });
-
-      mockPipeline.exec.mockResolvedValue([
-        [null, 1], // zrem
-        [null, 1], // hdel
-        [null, 0], // zcard (0 remaining)
-      ]);
-
-      const removed = await service.removeUserPresence('board-1', 'user-1');
-
-      expect(removed).toHaveLength(1);
-      expect(redisService.srem).toHaveBeenCalledWith(
-        'presence:active_boards',
-        'board-1',
-      );
-    });
-
-    it('should return empty array when user has no presence entries', async () => {
-      redisService.hgetall.mockResolvedValue({});
-
-      const removed = await service.removeUserPresence(
-        'board-1',
-        'user-unknown',
-      );
-      expect(removed).toEqual([]);
-      expect(mockPipeline.exec).not.toHaveBeenCalled();
-    });
-
-    it('should skip malformed JSON meta entries without failing', async () => {
-      redisService.hgetall.mockResolvedValue({
-        'sock-bad': 'NOT_JSON{',
-      });
-
-      const removed = await service.removeUserPresence('board-1', 'user-1');
-
-      expect(removed).toEqual([]);
-      expect(mockPipeline.exec).not.toHaveBeenCalled();
     });
   });
 
@@ -319,6 +274,26 @@ describe('PresenceService', () => {
       const viewers = await service.getBoardViewers('board-1');
 
       expect(viewers).toEqual([]);
+    });
+
+    it('should skip null meta entries when listing viewers', async () => {
+      redisService.zrangebyscore.mockResolvedValue(['sock-gone', 'sock-1']);
+      redisService.hmget.mockResolvedValue([
+        null,
+        JSON.stringify({
+          userId: 'user-1',
+          socketId: 'sock-1',
+          displayName: 'Alice',
+          avatarUrl: null,
+          color: '#E74C3C',
+          connectedAt: '2026-08-18T10:00:00.000Z',
+        }),
+      ]);
+
+      const viewers = await service.getBoardViewers('board-1');
+
+      expect(viewers).toHaveLength(1);
+      expect(viewers[0].userId).toBe('user-1');
     });
   });
 
@@ -517,6 +492,27 @@ describe('PresenceService', () => {
         [null, 1], // zrem
         [null, 1], // hdel
         [null, 2], // zcard = 2 remaining viewers
+      ]);
+
+      redisService.pipeline
+        .mockReturnValueOnce(checkPipeline)
+        .mockReturnValueOnce(prunePipeline);
+
+      const pruned = await service.cleanupStaleEntries();
+
+      expect(pruned).toHaveLength(0);
+      expect(redisService.srem).not.toHaveBeenCalled();
+    });
+
+    it('should skip null meta entries during prune', async () => {
+      redisService.smembers.mockResolvedValue(['board-1']);
+
+      const checkPipeline = makeCheckPipeline([[null, ['stale-sock']]]);
+      const prunePipeline = makePrunePipeline([
+        [null, [null]], // hmget returns null entry
+        [null, 1], // zrem
+        [null, 1], // hdel
+        [null, 1], // zcard = 1 remaining viewer
       ]);
 
       redisService.pipeline

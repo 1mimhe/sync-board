@@ -7,8 +7,8 @@ import type {
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
-} from '../../board/board/events/board.events';
-import { BOARD_EVENTS } from '../../board/board/events/board-events.constants';
+} from '../../board/core/events/board.events';
+import { BOARD_EVENTS } from '../../board/core/events/board-events.constants';
 
 /**
  * Persists activity audit logs for board lifecycle events

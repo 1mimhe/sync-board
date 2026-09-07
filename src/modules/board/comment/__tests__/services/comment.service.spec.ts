@@ -4,7 +4,7 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CardCommentService } from '../../services/comment.service';
 import { CardCommentRepository } from '../../repositories/comment.repository';
 import { CardRepository } from '../../../card/repositories/card.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
+import { BoardRepository } from '../../../core/repositories/board.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { ForbiddenException } from '@nestjs/common';
 import { COMMENT_EVENTS } from '../../../comment/events/comment-events.constants';
@@ -303,6 +303,115 @@ describe('CardCommentService', () => {
           'comm-99',
           'user-1',
         ),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+  });
+
+  describe('create with parentCommentId', () => {
+    it('should create reply when parent is top-level', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue({
+        id: 'parent-1',
+        parentCommentId: null,
+      } as any);
+      commentRepo.create.mockResolvedValue({ id: 'reply-1' } as any);
+
+      const result = await service.create(
+        'board-uuid',
+        'ws-uuid',
+        'card-uuid',
+        { content: 'Reply', parentCommentId: 'parent-1' },
+        'user-1',
+      );
+
+      expect(result).toEqual({ id: 'reply-1' });
+    });
+
+    it('should throw when parent comment not found', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(
+        service.create(
+          'board-uuid',
+          'ws-uuid',
+          'card-uuid',
+          { content: 'Reply', parentCommentId: 'missing' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(EntityNotFoundException);
+    });
+
+    it('should throw MAX_THREAD_DEPTH when replying to a reply', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue({
+        id: 'reply-1',
+        parentCommentId: 'parent-1',
+      } as any);
+
+      await expect(
+        service.create(
+          'board-uuid',
+          'ws-uuid',
+          'card-uuid',
+          { content: 'Deep', parentCommentId: 'reply-1' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow('Only one reply level is supported');
+    });
+  });
+
+  describe('update without explicit content', () => {
+    it('should keep existing content when dto content is omitted', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue({
+        id: 'comm-1',
+        authorId: 'user-1',
+        content: 'Old text',
+      } as any);
+      commentRepo.update.mockResolvedValue({
+        id: 'comm-1',
+        content: 'Old text',
+      } as any);
+
+      const result = await service.update(
+        'board-uuid',
+        'ws-uuid',
+        'card-uuid',
+        'comm-1',
+        {},
+        'user-1',
+      );
+
+      expect(commentRepo.update).toHaveBeenCalledWith('comm-1', 'Old text');
+      expect(result.content).toBe('Old text');
+    });
+  });
+
+  describe('listThread', () => {
+    it('should return parent with replies', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue({ id: 'parent-1' } as any);
+      commentRepo.findRepliesByParentId.mockResolvedValue([
+        { id: 'reply-1' },
+      ] as any);
+
+      const result = await service.listThread(
+        'board-uuid',
+        'ws-uuid',
+        'card-uuid',
+        'parent-1',
+      );
+
+      expect(result.replies).toEqual([{ id: 'reply-1' }]);
+    });
+
+    it('should throw when parent not found', async () => {
+      cardRepo.findActiveById.mockResolvedValue({ id: 'card-uuid' } as any);
+      commentRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(
+        service.listThread('board-uuid', 'ws-uuid', 'card-uuid', 'missing'),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });

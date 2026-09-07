@@ -1,17 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { ChecklistItem } from '@prisma/client';
+import type { ChecklistItem, Card } from '@prisma/client';
 import { ChecklistRepository } from '../repositories/checklist.repository';
 import { CardRepository } from '../../card/repositories/card.repository';
-import { BoardRepository } from '../../board/repositories/board.repository';
-import { LexorankService } from '../../lexorank/services/lexorank.service';
+import { BoardRepository } from '../../core/repositories/board.repository';
+import { LexorankService } from '../../lexorank/lexorank.service';
+import { CardService } from '../../card/services/card.service';
 import {
   CreateChecklistDto,
   UpdateChecklistDto,
   CreateChecklistItemDto,
   UpdateChecklistItemDto,
 } from '../dto';
-import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import {
+  AppException,
+  EntityNotFoundException,
+} from '../../../../common/exceptions/app.exception';
+import { assertBoardInWorkspace } from '../../shared/board-access.util';
 import {
   CHECKLIST_EVENTS,
   ChecklistCreatedEvent,
@@ -36,6 +41,7 @@ export class ChecklistService {
     private readonly cardRepo: CardRepository,
     private readonly boardRepo: BoardRepository,
     private readonly lexorank: LexorankService,
+    private readonly cardService: CardService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -48,12 +54,9 @@ export class ChecklistService {
    */
   private async verifyBoardInWorkspace(
     boardId: string,
-    workspaceId: string,
+    workspaceId?: string,
   ): Promise<void> {
-    const board = await this.boardRepo.findById(boardId, workspaceId);
-    if (!board) {
-      throw new EntityNotFoundException('Board', boardId);
-    }
+    await assertBoardInWorkspace(this.boardRepo, boardId, workspaceId);
   }
 
   /**
@@ -165,7 +168,11 @@ export class ChecklistService {
       new ChecklistCreatedEvent(checklist, boardId, userId),
     );
 
-    this.logger.log(`Checklist created: ${checklist.id} on card ${cardId}`);
+    this.logger.log('Checklist created', {
+      checklistId: checklist.id,
+      cardId,
+      userId,
+    });
     return checklist;
   }
 
@@ -354,5 +361,75 @@ export class ChecklistService {
     await this.checklistRepo.deleteItem(itemId);
 
     this.emitUpdated(checklistId, cardId, boardId, userId);
+  }
+
+  /**
+   * Converts a checklist item into a subcard of the same card (copies content to title).
+   *
+   * Checklist items have no soft-delete column, so the source item is marked
+   * done as the closest available archive semantic.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param boardId - Board UUID
+   * @param cardId - Parent card UUID
+   * @param checklistId - Checklist UUID scoping the item
+   * @param itemId - Checklist item UUID
+   * @param userId - Acting user UUID
+   * @returns The created subcard
+   * @throws {EntityNotFoundException} If board, card, or item is not found
+   * @throws {AppException} If PROMOTE_FAILED (subcard created but item could not be marked done)
+   * @emits card.subcard_created - Via CardService after successful creation
+   */
+  async promoteItemToSubcard(
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    checklistId: string,
+    itemId: string,
+    userId: string,
+  ): Promise<Card> {
+    this.logger.debug('Promoting checklist item to subcard', {
+      boardId,
+      cardId,
+      itemId,
+      userId,
+    });
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+    await this.verifyCardInBoard(boardId, cardId);
+    const item = await this.getItemInChecklist(itemId, checklistId);
+
+    const subcard = await this.cardService.createSubcard(
+      boardId,
+      workspaceId,
+      cardId,
+      {
+        title: item.content,
+      },
+      userId,
+    );
+
+    try {
+      await this.checklistRepo.updateItem(itemId, { isDone: true });
+    } catch (error) {
+      this.logger.error(
+        'Failed to archive promoted checklist item',
+        (error as Error).stack,
+        { itemId, subcardId: subcard.id },
+      );
+      throw new AppException(
+        'PROMOTE_FAILED',
+        'Subcard was created but the source item could not be archived',
+        500,
+      );
+    }
+
+    this.emitUpdated(checklistId, cardId, boardId, userId);
+
+    this.logger.log('Checklist item promoted to subcard', {
+      itemId,
+      subcardId: subcard.id,
+      userId,
+    });
+    return subcard;
   }
 }

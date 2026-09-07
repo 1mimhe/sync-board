@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Activity, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../common/database/prisma.service';
-import type { ActivityWithAuthor } from '../../board/board/interfaces/board.interfaces';
+import type { ActivityWithAuthor } from '../../board/core/interfaces/board.interfaces';
 
 /**
  * Repository handling database operations for board activity logs.

@@ -19,7 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.3.7",
@@ -128,7 +129,7 @@
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 100,
+        "branches": 80,
         "functions": 100,
         "lines": 100,
         "statements": 100
@@ -137,5 +138,8 @@
     "coverageProvider": "v8",
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   }
 }

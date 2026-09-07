@@ -1,16 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardRepository } from '../../card/repositories/card.repository';
-import { BoardRepository } from '../../board/repositories/board.repository';
+import { BoardRepository } from '../../core/repositories/board.repository';
 import { CardAttachmentRepository } from '../repositories/attachment.repository';
 import { CreateCardAttachmentDto, UpdateCardAttachmentDto } from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import { assertBoardInWorkspace } from '../../shared/board-access.util';
 import {
   AttachmentCreatedEvent,
   AttachmentDeletedEvent,
 } from '../events/attachment.events';
 import { ATTACHMENT_EVENTS } from '../events/attachment-events.constants';
-import type { CardAttachmentWithUser } from '../../board/interfaces/board.interfaces';
+import type { CardAttachmentWithUser } from '../../core/interfaces/board.interfaces';
 
 /**
  * Service managing card attachments (uploaded files, preview thumbnails, external links).
@@ -35,12 +36,9 @@ export class CardAttachmentService {
    */
   private async verifyBoardInWorkspace(
     boardId: string,
-    workspaceId: string,
+    workspaceId?: string,
   ): Promise<void> {
-    const board = await this.boardRepo.findById(boardId, workspaceId);
-    if (!board) {
-      throw new EntityNotFoundException('Board', boardId);
-    }
+    await assertBoardInWorkspace(this.boardRepo, boardId, workspaceId);
   }
 
   /**

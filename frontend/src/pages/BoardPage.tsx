@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import type { Socket } from 'socket.io-client'
-import type { BoardWithContent, PresenceViewer, WorkspaceMember } from '../types'
+import type { BoardWithContent, PresenceViewer, WorkspaceMember, BoardViewMode } from '../types'
 import { boardApi, workspaceApi } from '../api/endpoints'
 import { createAuthedSocket } from '../socket/socket'
 import { useAuth } from '../stores/auth.store'
 import { BoardHeader } from '../components/board/BoardHeader'
 import { BoardCanvas } from '../components/board/BoardCanvas'
 import { BoardFilters } from '../components/board/BoardFilters'
+import { TableView } from '../components/board/views/TableView'
+import { CalendarView } from '../components/board/views/CalendarView'
+import { TimelineView } from '../components/board/views/TimelineView'
 import { ActivityDrawer } from '../components/board/ActivityDrawer'
 import { ArchivedItemsModal } from '../components/board/ArchivedItemsModal'
 import { BoardLabelsModal } from '../components/board/BoardLabelsModal'
@@ -29,6 +32,7 @@ export function BoardPage() {
   const socketRef = useRef<Socket | null>(null)
 
   // UI state
+  const [activeView, setActiveView] = useState<BoardViewMode>('board')
   const [showFilters, setShowFilters] = useState(false)
   const [filterQuery, setFilterQuery] = useState('')
   const [filterLabelIds, setFilterLabelIds] = useState<string[]>([])
@@ -132,6 +136,17 @@ export function BoardPage() {
       'checklist:created',
       'checklist:updated',
       'checklist:deleted',
+      'card:priority_changed',
+      'card:status_changed',
+      'card:link_created',
+      'card:link_deleted',
+      'card:subcard_created',
+      'card:subcard_attached',
+      'card:subcard_detached',
+      'card:time_logged',
+      'card_field:updated',
+      'card_field:deleted',
+      'comment:created',
     ]
 
     entityEvents.forEach((evt) => {
@@ -174,6 +189,8 @@ export function BoardPage() {
         workspaceId={wid}
         isConnected={isConnected}
         viewers={viewers}
+        activeView={activeView}
+        onViewChange={setActiveView}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters((prev) => !prev)}
         onToggleActivity={() => setShowActivity((prev) => !prev)}
@@ -183,39 +200,71 @@ export function BoardPage() {
         onBoardUpdated={loadBoard}
       />
 
-      {/* Filter Toolbar */}
-      {showFilters && (
-        <BoardFilters
-          query={filterQuery}
-          onQueryChange={setFilterQuery}
-          selectedLabelIds={filterLabelIds}
-          onToggleLabel={(lId) =>
-            setFilterLabelIds((prev) =>
-              prev.includes(lId) ? prev.filter((id) => id !== lId) : [...prev, lId],
-            )
-          }
-          selectedAssigneeId={filterAssigneeId}
-          onSelectAssignee={setFilterAssigneeId}
-          labels={board.labels || []}
+      {/* Board View Projections */}
+      {activeView === 'board' && (
+        <>
+          {/* Filter Toolbar */}
+          {showFilters && (
+            <BoardFilters
+              query={filterQuery}
+              onQueryChange={setFilterQuery}
+              selectedLabelIds={filterLabelIds}
+              onToggleLabel={(lId) =>
+                setFilterLabelIds((prev) =>
+                  prev.includes(lId) ? prev.filter((id) => id !== lId) : [...prev, lId],
+                )
+              }
+              selectedAssigneeId={filterAssigneeId}
+              onSelectAssignee={setFilterAssigneeId}
+              labels={board.labels || []}
+              members={members}
+              onClearAll={() => {
+                setFilterQuery('')
+                setFilterLabelIds([])
+                setFilterAssigneeId(null)
+              }}
+            />
+          )}
+
+          {/* Interactive Kanban Board Canvas */}
+          <BoardCanvas
+            board={board}
+            workspaceId={wid}
+            members={members}
+            filterQuery={filterQuery}
+            filterLabelIds={filterLabelIds}
+            filterAssigneeId={filterAssigneeId}
+            onBoardUpdated={loadBoard}
+          />
+        </>
+      )}
+
+      {activeView === 'table' && (
+        <TableView
+          workspaceId={wid}
+          boardId={bid}
           members={members}
-          onClearAll={() => {
-            setFilterQuery('')
-            setFilterLabelIds([])
-            setFilterAssigneeId(null)
-          }}
+          onBoardUpdated={loadBoard}
         />
       )}
 
-      {/* Interactive Board Canvas */}
-      <BoardCanvas
-        board={board}
-        workspaceId={wid}
-        members={members}
-        filterQuery={filterQuery}
-        filterLabelIds={filterLabelIds}
-        filterAssigneeId={filterAssigneeId}
-        onBoardUpdated={loadBoard}
-      />
+      {activeView === 'calendar' && (
+        <CalendarView
+          workspaceId={wid}
+          boardId={bid}
+          members={members}
+          onBoardUpdated={loadBoard}
+        />
+      )}
+
+      {activeView === 'timeline' && (
+        <TimelineView
+          workspaceId={wid}
+          boardId={bid}
+          members={members}
+          onBoardUpdated={loadBoard}
+        />
+      )}
 
       {/* Activity Log Drawer */}
       {showActivity && (

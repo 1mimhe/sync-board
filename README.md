@@ -16,18 +16,30 @@ potential future service boundary.
   restoring, and permanent hard-deletion.
 - **Unified Workspace Labels** — workspace-wide labels attachable to cards across boards, with
   real-time card tagging and cross-board tagged cards exploration.
+- **Card Enrichment & Hierarchy-Lite** — nested subcards with rollup progress metrics, 5-stage
+  priority matrix (`lowest`, `low`, `medium`, `high`, `urgent`), 4-state workflow status
+  (`not_started`, `active`, `done`, `closed`), and checklist item promotion to subcard.
+- **Custom Fields Engine** — workspace-level typed field definitions (`text`, `number`, `date`,
+  `select`, `user`) with auto-saving card field values and full management UI.
+- **Time Tracking & Work Logs** — estimated vs logged minutes tracking, visual completion gauge,
+  and chronological user work logs with duration and notes.
+- **Threaded Discussions & @Mentions** — 1-level threaded comment replies with inline reply inputs
+  and interactive `@mention` chips.
+- **Multiple Board Projections** — instant switching between Kanban Board, Spreadsheet Table View
+  (with search, multi-column sorting, and status/priority filters), Monthly Calendar Grid (with
+  due date plotting & overdue alerts), and Chronological Timeline Roadmap.
 - **Collaborative documents** — rich-text and markdown editing over **Yjs CRDT**, live cursors
   and awareness, merged server-side, debounced persistence to PostgreSQL, snapshot versioning.
 - **Real-time engine** — Socket.IO rooms per board/document/user, Redis-backed presence with
   heartbeats and stale sweeps, live cursors, and a Redis adapter for horizontal scaling.
-- **Frontend SPA Client** — modern React 19, TypeScript, Vite, Socket.IO client, Yjs editor,
-  and sleek glassmorphism UI located in `frontend/`.
+- **Frontend SPA Client** — modern React 19, TypeScript strict mode, Vite 8, Socket.IO client,
+  Yjs editor, segmented view projections, and sleek dark glassmorphism UI located in `frontend/`.
 - **Authentication** — JWT access tokens (RS256), refresh tokens delivered as HTTP-only
   cookies with **rotation chains and reuse detection**, Google OAuth, Redis token blacklist.
 - **Activity audit trail** — append-only activity events written through domain-event listeners,
   isolated from request paths by design.
 - **Planned (Phase 6–7)** — RabbitMQ pipeline with outbox-style reliability and DLQs,
-  notifications with @mentions, S3 presigned two-phase uploads, CI/CD and deployment.
+  notifications system, S3 presigned two-phase uploads, CI/CD and deployment.
 
 ## Architecture
 
@@ -86,8 +98,9 @@ Each of these has a dedicated doc with the reasoning — the "why" behind the co
 | 3 | Real-time engine (rooms, presence, cursors) | done |
 | 4A–4D | Hardening: migrations & indexes, rotation chain, checklists, module refactor, email service | done |
 | 5 | Collaborative documents (Yjs CRDT, snapshots, live awareness) | done |
+| 5.5 | Card Enrichment (priority/status, subcards, time tracking, custom fields, threaded comments, table/calendar/timeline views) | done |
 | Soft Delete | Archival & restore for boards/lists/cards + permanent deletion | done |
-| Frontend | React 19 SPA client with live Kanban, collaborative doc editor, modals & tabs | done |
+| Frontend | React 19 SPA client with Kanban & multiple projections (Table/Calendar/Timeline), Yjs doc editor, modal tabs | done |
 | 6 | RabbitMQ async pipeline, notifications, S3 files | planned |
 | 7 | CI/CD, replica + PgBouncer, Nginx, deployment | planned |
 

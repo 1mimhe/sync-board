@@ -271,4 +271,37 @@ export class ChecklistController {
       user.sub,
     );
   }
+
+  /**
+   * Converts a checklist item into a subcard of the same card.
+   */
+  @Post(':checklistId/items/:itemId/promote')
+  @HttpCode(HttpStatus.CREATED)
+  @WorkspaceAuth('owner', 'admin', 'member')
+  @ApiOperation({ summary: 'Promote a checklist item to a subcard' })
+  @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
+  @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
+  @ApiParam({ name: 'cardId', type: String, format: 'uuid' })
+  @ApiParam({ name: 'checklistId', type: String, format: 'uuid' })
+  @ApiParam({ name: 'itemId', type: String, format: 'uuid' })
+  @ApiCreatedResponse({ description: 'Subcard created from checklist item' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
+  @ApiResponse({ status: 500, description: 'PROMOTE_FAILED' })
+  async promoteItem(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Param('checklistId', ParseUUIDPipe) checklistId: string,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    await this.checklistService.promoteItemToSubcard(
+      workspaceId,
+      boardId,
+      cardId,
+      checklistId,
+      itemId,
+      user.sub,
+    );
+  }
 }

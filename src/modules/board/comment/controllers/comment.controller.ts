@@ -28,7 +28,7 @@ import {
   PaginatedCommentsResponseDto,
   CursorPaginationQueryDto,
 } from '../dto';
-import { toCardCommentResponseDto } from '../../board/mappers/board.mapper';
+import { toCardCommentResponseDto } from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
@@ -189,6 +189,64 @@ export class CardCommentController {
       user.sub,
     );
     return toCardCommentResponseDto(comment);
+  }
+
+  /**
+   * Lists a comment thread (parent plus direct replies, unpaginated).
+   */
+  @Get(':commentId/replies')
+  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @ApiOperation({
+    summary: 'List a comment thread (parent + replies, unpaginated)',
+  })
+  @ApiParam({
+    name: 'workspaceId',
+    type: String,
+    format: 'uuid',
+    description: 'Workspace UUID',
+  })
+  @ApiParam({
+    name: 'boardId',
+    type: String,
+    format: 'uuid',
+    description: 'Board UUID',
+  })
+  @ApiParam({
+    name: 'cardId',
+    type: String,
+    format: 'uuid',
+    description: 'Card UUID',
+  })
+  @ApiParam({
+    name: 'commentId',
+    type: String,
+    format: 'uuid',
+    description: 'Parent Comment UUID',
+  })
+  @ApiOkResponse({
+    description: 'Parent comment with replies',
+    type: CardCommentResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Parent comment not found' })
+  async listThread(
+    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
+    @Param('boardId', ParseUUIDPipe) boardId: string,
+    @Param('cardId', ParseUUIDPipe) cardId: string,
+    @Param('commentId', ParseUUIDPipe) commentId: string,
+  ): Promise<{
+    parent: CardCommentResponseDto;
+    replies: CardCommentResponseDto[];
+  }> {
+    const thread = await this.commentService.listThread(
+      boardId,
+      workspaceId,
+      cardId,
+      commentId,
+    );
+    return {
+      parent: toCardCommentResponseDto(thread),
+      replies: thread.replies.map(toCardCommentResponseDto),
+    };
   }
 
   /**

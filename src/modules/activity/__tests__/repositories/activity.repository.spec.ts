@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { PrismaService } from '../../../../common/database/prisma.service';
 import { ActionType, EntityType } from '@prisma/client';
@@ -102,6 +103,33 @@ describe('ActivityRepository', () => {
       expect(prismaService.activity.findMany).toHaveBeenCalledWith(
         expect.not.objectContaining({ cursor: expect.anything() }),
       );
+    });
+
+    it('should retry without cursor on stale cursor P2025', async () => {
+      const fallback = [{ id: 'act-9' }];
+      prismaService.activity.findMany
+        .mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError('stale cursor', {
+            code: 'P2025',
+            clientVersion: 'x',
+          }),
+        )
+        .mockResolvedValueOnce(fallback);
+
+      const result = await repository.findByBoardIdPage('b-1', 'stale', 20);
+
+      expect(result).toEqual(fallback);
+      expect(prismaService.activity.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('should rethrow non-P2025 errors', async () => {
+      prismaService.activity.findMany.mockRejectedValueOnce(
+        new Error('db down'),
+      );
+
+      await expect(
+        repository.findByBoardIdPage('b-1', 'c-1', 20),
+      ).rejects.toThrow('db down');
     });
   });
 });

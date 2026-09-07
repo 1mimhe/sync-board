@@ -100,7 +100,9 @@ export function Modal({
           style={{
             padding: 20,
             overflowY: 'auto',
+            overflowX: 'hidden',
             flex: 1,
+            minWidth: 0,
           }}
         >
           {children}

@@ -2,13 +2,17 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardCommentRepository } from '../repositories/comment.repository';
 import { CardRepository } from '../../card/repositories/card.repository';
-import { BoardRepository } from '../../board/repositories/board.repository';
+import { BoardRepository } from '../../core/repositories/board.repository';
 import {
   CreateCommentDto,
   UpdateCommentDto,
   CursorPaginationQueryDto,
 } from '../dto';
-import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
+import {
+  EntityNotFoundException,
+  BusinessRuleException,
+} from '../../../../common/exceptions/app.exception';
+import { assertBoardInWorkspace } from '../../shared/board-access.util';
 import { buildCursorPagination } from '../../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import {
@@ -17,7 +21,8 @@ import {
   CommentDeletedEvent,
 } from '../events/comment.events';
 import { COMMENT_EVENTS } from '../events/comment-events.constants';
-import type { CardCommentWithAuthor } from '../../board/interfaces/board.interfaces';
+import type { CardCommentWithAuthor } from '../../core/interfaces/board.interfaces';
+import { parseMentionedEmails } from './mention-parser.util';
 
 /**
  * Service handling business logic for card comments (creation, pagination, author-only editing, soft deletion).
@@ -42,12 +47,9 @@ export class CardCommentService {
    */
   private async verifyBoardInWorkspace(
     boardId: string,
-    workspaceId: string,
+    workspaceId?: string,
   ): Promise<void> {
-    const board = await this.boardRepo.findById(boardId, workspaceId);
-    if (!board) {
-      throw new EntityNotFoundException('Board', boardId);
-    }
+    await assertBoardInWorkspace(this.boardRepo, boardId, workspaceId);
   }
 
   /**
@@ -76,6 +78,7 @@ export class CardCommentService {
    * @param userId - Creating user UUID
    * @returns The created comment with author details
    * @throws {EntityNotFoundException} If board or card is not found
+   * @throws {BusinessRuleException} If replying to a reply (max depth 1)
    * @emits comment.created - After successful creation
    */
   async create(
@@ -85,20 +88,48 @@ export class CardCommentService {
     dto: CreateCommentDto,
     userId: string,
   ): Promise<CardCommentWithAuthor> {
+    this.logger.debug('Creating comment', { boardId, cardId, userId });
     await this.verifyBoardInWorkspace(boardId, workspaceId);
     await this.verifyCardInBoard(boardId, cardId);
+
+    // Validate parent comment if provided (threading - max depth 1)
+    if (dto.parentCommentId) {
+      const parentComment = await this.commentRepo.findActiveById(
+        dto.parentCommentId,
+        cardId,
+      );
+      if (!parentComment) {
+        throw new EntityNotFoundException('CardComment', dto.parentCommentId);
+      }
+      // Prevent replying to a reply (max depth 1)
+      if (parentComment.parentCommentId) {
+        throw new BusinessRuleException(
+          'MAX_THREAD_DEPTH',
+          'Only one reply level is supported',
+        );
+      }
+    }
 
     const comment = await this.commentRepo.create({
       cardId,
       authorId: userId,
       content: dto.content,
+      parentCommentId: dto.parentCommentId,
     });
+
+    // Parse @mentions from content
+    const mentionedEmails = parseMentionedEmails(dto.content);
 
     this.eventEmitter.emit(
       COMMENT_EVENTS.created,
-      new CommentCreatedEvent(comment, boardId, userId),
+      new CommentCreatedEvent(comment, boardId, userId, mentionedEmails),
     );
 
+    this.logger.log('Comment created', {
+      commentId: comment.id,
+      cardId,
+      userId,
+    });
     return comment;
   }
 
@@ -160,7 +191,7 @@ export class CardCommentService {
     }
 
     if (comment.authorId !== userId) {
-      throw new ForbiddenException('You can only edit your own comments');
+      throw new ForbiddenException('FORBIDDEN');
     }
 
     const updated = await this.commentRepo.update(
@@ -173,6 +204,7 @@ export class CardCommentService {
       new CommentUpdatedEvent(updated, boardId, userId),
     );
 
+    this.logger.log('Comment updated', { commentId, cardId, userId });
     return updated;
   }
 
@@ -203,7 +235,7 @@ export class CardCommentService {
     }
 
     if (comment.authorId !== userId) {
-      throw new ForbiddenException('You can only delete your own comments');
+      throw new ForbiddenException('FORBIDDEN');
     }
 
     await this.commentRepo.softDelete(commentId);
@@ -212,5 +244,39 @@ export class CardCommentService {
       COMMENT_EVENTS.deleted,
       new CommentDeletedEvent(commentId, cardId, boardId, userId),
     );
+    this.logger.log('Comment deleted', { commentId, cardId, userId });
+  }
+
+  /**
+   * Lists a comment thread (parent comment + its replies).
+   *
+   * @param boardId - Board UUID
+   * @param workspaceId - Workspace UUID
+   * @param cardId - Card UUID
+   * @param commentId - Parent comment UUID
+   * @returns Parent comment with replies array
+   * @throws {EntityNotFoundException} If board, card, or parent comment is not found
+   */
+  async listThread(
+    boardId: string,
+    workspaceId: string,
+    cardId: string,
+    commentId: string,
+  ): Promise<CardCommentWithAuthor & { replies: CardCommentWithAuthor[] }> {
+    this.logger.debug('Listing comment thread', { boardId, cardId, commentId });
+    await this.verifyBoardInWorkspace(boardId, workspaceId);
+    await this.verifyCardInBoard(boardId, cardId);
+
+    const parentComment = await this.commentRepo.findActiveById(
+      commentId,
+      cardId,
+    );
+    if (!parentComment) {
+      throw new EntityNotFoundException('CardComment', commentId);
+    }
+
+    const replies = await this.commentRepo.findRepliesByParentId(commentId);
+
+    return { ...parentComment, replies };
   }
 }

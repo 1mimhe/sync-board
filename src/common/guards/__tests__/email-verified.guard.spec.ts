@@ -175,5 +175,22 @@ describe('EmailVerifiedGuard', () => {
         ForbiddenException,
       );
     });
+
+    it('should allow access when cache write fails after DB verification (best-effort)', async () => {
+      redis.get.mockResolvedValue(null);
+      userRepository.findById.mockResolvedValue({
+        id: 'u-1',
+        isEmailVerified: true,
+      } as never);
+      redis.set.mockRejectedValue(new Error('redis down'));
+
+      const { context } = createContext('DELETE', {
+        sub: 'u-1',
+        isEmailVerified: false,
+      });
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+    });
   });
 });

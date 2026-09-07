@@ -353,6 +353,19 @@ describe('AllExceptionsFilter', () => {
           }),
         );
       });
+
+      it('should map known guard codes on non-403 statuses to their specific code', () => {
+        const exception = new HttpException(
+          'EMAIL_NOT_VERIFIED',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+        filter.catch(exception, mockHost);
+        expect(mockResponse.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            error: expect.objectContaining({ code: 'EMAIL_NOT_VERIFIED' }),
+          }),
+        );
+      });
     });
   });
 

@@ -82,9 +82,33 @@ describe('ListRepository', () => {
       });
       expect(result).toEqual(mockList);
     });
+
+    it('should scope archived lookup by board when provided', async () => {
+      const mockList = { id: 'l-1', archivedAt: new Date() };
+      prismaService.list.findFirst.mockResolvedValue(mockList);
+
+      const result = await repository.findByIdIncludingArchived('l-1', 'b-1');
+
+      expect(prismaService.list.findFirst).toHaveBeenCalledWith({
+        where: { id: 'l-1', boardId: 'b-1' },
+      });
+      expect(result).toEqual(mockList);
+    });
+
+    it('should scope deleted lookup by board when provided', async () => {
+      const mockList = { id: 'l-1' };
+      prismaService.list.findFirst.mockResolvedValue(mockList);
+
+      const result = await repository.findByIdIncludingDeleted('l-1', 'b-1');
+
+      expect(prismaService.list.findFirst).toHaveBeenCalledWith({
+        where: { id: 'l-1', boardId: 'b-1' },
+      });
+      expect(result).toEqual(mockList);
+    });
   });
 
-  describe('findLastInBoard and findBoardLists', () => {
+  describe('findLastInBoard', () => {
     it('should find the last active list in a board (highest rank)', async () => {
       const lastList = { id: 'l-3', rank: '0|z:' };
       prismaService.list.findFirst.mockResolvedValue(lastList);
@@ -96,22 +120,6 @@ describe('ListRepository', () => {
         orderBy: { rank: 'desc' },
       });
       expect(result).toEqual(lastList);
-    });
-
-    it('should find all active lists in a board ordered by rank', async () => {
-      const lists = [
-        { id: 'l-1', rank: '0|a:' },
-        { id: 'l-2', rank: '0|b:' },
-      ];
-      prismaService.list.findMany.mockResolvedValue(lists);
-
-      const result = await repository.findBoardLists('b-1');
-
-      expect(prismaService.list.findMany).toHaveBeenCalledWith({
-        where: { boardId: 'b-1', archivedAt: null, deletedAt: null },
-        orderBy: { rank: 'asc' },
-      });
-      expect(result).toEqual(lists);
     });
   });
 
@@ -153,6 +161,48 @@ describe('ListRepository', () => {
         data: { archivedAt: null },
       });
       expect(result).toEqual(unarchivedList);
+    });
+  });
+
+  describe('findArchivedByBoardIdPage', () => {
+    it('should return page with next cursor when more results exist', async () => {
+      prismaService.list.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'l-1' }, { id: 'l-2' }]);
+
+      const result = await repository.findArchivedByBoardIdPage(
+        'b-1',
+        'cursor-0',
+        1,
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination).toEqual({ cursor: 'l-1', hasMore: true });
+    });
+
+    it('should return last page without cursor', async () => {
+      prismaService.list.findMany = jest
+        .fn()
+        .mockResolvedValue([{ id: 'l-1' }]);
+
+      const result = await repository.findArchivedByBoardIdPage(
+        'b-1',
+        undefined,
+        20,
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination.hasMore).toBe(false);
+    });
+  });
+
+  describe('deletePermanently', () => {
+    it('should set deletedAt', async () => {
+      prismaService.list.update.mockResolvedValue({ id: 'l-1' });
+
+      await expect(repository.deletePermanently('l-1')).resolves.toEqual({
+        id: 'l-1',
+      });
     });
   });
 });

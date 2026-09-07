@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Prisma } from '@prisma/client';
+import { CardPriority, CardStatus, Prisma } from '@prisma/client';
 import { LabelResponseDto } from '../../label/dto/board-label-response.dto';
 import { CommentAuthorDto } from '../../comment/dto/card-comment-response.dto';
 import { CardAttachmentResponseDto } from '../../attachment/dto/card-attachment-response.dto';
@@ -81,6 +81,40 @@ export class CardResponseDto {
   coverImageUrl!: string | null;
 
   @ApiProperty({
+    description: 'Priority stage',
+    enum: CardPriority,
+    example: 'medium',
+  })
+  priority!: CardPriority;
+
+  @ApiProperty({
+    description: 'Workflow status',
+    enum: CardStatus,
+    example: 'not_started',
+  })
+  status!: CardStatus;
+
+  @ApiPropertyOptional({
+    description: 'Parent card UUID for subcards',
+    format: 'uuid',
+    nullable: true,
+  })
+  parentCardId!: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Time estimate in minutes',
+    nullable: true,
+    example: 120,
+  })
+  estimateMinutes!: number | null;
+
+  @ApiProperty({
+    description: 'Logged minutes (sum of time entries)',
+    example: 0,
+  })
+  loggedMinutes!: number;
+
+  @ApiProperty({
     description: 'Creator user UUID',
     example: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
   })
@@ -134,4 +168,79 @@ export class CardWithDetailsResponseDto extends CardResponseDto {
     type: [CardAttachmentResponseDto],
   })
   attachments?: CardAttachmentResponseDto[];
+
+  @ApiPropertyOptional({
+    description: 'Direct subcards list',
+    type: [CardResponseDto],
+  })
+  subcards?: CardResponseDto[];
+
+  @ApiPropertyOptional({
+    description: 'Parent card summary if this is a subcard',
+  })
+  parent?: { id: string; title: string } | null;
+}
+
+/**
+ * Rollup totals for a parent card's active subcards.
+ */
+export class SubcardRollupDto {
+  @ApiProperty({ description: 'Total active subcards', example: 3 })
+  total!: number;
+
+  @ApiProperty({
+    description: 'Completed subcards (status done/closed)',
+    example: 1,
+  })
+  done!: number;
+
+  @ApiProperty({
+    description: 'Sum of subcard estimates in minutes',
+    example: 180,
+  })
+  estimateSum!: number;
+
+  @ApiProperty({ description: 'Sum of subcard logged minutes', example: 45 })
+  loggedSum!: number;
+}
+
+/**
+ * Response DTO for a parent card with active subcards and rollup totals.
+ */
+export class CardWithSubcardsResponseDto extends CardWithDetailsResponseDto {
+  @ApiProperty({ description: 'Active subcards', type: [CardResponseDto] })
+  declare subcards: CardResponseDto[];
+
+  @ApiProperty({
+    description: 'Aggregated subcard totals',
+    type: SubcardRollupDto,
+  })
+  subcardRollup!: SubcardRollupDto;
+}
+
+/**
+ * Response DTO for card time-tracking summary with paginated entries.
+ */
+export class TimeTrackingResponseDto {
+  @ApiPropertyOptional({
+    description: 'Estimate in minutes',
+    nullable: true,
+    example: 120,
+  })
+  estimate!: number | null;
+
+  @ApiProperty({ description: 'Logged minutes', example: 45 })
+  logged!: number;
+
+  @ApiProperty({
+    description: 'Remaining minutes (max(0, estimate - logged))',
+    example: 75,
+  })
+  remaining!: number;
+
+  @ApiProperty({ description: 'Paginated time entries' })
+  entries!: {
+    items: object[];
+    pagination: { cursor: string | null; hasMore: boolean };
+  };
 }

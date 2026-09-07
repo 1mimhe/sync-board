@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CardAttachmentService } from '../../services/attachment.service';
 import { CardRepository } from '../../../card/repositories/card.repository';
-import { BoardRepository } from '../../../board/repositories/board.repository';
+import { BoardRepository } from '../../../core/repositories/board.repository';
 import { CardAttachmentRepository } from '../../repositories/attachment.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { AttachmentType } from '@prisma/client';

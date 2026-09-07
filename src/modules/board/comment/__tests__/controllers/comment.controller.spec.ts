@@ -1,6 +1,6 @@
 import { CardCommentController } from '../../controllers/comment.controller';
-import { CardCommentService } from '../../services/card-comment.service';
-import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import { CardCommentService } from '../../services/comment.service';
+import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
 describe('CardCommentController', () => {
   let controller: CardCommentController;
@@ -33,6 +33,7 @@ describe('CardCommentController', () => {
       getCardComments: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      listThread: jest.fn(),
     };
 
     controller = new CardCommentController(commentService);
@@ -120,7 +121,7 @@ describe('CardCommentController', () => {
 
   describe('delete', () => {
     it('should soft delete comment', async () => {
-      commentService.delete.mockResolvedValue(undefined as any);
+      commentService.delete.mockResolvedValue(undefined);
 
       await controller.delete('ws-1', 'board-1', 'card-1', 'comm-1', mockUser);
 
@@ -131,6 +132,33 @@ describe('CardCommentController', () => {
         'comm-1',
         'user-uuid-1',
       );
+    });
+  });
+
+  describe('listThread', () => {
+    it('should return parent with mapped replies', async () => {
+      commentService.listThread.mockResolvedValue({
+        ...mockComment,
+        parentCommentId: null,
+        replies: [{ ...mockComment, id: 'reply-1', parentCommentId: 'comm-1' }],
+      });
+
+      const result = await controller.listThread(
+        'ws-1',
+        'board-1',
+        'card-1',
+        'comm-1',
+      );
+
+      expect(commentService.listThread).toHaveBeenCalledWith(
+        'board-1',
+        'ws-1',
+        'card-1',
+        'comm-1',
+      );
+      expect(result.parent.id).toBe('comm-1');
+      expect(result.replies).toHaveLength(1);
+      expect(result.replies[0].id).toBe('reply-1');
     });
   });
 });

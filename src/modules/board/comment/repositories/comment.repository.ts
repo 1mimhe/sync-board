@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../common/database/prisma.service';
-import type { CardCommentWithAuthor } from '../../board/interfaces/board.interfaces';
+import type { CardCommentWithAuthor } from '../../core/interfaces/board.interfaces';
 
 /**
  * Author summary fields included with every comment (response mapping contract).
@@ -132,6 +132,22 @@ export class CardCommentRepository {
     await this.prisma.cardComment.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+  }
+
+  /**
+   * Finds all active replies to a parent comment, ordered by creation date ascending.
+   *
+   * @param parentCommentId - Parent comment UUID
+   * @returns Array of reply comments with author details
+   */
+  async findRepliesByParentId(
+    parentCommentId: string,
+  ): Promise<CardCommentWithAuthor[]> {
+    return this.prisma.cardComment.findMany({
+      where: { parentCommentId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      include: { author: AUTHOR_SUMMARY_SELECT },
     });
   }
 }

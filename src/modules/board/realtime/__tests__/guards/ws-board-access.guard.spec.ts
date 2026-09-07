@@ -2,8 +2,8 @@ import { ExecutionContext } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { WsBoardAccessGuard } from '../../guards/ws-board-access.guard';
-import { BoardRepository } from '../../repositories/board.repository';
-import { WorkspaceMemberRepository } from '../../../workspace/repositories/workspace-member.repository';
+import { BoardRepository } from '../../../core/repositories/board.repository';
+import { WorkspaceMemberRepository } from '../../../../workspace/repositories/workspace-member.repository';
 
 describe('WsBoardAccessGuard', () => {
   let guard: WsBoardAccessGuard;
