@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useWorkspace } from '../../stores/workspace.store'
-import { workspaceApi } from '../../api/endpoints'
+import { workspaceApi, boardApi } from '../../api/endpoints'
+import type { Board } from '../../types'
 import { useToast } from '../../stores/toast.store'
 import { Modal } from './Modal'
 import {
@@ -11,6 +12,7 @@ import {
   IconMail,
   IconPlus,
   IconTag,
+  IconTable,
   IconChevronLeft,
   IconChevronRight,
   IconChevronDown,
@@ -30,6 +32,7 @@ export function Sidebar() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newWsName, setNewWsName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [quickBoards, setQuickBoards] = useState<Board[]>([])
 
   const wsDropdownRef = useRef<HTMLDivElement | null>(null)
 
@@ -61,6 +64,15 @@ export function Sidebar() {
   }, [showWsDropdown])
 
   const activeWid = wid || currentWorkspace?.id
+
+  useEffect(() => {
+    if (!activeWid) return
+    boardApi.list(activeWid, { limit: 8 }).then((res) => {
+      if (res.success && res.data) {
+        setQuickBoards(res.data.items || [])
+      }
+    })
+  }, [activeWid])
 
   const toggleCollapsed = () => {
     const next = !isCollapsed
@@ -118,6 +130,13 @@ export function Sidebar() {
       icon: <IconTag size={17} />,
       to: `/workspaces/${activeWid}?tab=labels`,
       active: isWorkspaceDetailPage && currentTab === 'labels',
+    },
+    {
+      tab: 'fields',
+      label: 'Custom Fields',
+      icon: <IconTable size={17} />,
+      to: `/workspaces/${activeWid}?tab=fields`,
+      active: isWorkspaceDetailPage && currentTab === 'fields',
     },
     {
       tab: 'members',
@@ -460,6 +479,80 @@ export function Sidebar() {
                 {!isCollapsed && <span>{item.label}</span>}
               </Link>
             ))}
+
+            {/* Quick Boards List */}
+            {!isCollapsed && quickBoards.length > 0 && (
+              <div style={{ marginTop: 12, display: 'grid', gap: 4 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: 'var(--muted)',
+                    padding: '4px 6px',
+                  }}
+                >
+                  <span>Recent Boards</span>
+                  <Link
+                    to={`/workspaces/${activeWid}?tab=boards`}
+                    style={{ fontSize: 11, color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
+                  >
+                    View all
+                  </Link>
+                </div>
+                <div style={{ display: 'grid', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
+                  {quickBoards.slice(0, 6).map((b) => {
+                    const isBoardActive = location.pathname.includes(`/boards/${b.id}`)
+                    return (
+                      <Link
+                        key={b.id}
+                        to={`/workspaces/${activeWid}/boards/${b.id}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '6px 8px',
+                          borderRadius: 7,
+                          background: isBoardActive ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
+                          color: isBoardActive ? '#c4b5fd' : 'var(--muted)',
+                          textDecoration: 'none',
+                          fontSize: 12.5,
+                          fontWeight: isBoardActive ? 700 : 500,
+                          transition: 'all 0.15s ease',
+                          overflow: 'hidden',
+                          border: isBoardActive ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid transparent',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 3,
+                            backgroundColor: b.backgroundColor || 'var(--primary)',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                        >
+                          {b.title}
+                        </span>
+                        {b.isStarred && <span style={{ fontSize: 10, color: '#f59e0b' }}>★</span>}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </nav>
         )}
       </div>
