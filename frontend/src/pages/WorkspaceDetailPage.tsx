@@ -7,6 +7,7 @@ import { useToast } from '../stores/toast.store'
 import { MembersTab } from '../components/workspace/MembersTab'
 import { InvitationsTab } from '../components/workspace/InvitationsTab'
 import { WorkspaceLabelsTab } from '../components/workspace/WorkspaceLabelsTab'
+import { WorkspaceFieldDefsTab } from '../components/workspace/WorkspaceFieldDefsTab'
 import { WorkspaceSettingsModal } from '../components/workspace/WorkspaceSettingsModal'
 import { ArchivedBoardsModal } from '../components/workspace/ArchivedBoardsModal'
 import { createAuthedSocket } from '../socket/socket'
@@ -21,9 +22,10 @@ import {
   IconSearch,
   IconArchive,
   IconTag,
+  IconTable,
 } from '../components/common/Icons'
 
-type TabKey = 'boards' | 'docs' | 'labels' | 'members' | 'invitations'
+type TabKey = 'boards' | 'docs' | 'labels' | 'fields' | 'members' | 'invitations'
 
 export function WorkspaceDetailPage() {
   const { wid } = useParams()
@@ -263,6 +265,12 @@ export function WorkspaceDetailPage() {
           <IconTag size={16} /> Labels ({labelsCount})
         </button>
         <button
+          className={`btn ${tab === 'fields' ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setTab('fields')}
+        >
+          <IconTable size={16} /> Custom Fields
+        </button>
+        <button
           className={`btn ${tab === 'members' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('members')}
         >
@@ -492,6 +500,14 @@ export function WorkspaceDetailPage() {
       {/* Tab 3: Labels */}
       {tab === 'labels' && (
         <WorkspaceLabelsTab workspace={workspace} onLabelsCountChange={setLabelsCount} />
+      )}
+
+      {/* Tab: Custom Fields */}
+      {tab === 'fields' && (
+        <WorkspaceFieldDefsTab
+          workspaceId={workspace.id}
+          isOwnerOrAdmin={workspace.role === 'owner' || workspace.role === 'admin'}
+        />
       )}
 
       {/* Tab 4: Members */}
