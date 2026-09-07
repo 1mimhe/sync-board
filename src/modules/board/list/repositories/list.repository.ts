@@ -85,19 +85,6 @@ export class ListRepository {
   }
 
   /**
-   * Finds all active lists belonging to a board ordered by rank.
-   *
-   * @param boardId - Board UUID
-   * @returns Array of active lists
-   */
-  async findBoardLists(boardId: string): Promise<List[]> {
-    return this.prisma.list.findMany({
-      where: { boardId, archivedAt: null, deletedAt: null },
-      orderBy: { rank: 'asc' },
-    });
-  }
-
-  /**
    * Updates fields of an existing list.
    *
    * @param id - List UUID
