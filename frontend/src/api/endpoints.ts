@@ -13,6 +13,16 @@ import type {
   List,
   Card,
   CardWithDetails,
+  CardWithSubcards,
+  CardPriority,
+  CardStatus,
+  CardFieldType,
+  CardFieldDef,
+  CardFieldValue,
+  TimeTrackingSummary,
+  CalendarViewQuery,
+  TimelineViewQuery,
+  TableViewQuery,
   Label,
   Checklist,
   ChecklistItem,
@@ -342,7 +352,13 @@ export const cardApi = {
     workspaceId: string,
     boardId: string,
     listId: string,
-    dto: { title: string; description?: string },
+    dto: {
+      title: string
+      description?: string
+      dueDate?: string | null
+      priority?: CardPriority
+      status?: CardStatus
+    },
   ) =>
     apiFetch<CardWithDetails>(
       `/workspaces/${workspaceId}/boards/${boardId}/lists/${listId}/cards`,
@@ -469,6 +485,73 @@ export const cardApi = {
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/labels/${labelId}`,
       { method: 'DELETE' },
     ),
+
+  updatePriority: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    dto: { priority: CardPriority },
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/priority`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  updateStatus: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    dto: { status: CardStatus },
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  createSubcard: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    dto: { title: string; description?: string },
+  ) =>
+    apiFetch<CardWithDetails>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/subcards`,
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  attachSubcard: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    subcardId: string,
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/subcards/attach`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ subcardId }),
+      },
+    ),
+
+  getWithSubcards: (workspaceId: string, boardId: string, cardId: string) =>
+    apiFetch<CardWithSubcards>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/with-subcards`,
+    ),
+
+  detachSubcard: (workspaceId: string, boardId: string, cardId: string) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/parent`,
+      { method: 'DELETE' },
+    ),
 }
 
 // ── Checklist Endpoints ───────────────────────────────────────────────────────
@@ -561,6 +644,18 @@ export const checklistApi = {
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`,
       { method: 'DELETE' },
     ),
+
+  promoteItem: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    checklistId: string,
+    itemId: string,
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}/promote`,
+      { method: 'POST' },
+    ),
 }
 // ── Label Endpoints ───────────────────────────────────────────────────────────
 
@@ -623,7 +718,7 @@ export const commentApi = {
     workspaceId: string,
     boardId: string,
     cardId: string,
-    dto: { content: string },
+    dto: { content: string; parentCommentId?: string },
   ) =>
     apiFetch<CardComment>(
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments`,
@@ -647,6 +742,16 @@ export const commentApi = {
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments${qs}`,
     )
   },
+
+  getThread: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    commentId: string,
+  ) =>
+    apiFetch<{ parent: CardComment; replies: CardComment[] }>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments/${commentId}/thread`,
+    ),
 
   update: (
     workspaceId: string,
@@ -819,8 +924,188 @@ export const documentApi = {
     ),
 }
 
+// ── Card Custom Fields Endpoints ─────────────────────────────────────────────
+
+export const cardFieldApi = {
+  createDef: (
+    workspaceId: string,
+    dto: {
+      name: string
+      fieldType: CardFieldType
+      options?: string[]
+      required?: boolean
+      position?: number
+    },
+  ) =>
+    apiFetch<CardFieldDef>(`/workspaces/${workspaceId}/field-defs`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  listDefs: (workspaceId: string) =>
+    apiFetch<CardFieldDef[]>(`/workspaces/${workspaceId}/field-defs`),
+
+  updateDef: (
+    workspaceId: string,
+    fieldId: string,
+    dto: {
+      name?: string
+      options?: string[]
+      required?: boolean
+      position?: number
+    },
+  ) =>
+    apiFetch<CardFieldDef>(`/workspaces/${workspaceId}/field-defs/${fieldId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    }),
+
+  deleteDef: (workspaceId: string, fieldId: string) =>
+    apiFetch<void>(`/workspaces/${workspaceId}/field-defs/${fieldId}`, {
+      method: 'DELETE',
+    }),
+
+  getCardValues: (workspaceId: string, boardId: string, cardId: string) =>
+    apiFetch<(CardFieldValue & { field: CardFieldDef })[]>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/fields`,
+    ),
+
+  setCardValue: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    fieldId: string,
+    value: unknown,
+  ) =>
+    apiFetch<CardFieldValue>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/fields/${fieldId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      },
+    ),
+}
+
+// ── Card Time Tracking Endpoints ─────────────────────────────────────────────
+
+export const cardTimeApi = {
+  setEstimate: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    dto: { estimateMinutes: number | null },
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/estimate`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  logTime: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    dto: { minutes: number; note?: string },
+  ) =>
+    apiFetch<Card>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/time`,
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  listTimeEntries: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    query: { cursor?: string; limit?: number } = {},
+  ) => {
+    const params = new URLSearchParams()
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<TimeTrackingSummary>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/time${q}`,
+    )
+  },
+
+  getTimeTracking: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    query: { cursor?: string; limit?: number } = {},
+  ) => {
+    const params = new URLSearchParams()
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<TimeTrackingSummary>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/time${q}`,
+    )
+  },
+}
+
+// ── Board Projections / Views Endpoints ───────────────────────────────────────
+
+export const boardViewApi = {
+  calendar: (
+    workspaceId: string,
+    boardId: string,
+    query: CalendarViewQuery,
+  ) => {
+    const params = new URLSearchParams({
+      from: query.startDate,
+      to: query.endDate,
+      startDate: query.startDate,
+      endDate: query.endDate,
+    })
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    return apiFetch<PaginatedResult<Card>>(
+      `/workspaces/${workspaceId}/boards/${boardId}/views/calendar?${params.toString()}`,
+    )
+  },
+
+  timeline: (
+    workspaceId: string,
+    boardId: string,
+    query: TimelineViewQuery = {},
+  ) => {
+    const params = new URLSearchParams()
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<PaginatedResult<Card>>(
+      `/workspaces/${workspaceId}/boards/${boardId}/views/timeline${q}`,
+    )
+  },
+
+  table: (
+    workspaceId: string,
+    boardId: string,
+    query: TableViewQuery = {},
+  ) => {
+    const params = new URLSearchParams()
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    if (query.status) params.set('status', query.status)
+    if (query.priority) params.set('priority', query.priority)
+    if (query.search) params.set('search', query.search)
+    if (query.sortBy) params.set('sortBy', query.sortBy)
+    if (query.sortOrder) params.set('sortOrder', query.sortOrder)
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<PaginatedResult<CardWithDetails>>(
+      `/workspaces/${workspaceId}/boards/${boardId}/views/table${q}`,
+    )
+  },
+}
+
 // ── Health Endpoint ───────────────────────────────────────────────────────────
 
 export const healthApi = {
   getHealth: () => apiFetch<HealthStatusResponse>('/health'),
 }
+
