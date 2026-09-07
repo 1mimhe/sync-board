@@ -34,6 +34,7 @@ export interface CardWithDetails extends Card {
     label: Label;
   }[];
   attachments?: CardAttachmentWithUser[];
+  subcards?: Card[];
 }
 
 /**
