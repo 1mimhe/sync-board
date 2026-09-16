@@ -306,4 +306,34 @@ export class MembershipService {
 
     return updatedTarget;
   }
+
+  /**
+   * Resolves workspace member userIds by email (for @mention fan-out).
+   * Matching is case-insensitive; unknown emails are silently skipped.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param emails - Candidate lowercase emails
+   * @returns Map of lowercase email → userId for members only
+   */
+  async findUserIdsByEmails(
+    workspaceId: string,
+    emails: string[],
+  ): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    const normalizedSet = new Set(
+      emails.map((e) => e.toLowerCase().trim()).filter((e) => e.length > 0),
+    );
+    if (normalizedSet.size === 0) return result;
+    this.logger.debug(`Resolving ${normalizedSet.size} mention emails`, {
+      workspaceId,
+    });
+    const members = await this.memberRepo.findMembersWithUser(workspaceId);
+    for (const m of members) {
+      const email = (m.user?.email ?? '').toLowerCase();
+      if (email && normalizedSet.has(email)) {
+        result.set(email, m.userId);
+      }
+    }
+    return result;
+  }
 }

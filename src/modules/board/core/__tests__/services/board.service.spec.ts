@@ -450,4 +450,42 @@ describe('BoardService', () => {
       ).rejects.toThrow('Board is already deleted');
     });
   });
+
+  describe('findWorkspaceIdByBoardId', () => {
+    it('should return workspaceId when board exists', async () => {
+      boardRepo.findById.mockResolvedValue({
+        id: 'board-1',
+        workspaceId: 'ws-1',
+      } as any);
+
+      await expect(service.findWorkspaceIdByBoardId('board-1')).resolves.toBe(
+        'ws-1',
+      );
+      expect(boardRepo.findById).toHaveBeenCalledWith('board-1');
+    });
+
+    it('should return null when board is missing in active and archived', async () => {
+      boardRepo.findById.mockResolvedValue(null);
+      boardRepo.findByIdIncludingArchived.mockResolvedValue(null);
+
+      await expect(
+        service.findWorkspaceIdByBoardId('missing'),
+      ).resolves.toBeNull();
+    });
+
+    it('should resolve workspaceId when board is archived', async () => {
+      boardRepo.findById.mockResolvedValue(null);
+      boardRepo.findByIdIncludingArchived.mockResolvedValue({
+        id: 'archived-board',
+        workspaceId: 'ws-archived',
+      } as any);
+
+      await expect(
+        service.findWorkspaceIdByBoardId('archived-board'),
+      ).resolves.toBe('ws-archived');
+      expect(boardRepo.findByIdIncludingArchived).toHaveBeenCalledWith(
+        'archived-board',
+      );
+    });
+  });
 });

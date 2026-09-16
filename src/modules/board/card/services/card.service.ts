@@ -98,16 +98,14 @@ export class CardService {
   }
 
   /**
-   * Validates that candidate label IDs are available for the target board within the workspace.
+   * Validates that candidate label IDs are available within the workspace.
    *
    * @param workspaceId - Workspace UUID
-   * @param boardId - Board UUID
    * @param labelIds - Candidate label UUIDs
-   * @throws {BadRequestException} If any label does not exist or does not belong to the board/workspace
+   * @throws {BadRequestException} If any label does not exist or does not belong to the workspace
    */
   private async validateLabels(
     workspaceId: string,
-    boardId: string,
     labelIds?: string[],
   ): Promise<void> {
     if (!labelIds || labelIds.length === 0) return;
@@ -148,7 +146,7 @@ export class CardService {
     }
 
     await this.validateAssignees(workspaceId, dto.assigneeIds);
-    await this.validateLabels(workspaceId, boardId, dto.labelIds);
+    await this.validateLabels(workspaceId, dto.labelIds);
 
     let parentCardId: string | undefined;
     if (dto.parentCardId) {
@@ -424,7 +422,7 @@ export class CardService {
     }
 
     await this.validateAssignees(workspaceId, dto.assigneeIds);
-    await this.validateLabels(workspaceId, boardId, dto.labelIds);
+    await this.validateLabels(workspaceId, dto.labelIds);
 
     const status = dto.status ?? 'not_started';
 
@@ -957,5 +955,29 @@ export class CardService {
     }
 
     await this.cardRepo.removeLabel(cardId, labelId);
+  }
+
+  /**
+   * Returns a card title for notification/activity rendering without leaking relations.
+   *
+   * @param cardId - Card UUID
+   * @returns Title string, or null when the card is missing/archived/deleted
+   */
+  async findTitleById(cardId: string): Promise<string | null> {
+    const card = await this.cardRepo.findActiveById(cardId);
+    return card?.title ?? null;
+  }
+
+  /**
+   * Lists assignee userIds for fan-out (comment notifications).
+   *
+   * @param cardId - Card UUID
+   * @returns Active assignee user UUIDs (empty when card missing)
+   */
+  async findAssigneeIdsByCardId(cardId: string): Promise<string[]> {
+    const card = await this.cardRepo.findActiveById(cardId);
+    return (card?.assignees ?? [])
+      .map((a) => a.user?.id)
+      .filter((id): id is string => Boolean(id));
   }
 }

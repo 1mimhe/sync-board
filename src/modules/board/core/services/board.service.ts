@@ -396,4 +396,19 @@ export class BoardService {
     );
     return buildCursorPagination(rows, limit);
   }
+
+  /**
+   * Resolves the workspace that owns a board. Used by cross-module consumers
+   * (activity feed, notification producers) that only receive a boardId.
+   *
+   * @param boardId - Board UUID
+   * @returns Workspace UUID, or null when the board does not exist
+   */
+  async findWorkspaceIdByBoardId(boardId: string): Promise<string | null> {
+    this.logger.debug(`Resolving workspace for board ${boardId}`);
+    const board =
+      (await this.boardRepo.findById(boardId)) ??
+      (await this.boardRepo.findByIdIncludingArchived(boardId));
+    return board?.workspaceId ?? null;
+  }
 }

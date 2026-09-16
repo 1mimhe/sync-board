@@ -1245,4 +1245,54 @@ describe('CardService', () => {
       ).rejects.toThrow('Card is already deleted');
     });
   });
+
+  describe('findTitleById', () => {
+    it('should return title for an active card', async () => {
+      cardRepo.findActiveById.mockResolvedValue({
+        id: 'card-1',
+        title: 'Ship Card',
+      } as any);
+
+      await expect(service.findTitleById('card-1')).resolves.toBe('Ship Card');
+      expect(cardRepo.findActiveById).toHaveBeenCalledWith('card-1');
+    });
+
+    it('should return null when card is missing/archived/deleted', async () => {
+      cardRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(service.findTitleById('missing')).resolves.toBeNull();
+    });
+  });
+
+  describe('findAssigneeIdsByCardId', () => {
+    it('should return empty array when card is missing', async () => {
+      cardRepo.findActiveById.mockResolvedValue(null);
+
+      await expect(service.findAssigneeIdsByCardId('missing')).resolves.toEqual(
+        [],
+      );
+    });
+
+    it('should map assignees to user ids', async () => {
+      cardRepo.findActiveById.mockResolvedValue({
+        id: 'card-1',
+        assignees: [{ user: { id: 'u-1' } }, { user: { id: 'u-2' } }],
+      } as any);
+
+      await expect(
+        service.findAssigneeIdsByCardId('card-1'),
+      ).resolves.toEqual(['u-1', 'u-2']);
+    });
+
+    it('should filter out missing user objects', async () => {
+      cardRepo.findActiveById.mockResolvedValue({
+        id: 'card-1',
+        assignees: [{ user: { id: 'u-1' } }, { user: null as any }],
+      } as any);
+
+      await expect(
+        service.findAssigneeIdsByCardId('card-1'),
+      ).resolves.toEqual(['u-1']);
+    });
+  });
 });
