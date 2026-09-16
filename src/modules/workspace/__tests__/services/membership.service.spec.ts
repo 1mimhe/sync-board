@@ -625,4 +625,53 @@ describe('MembershipService', () => {
       );
     });
   });
+
+  describe('findUserIdsByEmails', () => {
+    it('should return empty map for empty input without querying', async () => {
+      const result = await service.findUserIdsByEmails('ws-1', []);
+
+      expect(result.size).toBe(0);
+      expect(memberRepo.findMembersWithUser).not.toHaveBeenCalled();
+    });
+
+    it('should return empty map for whitespace-only input without querying', async () => {
+      const result = await service.findUserIdsByEmails('ws-1', ['   ', '']);
+
+      expect(result.size).toBe(0);
+      expect(memberRepo.findMembersWithUser).not.toHaveBeenCalled();
+    });
+
+    it('should match case-insensitively and dedupe emails', async () => {
+      memberRepo.findMembersWithUser.mockResolvedValue([
+        { userId: 'u-1', user: { email: 'alice@example.com' } },
+        { userId: 'u-2', user: { email: 'bob@example.com' } },
+      ] as any);
+
+      const result = await service.findUserIdsByEmails('ws-1', [
+        'Alice@Example.com',
+        ' alice@example.com ',
+        'BOB@example.com',
+      ]);
+
+      expect(result.size).toBe(2);
+      expect(result.get('alice@example.com')).toBe('u-1');
+      expect(result.get('bob@example.com')).toBe('u-2');
+      expect(memberRepo.findMembersWithUser).toHaveBeenCalledWith('ws-1');
+    });
+
+    it('should silently skip unknown emails', async () => {
+      memberRepo.findMembersWithUser.mockResolvedValue([
+        { userId: 'u-1', user: { email: 'alice@example.com' } },
+      ] as any);
+
+      const result = await service.findUserIdsByEmails('ws-1', [
+        'unknown@example.com',
+        'alice@example.com',
+      ]);
+
+      expect(result.size).toBe(1);
+      expect(result.get('alice@example.com')).toBe('u-1');
+      expect(result.has('unknown@example.com')).toBe(false);
+    });
+  });
 });

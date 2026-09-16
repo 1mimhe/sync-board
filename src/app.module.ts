@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -18,6 +19,10 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { FileModule } from './modules/file/file.module';
 import { MailModule } from './modules/mail/mail.module';
 import { HealthModule } from './health/health.module';
+import { AppRabbitMQModule } from './common/rabbitmq/rabbitmq.module';
+
+// Conditionally load RabbitMQ only when enabled
+const isRabbitEnabled = process.env.RABBITMQ_ENABLE?.toLowerCase() !== 'false';
 
 @Module({
   imports: [
@@ -82,6 +87,7 @@ import { HealthModule } from './health/health.module';
 
     // Feature Modules
     AuthModule,
+    ...(isRabbitEnabled ? [AppRabbitMQModule] : []),
     WorkspaceModule,
     BoardModule,
     DocumentModule,

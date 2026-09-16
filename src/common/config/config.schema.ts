@@ -27,6 +27,16 @@ export const configValidationSchema = Joi.object({
   RABBITMQ_URL: Joi.string()
     .optional()
     .default('amqp://guest:guest@localhost:5672'),
+  RABBITMQ_ENABLE: Joi.boolean().default(true),
+  ASYNC_MAIL: Joi.boolean().default(false), // 6C flips MailListener behavior
+  AWS_REGION: Joi.string().default('us-east-1'),
+  AWS_ACCESS_KEY_ID: Joi.string().optional().allow(''),
+  AWS_SECRET_ACCESS_KEY: Joi.string().optional().allow(''),
+  AWS_S3_BUCKET: Joi.string().default('syncboard-files'),
+  S3_ENDPOINT: Joi.string().optional().allow(''), // set for MinIO local dev
+  S3_FORCE_PATH_STYLE: Joi.boolean().default(false), // true for MinIO
+  S3_PRESIGN_EXPIRES_SECONDS: Joi.number().default(3600),
+  MAX_FILE_SIZE_BYTES: Joi.number().default(26_214_400), // 25 MiB
   GOOGLE_CLIENT_ID: Joi.string().required(),
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
   GOOGLE_CALLBACK_URL: Joi.string()

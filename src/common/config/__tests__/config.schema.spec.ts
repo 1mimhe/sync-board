@@ -17,6 +17,13 @@ describe('configValidationSchema', () => {
     expect(value.REDIS_HOST).toBe('localhost');
     expect(value.REDIS_PORT).toBe(6379);
     expect(value.RABBITMQ_URL).toBe('amqp://guest:guest@localhost:5672');
+    expect(value.RABBITMQ_ENABLE).toBe(true);
+    expect(value.ASYNC_MAIL).toBe(false);
+    expect(value.AWS_REGION).toBe('us-east-1');
+    expect(value.AWS_S3_BUCKET).toBe('syncboard-files');
+    expect(value.S3_FORCE_PATH_STYLE).toBe(false);
+    expect(value.S3_PRESIGN_EXPIRES_SECONDS).toBe(3600);
+    expect(value.MAX_FILE_SIZE_BYTES).toBe(26_214_400);
     expect(value.GOOGLE_CALLBACK_URL).toBe(
       'http://localhost:3000/api/auth/google/callback',
     );
@@ -120,5 +127,28 @@ describe('configValidationSchema', () => {
     });
 
     expect(error).toBeUndefined();
+  });
+
+  it('should accept async/S3 overrides for Phase 6A (incl. RABBITMQ_ENABLE=false)', () => {
+    const { error, value } = configValidationSchema.validate({
+      ...validConfig,
+      RABBITMQ_ENABLE: false,
+      ASYNC_MAIL: true,
+      AWS_REGION: 'eu-west-1',
+      AWS_ACCESS_KEY_ID: 'minio',
+      AWS_SECRET_ACCESS_KEY: 'minio123',
+      AWS_S3_BUCKET: 'local-bucket',
+      S3_ENDPOINT: 'http://localhost:9000',
+      S3_FORCE_PATH_STYLE: true,
+      S3_PRESIGN_EXPIRES_SECONDS: 600,
+      MAX_FILE_SIZE_BYTES: 1024,
+    });
+
+    expect(error).toBeUndefined();
+    expect(value.RABBITMQ_ENABLE).toBe(false);
+    expect(value.ASYNC_MAIL).toBe(true);
+    expect(value.S3_ENDPOINT).toBe('http://localhost:9000');
+    expect(value.S3_FORCE_PATH_STYLE).toBe(true);
+    expect(value.MAX_FILE_SIZE_BYTES).toBe(1024);
   });
 });
