@@ -8,6 +8,7 @@ import {
 import { HealthController } from '../health.controller';
 import { PrismaHealthIndicator } from '../prisma-health.indicator';
 import { RedisHealthIndicator } from '../redis-health.indicator';
+import { RabbitMQHealthIndicator } from '../rabbitmq-health.indicator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 
@@ -109,6 +110,10 @@ describe('Health Module', () => {
         pingCheck: jest.fn().mockResolvedValue({ redis: { status: 'up' } }),
       };
 
+      const mockRabbitIndicator = {
+        pingCheck: jest.fn().mockResolvedValue({ rabbitmq: { status: 'up' } }),
+      };
+
       const mockMemoryIndicator = {
         checkHeap: jest
           .fn()
@@ -125,6 +130,7 @@ describe('Health Module', () => {
           { provide: HealthCheckService, useValue: healthCheckService },
           { provide: PrismaHealthIndicator, useValue: mockPrismaIndicator },
           { provide: RedisHealthIndicator, useValue: mockRedisIndicator },
+          { provide: RabbitMQHealthIndicator, useValue: mockRabbitIndicator },
           { provide: MemoryHealthIndicator, useValue: mockMemoryIndicator },
           { provide: DiskHealthIndicator, useValue: mockDiskIndicator },
         ],

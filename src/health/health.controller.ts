@@ -14,6 +14,7 @@ import {
 } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma-health.indicator';
 import { RedisHealthIndicator } from './redis-health.indicator';
+import { RabbitMQHealthIndicator } from './rabbitmq-health.indicator';
 
 /**
  * Liveness & readiness probe for load balancers and orchestrators.
@@ -26,6 +27,7 @@ export class HealthController {
     private readonly health: HealthCheckService,
     private readonly prisma: PrismaHealthIndicator,
     private readonly redis: RedisHealthIndicator,
+    private readonly rabbitmq: RabbitMQHealthIndicator,
     private readonly memory: MemoryHealthIndicator,
     private readonly disk: DiskHealthIndicator,
   ) {}
@@ -57,6 +59,7 @@ export class HealthController {
     return this.health.check([
       () => this.prisma.pingCheck('database'),
       () => this.redis.pingCheck('redis'),
+      () => this.rabbitmq.pingCheck('rabbitmq'),
       () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024), // 300 MB
       () =>
         this.disk.checkStorage('disk', {
