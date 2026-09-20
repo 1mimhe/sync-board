@@ -1,135 +1,250 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma } from '@prisma/client';
+import type { ActivityEvent } from '@prisma/client';
+import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import { BadRequestException } from '@nestjs/common';
 import { ActivityRepository } from '../../repositories/activity.repository';
 import { PrismaService } from '../../../../common/database/prisma.service';
-import { ActionType, EntityType } from '@prisma/client';
+import { encodeActivityCursor } from '../../utils/activity-cursor.util';
 
 describe('ActivityRepository', () => {
   let repository: ActivityRepository;
-  let prismaService: any;
+  let prismaService: DeepMockProxy<PrismaService>;
 
-  beforeEach(async () => {
-    prismaService = {
-      activity: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-      },
-    };
+  const row = (
+    id: bigint,
+    createdAt = '2026-09-01T00:00:00.000Z',
+  ): ActivityEvent => ({
+    id,
+    createdAt: new Date(createdAt),
+    workspaceId: 'ws-1',
+    boardId: 'b-1',
+    entityType: 'card',
+    entityId: 'c-1',
+    action: 'created',
+    actorId: 'u-1',
+    payload: {},
+    metadata: null,
+    legacyId: `00000000-0000-4000-8000-${id.toString().padStart(12, '0')}`,
+  });
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ActivityRepository,
-        { provide: PrismaService, useValue: prismaService },
-      ],
-    }).compile();
-
-    repository = module.get<ActivityRepository>(ActivityRepository);
+  beforeEach(() => {
+    prismaService = mockDeep<PrismaService>();
+    repository = new ActivityRepository(prismaService);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  describe('create', () => {
-    it('should create an activity entry', async () => {
-      const mockResult = {
-        id: 'act-1',
-        boardId: 'b-1',
-        userId: 'u-1',
-        action: ActionType.created,
-        entityType: EntityType.card,
-      };
-      prismaService.activity.create.mockResolvedValue(mockResult);
+  describe('record', () => {
+    it('should append an activity event with defaults', async () => {
+      prismaService.activityEvent.create.mockResolvedValue(row(1n));
 
-      const result = await repository.create({
-        boardId: 'b-1',
-        userId: 'u-1',
-        action: ActionType.created,
-        entityType: EntityType.card,
-        entityId: 'c-1',
-        entityTitle: 'New Card',
+      await repository.record({
+        workspaceId: 'ws-1',
+        boardId: null,
+        entityType: 'workspace',
+        entityId: 'ws-1',
+        action: 'created',
+        actorId: 'u-1',
       });
 
-      expect(prismaService.activity.create).toHaveBeenCalledWith({
+      expect(prismaService.activityEvent.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          boardId: 'b-1',
-          userId: 'u-1',
-          action: ActionType.created,
-          entityType: EntityType.card,
-          entityId: 'c-1',
-          entityTitle: 'New Card',
+          workspaceId: 'ws-1',
+          boardId: null,
+          entityType: 'workspace',
+          action: 'created',
+          actorId: 'u-1',
+          payload: {},
         }),
       });
-      expect(result).toEqual(mockResult);
+    });
+
+    it('should pass payload and metadata through', async () => {
+      prismaService.activityEvent.create.mockResolvedValue(row(1n));
+
+      await repository.record({
+        workspaceId: 'ws-1',
+        boardId: 'b-1',
+        entityType: 'card',
+        entityId: 'c-1',
+        action: 'moved',
+        actorId: 'u-1',
+        payload: { fromListId: 'l-1', toListId: 'l-2' },
+        metadata: { source: 'test' },
+      });
+
+      expect(prismaService.activityEvent.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          payload: { fromListId: 'l-1', toListId: 'l-2' },
+          metadata: { source: 'test' },
+        }),
+      });
     });
   });
 
-  describe('findByBoardIdPage', () => {
-    it('should find a page of board activities with author profile details', async () => {
-      const mockList = [
-        {
-          id: 'act-1',
-          user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
-        },
-      ];
-      prismaService.activity.findMany.mockResolvedValue(mockList);
+  describe('getWorkspacePage', () => {
+    it('should fetch limit+1 and compute hasMore with iso|id cursor', async () => {
+      prismaService.activityEvent.findMany.mockResolvedValue([
+        row(5n),
+        row(4n),
+      ]);
 
-      const result = await repository.findByBoardIdPage('b-1', 'prev-1', 20);
+      const result = await repository.getWorkspacePage(
+        'ws-1',
+        {},
+        undefined,
+        1,
+      );
 
-      expect(prismaService.activity.findMany).toHaveBeenCalledWith({
-        where: { boardId: 'b-1' },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 21,
-        cursor: { id: 'prev-1' },
-        skip: 1,
-        include: {
-          user: {
-            select: {
-              id: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
+      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 2 }),
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.pagination.hasMore).toBe(true);
+      expect(result.pagination.cursor).toBe(
+        encodeActivityCursor(new Date('2026-09-01T00:00:00.000Z'), '5'),
+      );
+    });
+
+    it('should apply cursor boundary via OR predicate', async () => {
+      prismaService.activityEvent.findMany.mockResolvedValue([]);
+      const cursor = encodeActivityCursor(
+        new Date('2026-09-01T00:00:00.000Z'),
+        '42',
+      );
+
+      await repository.getWorkspacePage('ws-1', {}, cursor, 20);
+
+      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workspaceId: 'ws-1',
+            OR: [
+              { createdAt: { lt: new Date('2026-09-01T00:00:00.000Z') } },
+              {
+                createdAt: new Date('2026-09-01T00:00:00.000Z'),
+                id: { lt: 42n },
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('should throw BadRequestException on invalid cursor', async () => {
+      await expect(
+        repository.getWorkspacePage('ws-1', {}, 'not-a-cursor', 20),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should reject cursor with out-of-range bigint id', async () => {
+      await expect(
+        repository.getWorkspacePage(
+          'ws-1',
+          {},
+          '2026-09-01T00:00:00.000Z|99999999999999999999999',
+          20,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should pass each filter through', async () => {
+      prismaService.activityEvent.findMany.mockResolvedValue([]);
+
+      await repository.getWorkspacePage(
+        'ws-1',
+        { boardId: 'b-1', entityType: 'card', entityId: 'c-1', actorId: 'u-1' },
+        undefined,
+        20,
+      );
+
+      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workspaceId: 'ws-1',
+            boardId: 'b-1',
+            entityType: 'card',
+            entityId: 'c-1',
+            actorId: 'u-1',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getLegacyBoardPage', () => {
+    it('preserves UUID pagination and workspace scoping', async () => {
+      prismaService.activityEvent.findMany.mockResolvedValue([
+        row(2n),
+        row(1n),
+      ]);
+      const result = await repository.getLegacyBoardPage(
+        'ws-1',
+        'b-1',
+        undefined,
+        1,
+      );
+      expect(result.pagination).toEqual({
+        hasMore: true,
+        cursor: row(2n).legacyId,
+      });
+      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith({
+        where: { workspaceId: 'ws-1', boardId: 'b-1' },
+        orderBy: [{ createdAt: 'desc' }, { legacyId: 'desc' }],
+        take: 2,
+      });
+    });
+
+    it('uses a scoped cursor lookup and timestamp tie breaker', async () => {
+      const boundary = row(2n);
+      prismaService.activityEvent.findFirst.mockResolvedValue(boundary);
+      prismaService.activityEvent.findMany.mockResolvedValue([row(1n)]);
+      await repository.getLegacyBoardPage('ws-1', 'b-1', boundary.legacyId, 20);
+      expect(prismaService.activityEvent.findFirst).toHaveBeenCalledWith({
+        where: {
+          workspaceId: 'ws-1',
+          boardId: 'b-1',
+          legacyId: boundary.legacyId,
         },
       });
-      expect(result).toEqual(mockList);
-    });
-
-    it('should omit cursor when not provided', async () => {
-      prismaService.activity.findMany.mockResolvedValue([]);
-
-      await repository.findByBoardIdPage('b-1', undefined, 20);
-
-      expect(prismaService.activity.findMany).toHaveBeenCalledWith(
-        expect.not.objectContaining({ cursor: expect.anything() }),
+      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            workspaceId: 'ws-1',
+            boardId: 'b-1',
+            OR: [
+              { createdAt: { lt: boundary.createdAt } },
+              {
+                createdAt: boundary.createdAt,
+                legacyId: { lt: boundary.legacyId },
+              },
+            ],
+          },
+        }),
       );
     });
 
-    it('should retry without cursor on stale cursor P2025', async () => {
-      const fallback = [{ id: 'act-9' }];
-      prismaService.activity.findMany
-        .mockRejectedValueOnce(
-          new Prisma.PrismaClientKnownRequestError('stale cursor', {
-            code: 'P2025',
-            clientVersion: 'x',
-          }),
-        )
-        .mockResolvedValueOnce(fallback);
-
-      const result = await repository.findByBoardIdPage('b-1', 'stale', 20);
-
-      expect(result).toEqual(fallback);
-      expect(prismaService.activity.findMany).toHaveBeenCalledTimes(2);
-    });
-
-    it('should rethrow non-P2025 errors', async () => {
-      prismaService.activity.findMany.mockRejectedValueOnce(
-        new Error('db down'),
-      );
-
+    it('rejects unknown or foreign-board cursors without querying a page', async () => {
+      prismaService.activityEvent.findFirst.mockResolvedValue(null);
       await expect(
-        repository.findByBoardIdPage('b-1', 'c-1', 20),
-      ).rejects.toThrow('db down');
+        repository.getLegacyBoardPage('ws-1', 'b-1', row(1n).legacyId, 20),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
     });
+
+    it('rejects malformed UUID cursors before querying', async () => {
+      await expect(
+        repository.getLegacyBoardPage('ws-1', 'b-1', 'invalid', 20),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  it('delegates partition maintenance to the database function', async () => {
+    prismaService.$executeRaw.mockResolvedValue(1);
+    await repository.ensurePartitions();
+    expect(prismaService.$executeRaw).toHaveBeenCalled();
   });
 });
