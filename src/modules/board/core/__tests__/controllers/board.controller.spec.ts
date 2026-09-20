@@ -48,24 +48,6 @@ describe('BoardController', () => {
     createdAt: new Date(),
   };
 
-  const mockActivity = {
-    id: 'act-1',
-    boardId: 'board-1',
-    action: 'created' as any,
-    entityType: 'card' as any,
-    entityId: 'card-1',
-    entityTitle: 'New Card',
-    fromListId: null,
-    toListId: null,
-    details: null,
-    createdAt: new Date(),
-    user: {
-      id: 'user-uuid-1',
-      displayName: 'User',
-      avatarUrl: null,
-    },
-  };
-
   beforeEach(() => {
     boardService = {
       create: jest.fn(),
@@ -76,7 +58,6 @@ describe('BoardController', () => {
       unarchive: jest.fn(),
       starBoard: jest.fn(),
       unstarBoard: jest.fn(),
-      getBoardActivities: jest.fn(),
       deletePermanently: jest.fn(),
     } as unknown as jest.Mocked<BoardService>;
 
@@ -222,29 +203,6 @@ describe('BoardController', () => {
         'board-1',
         'ws-1',
       );
-    });
-  });
-
-  describe('activities', () => {
-    it('should get board activities and map them with pagination', async () => {
-      const paginated = {
-        items: [mockActivity as any],
-        pagination: { cursor: 'act-1', hasMore: false },
-      };
-      boardService.getBoardActivities.mockResolvedValue(paginated);
-
-      const result = await controller.getActivities('ws-1', 'board-1', {
-        limit: 20,
-      });
-
-      expect(boardService.getBoardActivities).toHaveBeenCalledWith(
-        'board-1',
-        'ws-1',
-        { limit: 20 },
-      );
-      expect(result.items).toHaveLength(1);
-      expect(result.items[0].id).toBe('act-1');
-      expect(result.pagination).toEqual({ cursor: 'act-1', hasMore: false });
     });
   });
 

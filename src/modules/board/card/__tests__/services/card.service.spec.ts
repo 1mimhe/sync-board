@@ -1279,9 +1279,10 @@ describe('CardService', () => {
         assignees: [{ user: { id: 'u-1' } }, { user: { id: 'u-2' } }],
       } as any);
 
-      await expect(
-        service.findAssigneeIdsByCardId('card-1'),
-      ).resolves.toEqual(['u-1', 'u-2']);
+      await expect(service.findAssigneeIdsByCardId('card-1')).resolves.toEqual([
+        'u-1',
+        'u-2',
+      ]);
     });
 
     it('should filter out missing user objects', async () => {
@@ -1290,9 +1291,9 @@ describe('CardService', () => {
         assignees: [{ user: { id: 'u-1' } }, { user: null as any }],
       } as any);
 
-      await expect(
-        service.findAssigneeIdsByCardId('card-1'),
-      ).resolves.toEqual(['u-1']);
+      await expect(service.findAssigneeIdsByCardId('card-1')).resolves.toEqual([
+        'u-1',
+      ]);
     });
   });
 });

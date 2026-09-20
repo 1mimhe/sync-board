@@ -27,11 +27,9 @@ import {
   BoardResponseDto,
   BoardWithContentResponseDto,
   BoardContentQueryDto,
-  ActivityResponseDto,
   CursorPaginationQueryDto,
 } from '../dto';
 import {
-  toActivityResponseDto,
   toBoardResponseDto,
   toBoardWithContentResponseDto,
 } from '../mappers/board.mapper';
@@ -368,47 +366,5 @@ export class BoardController {
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     await this.boardService.unstarBoard(user.sub, boardId, workspaceId);
-  }
-
-  // ============================================================
-  // ACTIVITY LOG ENDPOINTS
-  // ============================================================
-
-  /**
-   * Retrieves a cursor page of audit activity logs for a board.
-   */
-  @Get(':boardId/activities')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
-  @ApiOperation({ summary: 'List board activities (paginated audit log)' })
-  @ApiParam({
-    name: 'workspaceId',
-    type: String,
-    format: 'uuid',
-    description: 'Workspace UUID',
-  })
-  @ApiParam({
-    name: 'boardId',
-    type: String,
-    format: 'uuid',
-    description: 'Board UUID',
-  })
-  @ApiOkResponse({
-    description: 'Paginated list of board activities: { items, pagination }',
-    type: [ActivityResponseDto],
-  })
-  async getActivities(
-    @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
-    @Param('boardId', ParseUUIDPipe) boardId: string,
-    @Query() query: CursorPaginationQueryDto,
-  ): Promise<PaginatedResult<ActivityResponseDto>> {
-    const result = await this.boardService.getBoardActivities(
-      boardId,
-      workspaceId,
-      query,
-    );
-    return {
-      items: result.items.map(toActivityResponseDto),
-      pagination: result.pagination,
-    };
   }
 }

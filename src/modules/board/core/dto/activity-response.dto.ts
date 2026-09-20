@@ -67,3 +67,21 @@ export class ActivityResponseDto {
   @ApiProperty({ description: 'When the activity occurred' })
   createdAt!: Date;
 }
+
+/** Pagination metadata shape for legacy UUID-based activity pages. */
+export class LegacyActivityPaginationMetaDto {
+  @ApiPropertyOptional({ description: 'Cursor UUID for fetching next page', nullable: true })
+  cursor!: string | null;
+
+  @ApiProperty({ description: 'Whether additional pages are available' })
+  hasMore!: boolean;
+}
+
+/** Paginated envelope response for legacy board activities. */
+export class PaginatedLegacyActivityResponseDto {
+  @ApiProperty({ type: [ActivityResponseDto], description: 'Page items' })
+  items!: ActivityResponseDto[];
+
+  @ApiProperty({ type: LegacyActivityPaginationMetaDto, description: 'Pagination metadata' })
+  pagination!: LegacyActivityPaginationMetaDto;
+}
