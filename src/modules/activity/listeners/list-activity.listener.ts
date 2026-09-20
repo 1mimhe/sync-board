@@ -1,18 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { ActionType, EntityType } from '@prisma/client';
-import { ActivityRepository } from '../repositories/activity.repository';
+import {
+  ActivityRepository,
+  type RecordActivityInput,
+} from '../repositories/activity.repository';
+import { BoardService } from '../../board/core/services/board.service';
 import type {
   ListCreatedEvent,
   ListUpdatedEvent,
   ListMovedEvent,
   ListArchivedEvent,
   ListUnarchivedEvent,
+  ListDeletedEvent,
 } from '../../board/list/events/list.events';
 import { LIST_EVENTS } from '../../board/list/events/list-events.constants';
 
 /**
- * Persists activity audit logs for list lifecycle events
+ * Persists workspace-scoped activity events for list lifecycle events
  * (`LIST_EVENTS.*`). Fault-tolerant: a failed log entry is logged and
  * swallowed so it never breaks the originating request.
  */
@@ -20,25 +24,55 @@ import { LIST_EVENTS } from '../../board/list/events/list-events.constants';
 export class ListActivityListener {
   private readonly logger = new Logger(ListActivityListener.name);
 
-  constructor(private readonly activityRepo: ActivityRepository) {}
+  constructor(
+    private readonly activityRepo: ActivityRepository,
+    private readonly boardService: BoardService,
+  ) {}
+
+  private async handle(
+    boardId: string,
+    actorId: string,
+    entityType: RecordActivityInput['entityType'],
+    entityId: string,
+    action: string,
+    payload: RecordActivityInput['payload'],
+  ): Promise<void> {
+    try {
+      const workspaceId =
+        await this.boardService.findWorkspaceIdByBoardId(boardId);
+      if (!workspaceId) {
+        this.logger.warn(
+          `Skipping activity record: no workspace for board ${boardId}`,
+        );
+        return;
+      }
+      await this.activityRepo.record({
+        workspaceId,
+        boardId,
+        entityType,
+        entityId,
+        action,
+        actorId,
+        payload,
+      });
+    } catch (error) {
+      this.logger.error('Failed to log list activity', (error as Error).stack);
+    }
+  }
 
   /**
    * Logs list creation activity.
    */
   @OnEvent(LIST_EVENTS.created)
   async handleListCreatedEvent(event: ListCreatedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.list.boardId,
-        userId: event.createdBy,
-        action: ActionType.created,
-        entityType: EntityType.list,
-        entityId: event.list.id,
-        entityTitle: event.list.title,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log list.created activity', error);
-    }
+    await this.handle(
+      event.list.boardId,
+      event.createdBy,
+      'list',
+      event.list.id,
+      'created',
+      { entityTitle: event.list.title },
+    );
   }
 
   /**
@@ -46,18 +80,14 @@ export class ListActivityListener {
    */
   @OnEvent(LIST_EVENTS.updated)
   async handleListUpdatedEvent(event: ListUpdatedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.list.boardId,
-        userId: event.updatedBy,
-        action: ActionType.updated,
-        entityType: EntityType.list,
-        entityId: event.list.id,
-        entityTitle: event.list.title,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log list.updated activity', error);
-    }
+    await this.handle(
+      event.list.boardId,
+      event.updatedBy,
+      'list',
+      event.list.id,
+      'updated',
+      { entityTitle: event.list.title },
+    );
   }
 
   /**
@@ -65,17 +95,14 @@ export class ListActivityListener {
    */
   @OnEvent(LIST_EVENTS.moved)
   async handleListMovedEvent(event: ListMovedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.boardId,
-        userId: event.movedBy,
-        action: ActionType.moved,
-        entityType: EntityType.list,
-        entityId: event.listId,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log list.moved activity', error);
-    }
+    await this.handle(
+      event.boardId,
+      event.movedBy,
+      'list',
+      event.listId,
+      'moved',
+      { newRank: event.newRank },
+    );
   }
 
   /**
@@ -83,17 +110,14 @@ export class ListActivityListener {
    */
   @OnEvent(LIST_EVENTS.archived)
   async handleListArchivedEvent(event: ListArchivedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.boardId,
-        userId: event.archivedBy,
-        action: ActionType.archived,
-        entityType: EntityType.list,
-        entityId: event.listId,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log list.archived activity', error);
-    }
+    await this.handle(
+      event.boardId,
+      event.archivedBy,
+      'list',
+      event.listId,
+      'archived',
+      {},
+    );
   }
 
   /**
@@ -101,17 +125,28 @@ export class ListActivityListener {
    */
   @OnEvent(LIST_EVENTS.unarchived)
   async handleListUnarchivedEvent(event: ListUnarchivedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.list.boardId,
-        userId: event.unarchivedBy,
-        action: ActionType.unarchived,
-        entityType: EntityType.list,
-        entityId: event.list.id,
-        entityTitle: event.list.title,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log list.unarchived activity', error);
-    }
+    await this.handle(
+      event.list.boardId,
+      event.unarchivedBy,
+      'list',
+      event.list.id,
+      'unarchived',
+      { entityTitle: event.list.title },
+    );
+  }
+
+  /**
+   * Logs list permanent-delete activity.
+   */
+  @OnEvent(LIST_EVENTS.deleted)
+  async handleListDeletedEvent(event: ListDeletedEvent): Promise<void> {
+    await this.handle(
+      event.boardId,
+      event.deletedBy,
+      'list',
+      event.listId,
+      'deleted',
+      {},
+    );
   }
 }

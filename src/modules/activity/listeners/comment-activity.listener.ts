@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { ActionType, EntityType } from '@prisma/client';
-import { ActivityRepository } from '../repositories/activity.repository';
+import {
+  ActivityRepository,
+  type RecordActivityInput,
+} from '../repositories/activity.repository';
+import { BoardService } from '../../board/core/services/board.service';
 import type {
   CommentCreatedEvent,
   CommentUpdatedEvent,
@@ -10,7 +13,7 @@ import type {
 import { COMMENT_EVENTS } from '../../board/comment/events/comment-events.constants';
 
 /**
- * Persists activity audit logs for card comment events
+ * Persists workspace-scoped activity events for card comment events
  * (`COMMENT_EVENTS.*`). Fault-tolerant: a failed log entry is logged and
  * swallowed so it never breaks the originating request.
  */
@@ -18,25 +21,58 @@ import { COMMENT_EVENTS } from '../../board/comment/events/comment-events.consta
 export class CommentActivityListener {
   private readonly logger = new Logger(CommentActivityListener.name);
 
-  constructor(private readonly activityRepo: ActivityRepository) {}
+  constructor(
+    private readonly activityRepo: ActivityRepository,
+    private readonly boardService: BoardService,
+  ) {}
+
+  private async handle(
+    boardId: string,
+    actorId: string,
+    entityId: string,
+    action: string,
+    payload: RecordActivityInput['payload'],
+  ): Promise<void> {
+    try {
+      const workspaceId =
+        await this.boardService.findWorkspaceIdByBoardId(boardId);
+      if (!workspaceId) {
+        this.logger.warn(
+          `Skipping activity record: no workspace for board ${boardId}`,
+        );
+        return;
+      }
+      await this.activityRepo.record({
+        workspaceId,
+        boardId,
+        entityType: 'comment',
+        entityId,
+        action,
+        actorId,
+        payload,
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to log comment activity',
+        (error as Error).stack,
+      );
+    }
+  }
 
   /**
    * Logs card comment creation activity.
    */
   @OnEvent(COMMENT_EVENTS.created)
   async handleCommentCreatedEvent(event: CommentCreatedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.boardId,
-        userId: event.authorId,
-        action: ActionType.created,
-        entityType: EntityType.comment,
-        entityId: event.comment.id,
+    await this.handle(
+      event.boardId,
+      event.authorId,
+      event.comment.id,
+      'created',
+      {
         entityTitle: 'New Comment',
-      });
-    } catch (error) {
-      this.logger.error('Failed to log comment.created activity', error);
-    }
+      },
+    );
   }
 
   /**
@@ -44,18 +80,15 @@ export class CommentActivityListener {
    */
   @OnEvent(COMMENT_EVENTS.updated)
   async handleCommentUpdatedEvent(event: CommentUpdatedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.boardId,
-        userId: event.updatedBy,
-        action: ActionType.updated,
-        entityType: EntityType.comment,
-        entityId: event.comment.id,
+    await this.handle(
+      event.boardId,
+      event.updatedBy,
+      event.comment.id,
+      'updated',
+      {
         entityTitle: 'Comment Updated',
-      });
-    } catch (error) {
-      this.logger.error('Failed to log comment.updated activity', error);
-    }
+      },
+    );
   }
 
   /**
@@ -63,16 +96,12 @@ export class CommentActivityListener {
    */
   @OnEvent(COMMENT_EVENTS.deleted)
   async handleCommentDeletedEvent(event: CommentDeletedEvent): Promise<void> {
-    try {
-      await this.activityRepo.create({
-        boardId: event.boardId,
-        userId: event.deletedBy,
-        action: ActionType.deleted,
-        entityType: EntityType.comment,
-        entityId: event.commentId,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log comment.deleted activity', error);
-    }
+    await this.handle(
+      event.boardId,
+      event.deletedBy,
+      event.commentId,
+      'deleted',
+      {},
+    );
   }
 }

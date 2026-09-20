@@ -6,23 +6,28 @@ import {
   BoardUpdatedEvent,
   BoardArchivedEvent,
   BoardUnarchivedEvent,
+  BoardDeletedEvent,
 } from '../../../board/core/events/board.events';
-import { ActionType, EntityType } from '@prisma/client';
+import { BoardService } from '../../../board/core/services/board.service';
 
 describe('BoardActivityListener', () => {
   let listener: BoardActivityListener;
   let activityRepo: jest.Mocked<ActivityRepository>;
+  let boardService: jest.Mocked<BoardService>;
 
   beforeEach(async () => {
     activityRepo = {
-      create: jest.fn().mockResolvedValue({ id: 'act-1' } as any),
-      findByBoardId: jest.fn(),
+      record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<ActivityRepository>;
+    boardService = {
+      findWorkspaceIdByBoardId: jest.fn().mockResolvedValue('ws-1'),
+    } as unknown as jest.Mocked<BoardService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BoardActivityListener,
         { provide: ActivityRepository, useValue: activityRepo },
+        { provide: BoardService, useValue: boardService },
       ],
     }).compile();
 
@@ -33,24 +38,28 @@ describe('BoardActivityListener', () => {
     jest.restoreAllMocks();
   });
 
-  it('should log board created event', async () => {
+  it('should record board created event with workspace and payload', async () => {
     const event = new BoardCreatedEvent(
       { id: 'b-1', title: 'Board' } as any,
       'u-1',
     );
+
     await listener.handleBoardCreatedEvent(event);
-    expect(activityRepo.create).toHaveBeenCalledWith({
+
+    expect(activityRepo.record).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
       boardId: 'b-1',
-      userId: 'u-1',
-      action: ActionType.created,
-      entityType: EntityType.board,
+      entityType: 'board',
       entityId: 'b-1',
-      entityTitle: 'Board',
+      action: 'created',
+      actorId: 'u-1',
+      payload: { entityTitle: 'Board' },
     });
   });
 
   it('should catch error on board created event failure', async () => {
-    activityRepo.create.mockRejectedValue(new Error('fail'));
+    activityRepo.record.mockRejectedValue(new Error('fail'));
+
     await expect(
       listener.handleBoardCreatedEvent(
         new BoardCreatedEvent({ id: 'b-1' } as any, 'u-1'),
@@ -58,74 +67,83 @@ describe('BoardActivityListener', () => {
     ).resolves.not.toThrow();
   });
 
-  it('should log board updated event', async () => {
+  it('should record board updated event', async () => {
     const event = new BoardUpdatedEvent(
-      { id: 'b-1', title: 'Updated Board' } as any,
-      'u-1',
+      { id: 'b-1', title: 'Board' } as any,
+      'u-2',
     );
+
     await listener.handleBoardUpdatedEvent(event);
-    expect(activityRepo.create).toHaveBeenCalledWith({
+
+    expect(activityRepo.record).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
       boardId: 'b-1',
-      userId: 'u-1',
-      action: ActionType.updated,
-      entityType: EntityType.board,
+      entityType: 'board',
       entityId: 'b-1',
-      entityTitle: 'Updated Board',
+      action: 'updated',
+      actorId: 'u-2',
+      payload: { entityTitle: 'Board' },
     });
   });
 
-  it('should catch error on board updated event failure', async () => {
-    activityRepo.create.mockRejectedValue(new Error('fail'));
-    await expect(
-      listener.handleBoardUpdatedEvent(
-        new BoardUpdatedEvent({ id: 'b-1' } as any, 'u-1'),
-      ),
-    ).resolves.not.toThrow();
-  });
+  it('should record board archived event', async () => {
+    const event = new BoardArchivedEvent('b-1', 'ws-1', 'u-3');
 
-  it('should log board archived event', async () => {
-    const event = new BoardArchivedEvent('b-1', 'ws-1', 'u-1');
     await listener.handleBoardArchivedEvent(event);
-    expect(activityRepo.create).toHaveBeenCalledWith({
+
+    expect(activityRepo.record).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
       boardId: 'b-1',
-      userId: 'u-1',
-      action: ActionType.archived,
-      entityType: EntityType.board,
+      entityType: 'board',
       entityId: 'b-1',
+      action: 'archived',
+      actorId: 'u-3',
+      payload: { workspaceId: 'ws-1' },
     });
   });
 
-  it('should catch error on board archived event failure', async () => {
-    activityRepo.create.mockRejectedValue(new Error('fail'));
-    await expect(
-      listener.handleBoardArchivedEvent(
-        new BoardArchivedEvent('b-1', 'ws-1', 'u-1'),
-      ),
-    ).resolves.not.toThrow();
-  });
-
-  it('should log board unarchived event', async () => {
+  it('should record board unarchived event', async () => {
     const event = new BoardUnarchivedEvent(
-      { id: 'b-1', title: 'Restored Board' } as any,
-      'u-1',
+      { id: 'b-1', title: 'Board' } as any,
+      'u-4',
     );
+
     await listener.handleBoardUnarchivedEvent(event);
-    expect(activityRepo.create).toHaveBeenCalledWith({
+
+    expect(activityRepo.record).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
       boardId: 'b-1',
-      userId: 'u-1',
-      action: ActionType.unarchived,
-      entityType: EntityType.board,
+      entityType: 'board',
       entityId: 'b-1',
-      entityTitle: 'Restored Board',
+      action: 'unarchived',
+      actorId: 'u-4',
+      payload: { entityTitle: 'Board' },
     });
   });
 
-  it('should catch error on board unarchived event failure', async () => {
-    activityRepo.create.mockRejectedValue(new Error('fail'));
-    await expect(
-      listener.handleBoardUnarchivedEvent(
-        new BoardUnarchivedEvent({ id: 'b-1' } as any, 'u-1'),
-      ),
-    ).resolves.not.toThrow();
+  it('should record board deleted event', async () => {
+    const event = new BoardDeletedEvent('b-1', 'ws-1', 'u-5');
+
+    await listener.handleBoardDeletedEvent(event);
+
+    expect(activityRepo.record).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
+      boardId: 'b-1',
+      entityType: 'board',
+      entityId: 'b-1',
+      action: 'deleted',
+      actorId: 'u-5',
+      payload: { workspaceId: 'ws-1' },
+    });
+  });
+
+  it('should skip recording when workspace cannot be resolved', async () => {
+    boardService.findWorkspaceIdByBoardId.mockResolvedValue(null);
+
+    await listener.handleBoardCreatedEvent(
+      new BoardCreatedEvent({ id: 'b-1' } as any, 'u-1'),
+    );
+
+    expect(activityRepo.record).not.toHaveBeenCalled();
   });
 });
