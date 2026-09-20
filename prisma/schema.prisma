@@ -44,6 +44,7 @@ enum EntityType {
   assignee
   attachment
   document
+  workspace
 
   @@map("entity_type")
 }
@@ -111,6 +112,7 @@ model User {
   createdDocuments     Document[]           @relation("DocumentCreator")
   documentSnapshots    DocumentSnapshot[]   @relation("SnapshotCreator")
   timeEntries          CardTimeEntry[]
+  notifications        Notification[]
 
   @@index([googleId], map: "idx_users_google_id")
   @@map("users")
@@ -156,6 +158,7 @@ model Workspace {
   labels      Label[]
   documents   Document[]
   fieldDefs   CardFieldDef[]
+  notifications Notification[]
 
   @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
@@ -366,6 +369,28 @@ model CardAttachment {
   @@map("card_attachments")
 }
 
+model ActivityEvent {
+  id          BigInt     @default(autoincrement())
+  legacyId    String     @default(uuid()) @map("legacy_id") @db.Uuid
+  workspaceId String     @map("workspace_id") @db.Uuid
+  boardId     String?    @map("board_id") @db.Uuid
+  entityType  EntityType @map("entity_type")
+  entityId    String     @map("entity_id") @db.Uuid
+  action      String     @db.VarChar(50)
+  actorId     String     @map("actor_id") @db.Uuid
+  payload     Json       @db.JsonB
+  metadata    Json?      @db.JsonB
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([id, createdAt])
+  @@index([legacyId], map: "idx_activity_legacy")
+  @@index([workspaceId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_workspace")
+  @@index([workspaceId, boardId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_board")
+  @@index([workspaceId, actorId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_actor_workspace")
+  @@index([entityType, entityId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_entity")
+  @@map("activity_events")
+}
+
 model Activity {
   id          String     @id @default(uuid()) @db.Uuid
   boardId     String?    @map("board_id") @db.Uuid
@@ -493,6 +518,45 @@ model CardFieldValue {
   @@unique([fieldId, cardId], map: "unique_field_value")
   @@index([cardId], map: "idx_field_values_card")
   @@map("card_field_values")
+}
+
+enum NotificationType {
+  card_assigned
+  comment_added
+  comment_mentioned
+  card_status_changed
+  card_priority_changed
+  card_linked
+  workspace_invited
+  workspace_role_changed
+
+  @@map("notification_type")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  messageId   String           @map("message_id") @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  workspaceId String           @map("workspace_id") @db.Uuid
+  type        NotificationType
+  title       String           @db.VarChar(300)
+  body        String?          @db.Text
+  entityType  EntityType?      @map("entity_type")
+  entityId    String?          @map("entity_id") @db.Uuid
+  boardId     String?          @map("board_id") @db.Uuid
+  cardId      String?          @map("card_id") @db.Uuid
+  isRead      Boolean          @default(false) @map("is_read")
+  readAt      DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, isRead, createdAt, id], map: "idx_notifications_user_unread")
+  @@index([userId, createdAt, id], map: "idx_notifications_user_all")
+  @@index([isRead, createdAt], map: "idx_notifications_read_cleanup")
+  @@map("notifications")
 }
 
 model CardTimeEntry {

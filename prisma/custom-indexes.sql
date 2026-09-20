@@ -81,3 +81,17 @@ CREATE INDEX IF NOT EXISTS idx_documents_preview_fts ON documents
 DROP INDEX IF EXISTS idx_documents_parent_card;
 CREATE INDEX IF NOT EXISTS idx_documents_parent_card ON documents(parent_card_id)
   WHERE parent_card_id IS NOT NULL AND status = 'active';
+
+-- Notifications: read cleanup (purged after 90 days)
+DROP INDEX IF EXISTS idx_notifications_read_cleanup;
+CREATE INDEX IF NOT EXISTS idx_notifications_read_cleanup ON notifications(created_at)
+  WHERE is_read = true;
+
+-- Activity events: ensure upcoming partitions exist if partitioned table was initialized
+DO $$
+BEGIN
+  IF to_regprocedure('public.ensure_activity_partitions()') IS NOT NULL THEN
+    PERFORM public.ensure_activity_partitions();
+  END IF;
+END $$;
+

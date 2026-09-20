@@ -614,10 +614,14 @@ async function ensureActivity(params: {
   toListId?: string | null;
   details?: unknown;
 }) {
-  const existing = await prisma.activity.findFirst({
+  const scope = params.boardId
+    ? await prisma.board.findUniqueOrThrow({ where: { id: params.boardId }, select: { workspaceId: true } })
+    : await prisma.document.findUniqueOrThrow({ where: { id: params.entityId }, select: { workspaceId: true } });
+  const existing = await prisma.activityEvent.findFirst({
     where: {
+      workspaceId: scope.workspaceId,
       boardId: params.boardId,
-      userId: params.userId,
+      actorId: params.userId,
       action: params.action,
       entityType: params.entityType,
       entityId: params.entityId,
@@ -625,17 +629,20 @@ async function ensureActivity(params: {
     orderBy: { createdAt: 'asc' },
   });
   if (existing) return existing;
-  return prisma.activity.create({
+  return prisma.activityEvent.create({
     data: {
+      workspaceId: scope.workspaceId,
       boardId: params.boardId,
-      userId: params.userId,
+      actorId: params.userId,
       action: params.action,
       entityType: params.entityType,
       entityId: params.entityId,
-      entityTitle: params.entityTitle ?? null,
-      fromListId: params.fromListId ?? null,
-      toListId: params.toListId ?? null,
-      details: (params.details ?? undefined) as never,
+      payload: {
+        entityTitle: params.entityTitle ?? null,
+        fromListId: params.fromListId ?? null,
+        toListId: params.toListId ?? null,
+        details: (params.details ?? null) as never,
+      },
     },
   });
 }
@@ -647,6 +654,11 @@ async function ensureActivity(params: {
 async function main() {
   console.log('🌱 Starting SyncBoard database seeding (idempotent)...');
 
+  try {
+    await prisma.$executeRaw`SELECT ensure_activity_partitions()`;
+  } catch {
+    console.log('Skipping partition ensure: run prisma/phase-6b-activity.sql first');
+  }
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
   // ---- 1. Users: password, OAuth-only, unverified, viewer -----------------
@@ -1848,7 +1860,7 @@ async function main() {
     fieldValues: await prisma.cardFieldValue.count(),
     timeEntries: await prisma.cardTimeEntry.count(),
     refreshTokens: await prisma.refreshToken.count(),
-    activities: await prisma.activity.count(),
+    activities: await prisma.activityEvent.count(),
     stars: await prisma.userStarredBoard.count(),
   };
   console.log('📊 Seed counts:', JSON.stringify(counts, null, 2));
