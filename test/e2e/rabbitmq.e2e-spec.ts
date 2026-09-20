@@ -46,11 +46,29 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
       const ws = await createWorkspace(app, user);
       workspaceId = ws.id;
 
-      const board = await createBoard(app, user, workspaceId, 'Async RMQ Board');
+      const board = await createBoard(
+        app,
+        user,
+        workspaceId,
+        'Async RMQ Board',
+      );
       boardId = board.id;
 
-      const list = await createList(app, user, workspaceId, boardId, 'Async List');
-      const card = await createCard(app, user, workspaceId, boardId, list.id, 'Async Card');
+      const list = await createList(
+        app,
+        user,
+        workspaceId,
+        boardId,
+        'Async List',
+      );
+      const card = await createCard(
+        app,
+        user,
+        workspaceId,
+        boardId,
+        list.id,
+        'Async Card',
+      );
       cardId = card.id;
     }
   });
@@ -68,9 +86,13 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
 
     it('should fail-open without throwing when publishing even if broker is unavailable', async () => {
       await expect(
-        publisher.publish('notification.exchange', 'notification.card.assigned', {
-          cardId: cardId ?? 'mock-card-id',
-        }),
+        publisher.publish(
+          'notification.exchange',
+          'notification.card.assigned',
+          {
+            cardId: cardId ?? 'mock-card-id',
+          },
+        ),
       ).resolves.toBeUndefined();
     });
   });
@@ -79,7 +101,10 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
     it('should claim message on first call and reject on subsequent call', async () => {
       if (!hasInfra) {
         const mockRedis = {
-          set: jest.fn().mockResolvedValueOnce('OK').mockResolvedValueOnce(null),
+          set: jest
+            .fn()
+            .mockResolvedValueOnce('OK')
+            .mockResolvedValueOnce(null),
         } as any;
         expect(await consumeOnce(mockRedis, 'msg-1', 60)).toBe(true);
         expect(await consumeOnce(mockRedis, 'msg-1', 60)).toBe(false);
@@ -116,16 +141,25 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
 
     it('BoardService.findWorkspaceIdByBoardId should resolve workspace even after board is archived', async () => {
       if (!hasInfra || !user || !workspaceId) return;
-      const tempBoard = await createBoard(app, user, workspaceId, 'Board to Archive');
+      const tempBoard = await createBoard(
+        app,
+        user,
+        workspaceId,
+        'Board to Archive',
+      );
       await boardService.archiveBoard(workspaceId, tempBoard.id, user.id);
 
-      const resolvedWs = await boardService.findWorkspaceIdByBoardId(tempBoard.id);
+      const resolvedWs = await boardService.findWorkspaceIdByBoardId(
+        tempBoard.id,
+      );
       expect(resolvedWs).toBe(workspaceId);
     });
 
     it('BoardService.findWorkspaceIdByBoardId should return null for non-existent board', async () => {
       if (!hasInfra) return;
-      const resolved = await boardService.findWorkspaceIdByBoardId('00000000-0000-0000-0000-000000000000');
+      const resolved = await boardService.findWorkspaceIdByBoardId(
+        '00000000-0000-0000-0000-000000000000',
+      );
       expect(resolved).toBeNull();
     });
 
@@ -134,7 +168,9 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
       const title = await cardService.findTitleById(cardId);
       expect(title).toBe('Async Card');
 
-      const missing = await cardService.findTitleById('00000000-0000-0000-0000-000000000000');
+      const missing = await cardService.findTitleById(
+        '00000000-0000-0000-0000-000000000000',
+      );
       expect(missing).toBeNull();
     });
 
@@ -148,10 +184,10 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
 
     it('MembershipService.findUserIdsByEmails should resolve member email to userId', async () => {
       if (!hasInfra || !workspaceId || !user) return;
-      const resolved = await membershipService.findUserIdsByEmails(workspaceId, [
-        user.email.toUpperCase(),
-        'nonexistent@example.com',
-      ]);
+      const resolved = await membershipService.findUserIdsByEmails(
+        workspaceId,
+        [user.email.toUpperCase(), 'nonexistent@example.com'],
+      );
 
       expect(resolved.size).toBe(1);
       expect(resolved.get(user.email.toLowerCase())).toBe(user.id);
