@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ActivityRepository } from '../repositories/activity.repository';
+import { ACTIVITY_PARTITION_CRON } from '../activity.constants';
 
 /**
  * Scheduled maintenance task ensuring future monthly partitions exist for the
@@ -13,7 +14,7 @@ export class ActivityPartitionTask {
 
   constructor(private readonly activityRepo: ActivityRepository) {}
 
-  @Cron('0 4 * * *', {
+  @Cron(ACTIVITY_PARTITION_CRON, {
     timeZone: 'UTC',
     waitForCompletion: true,
   })

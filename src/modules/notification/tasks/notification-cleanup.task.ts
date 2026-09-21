@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { NotificationRepository } from '../repositories/notification.repository';
+import { NOTIFICATION_CLEANUP_CRON } from '../notification.constants';
 
 /** Monthly purge of old read notifications (uses partial cleanup index). */
 @Injectable()
@@ -9,7 +10,7 @@ export class NotificationCleanupTask {
 
   constructor(private readonly notificationRepo: NotificationRepository) {}
 
-  @Cron('0 3 1 * *', { timeZone: 'UTC' })
+  @Cron(NOTIFICATION_CLEANUP_CRON, { timeZone: 'UTC' })
   async purgeOldRead(): Promise<void> {
     try {
       const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
