@@ -612,10 +612,22 @@ async function ensureActivity(params: {
   fromListId?: string | null;
   toListId?: string | null;
   details?: unknown;
+  /**
+   * Explicit workspace scope for board-less events (workspace membership,
+   * standalone/archived documents). Falls back to board → document lookup.
+   */
+  workspaceId?: string | null;
+  /**
+   * Top-level payload keys merged as-is (e.g. { from, to }, { minutes },
+   * { role }) so seeded rows match the real listener payload shapes.
+   */
+  extra?: Record<string, unknown>;
 }) {
-  const scope = params.boardId
-    ? await prisma.board.findUniqueOrThrow({ where: { id: params.boardId }, select: { workspaceId: true } })
-    : await prisma.document.findUniqueOrThrow({ where: { id: params.entityId }, select: { workspaceId: true } });
+  const scope = params.workspaceId
+    ? { workspaceId: params.workspaceId }
+    : params.boardId
+      ? await prisma.board.findUniqueOrThrow({ where: { id: params.boardId }, select: { workspaceId: true } })
+      : await prisma.document.findUniqueOrThrow({ where: { id: params.entityId }, select: { workspaceId: true } });
   const existing = await prisma.activity.findFirst({
     where: {
       workspaceId: scope.workspaceId,
@@ -641,6 +653,7 @@ async function ensureActivity(params: {
         fromListId: params.fromListId ?? null,
         toListId: params.toListId ?? null,
         details: (params.details ?? null) as never,
+        ...(params.extra ?? {}),
       },
     },
   });
@@ -1187,6 +1200,7 @@ async function main() {
       loggedMinutes: 0,
     },
   ];
+  const authSubIds: string[] = [];
   for (const s of authSubSpecs) {
     const sub = await ensureCard({
       listId: listInProgress.id,
@@ -1202,6 +1216,7 @@ async function main() {
       createdBy: userAlex.id,
     });
     await ensureAssignee(sub.id, s.assigneeId);
+    authSubIds.push(sub.id);
   }
 
   const parentCardRealtime = await ensureCard({
@@ -1835,9 +1850,246 @@ async function main() {
     entityTitle: docRfc.title,
   });
 
+  // ---- 17b. Activities: boards (created / archived / deleted) --------------------
+  await ensureActivity({
+    boardId: boardInfra.id,
+    userId: userSarah.id,
+    action: 'created',
+    entityType: EntityType.board,
+    entityId: boardInfra.id,
+    entityTitle: boardInfra.title,
+    details: { title: boardInfra.title },
+  });
+  await ensureActivity({
+    boardId: boardArchived.id,
+    userId: userAlex.id,
+    action: 'archived',
+    entityType: EntityType.board,
+    entityId: boardArchived.id,
+    entityTitle: boardArchived.title,
+  });
+  await ensureActivity({
+    boardId: boardDeleted.id,
+    userId: userMarcus.id,
+    action: 'deleted',
+    entityType: EntityType.board,
+    entityId: boardDeleted.id,
+    entityTitle: boardDeleted.title,
+  });
+
+  // ---- 17c. Activities: lists (created / updated / deleted) ----------------------
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userMarcus.id,
+    action: 'created',
+    entityType: EntityType.list,
+    entityId: listReview.id,
+    entityTitle: listReview.title,
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'updated',
+    entityType: EntityType.list,
+    entityId: listInProgress.id,
+    entityTitle: listInProgress.title,
+    details: { field: 'title' },
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'deleted',
+    entityType: EntityType.list,
+    entityId: listDeleted.id,
+    entityTitle: listDeleted.title,
+  });
+
+  // ---- 17d. Activities: bulk card creations (feeds pagination, >20 rows) ---------
+  const bulkCreatedCards: Array<{
+    boardId: string;
+    userId: string;
+    cardId: string;
+    title: string;
+    listId: string;
+  }> = [
+    { boardId: boardInfra.id, userId: userSarah.id, cardId: infraCard1.id, title: infraCard1.title, listId: infraDoing.id },
+    { boardId: boardInfra.id, userId: userAlex.id, cardId: infraCard2.id, title: infraCard2.title, listId: infraTodo.id },
+    { boardId: boardRoadmap.id, userId: userSarah.id, cardId: roadmapCard1.id, title: roadmapCard1.title, listId: roadmapObjectives.id },
+    { boardId: boardRoadmap.id, userId: userAlex.id, cardId: roadmapCard2.id, title: roadmapCard2.title, listId: roadmapRisks.id },
+    { boardId: boardSprint.id, userId: userElena.id, cardId: cardCalendar.id, title: cardCalendar.title, listId: listDone.id },
+    { boardId: boardSprint.id, userId: userMarcus.id, cardId: cardFields.id, title: cardFields.title, listId: listReview.id },
+    { boardId: boardSprint.id, userId: userAlex.id, cardId: cardPerformance.id, title: cardPerformance.title, listId: listBacklog.id },
+    { boardId: boardSprint.id, userId: userMarcus.id, cardId: cardOverdue.id, title: cardOverdue.title, listId: listBacklog.id },
+    { boardId: boardSprint.id, userId: userElena.id, cardId: cardIdea.id, title: cardIdea.title, listId: listBacklog.id },
+  ];
+  for (const c of bulkCreatedCards) {
+    await ensureActivity({
+      boardId: c.boardId,
+      userId: c.userId,
+      action: 'created',
+      entityType: EntityType.card,
+      entityId: c.cardId,
+      entityTitle: c.title,
+      toListId: c.listId,
+      details: { title: c.title },
+    });
+  }
+
+  // ---- 17e. Activities: card extras (priority / status / time / assignee / subcard)
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'priority_changed',
+    entityType: EntityType.card,
+    entityId: parentCardAuth.id,
+    entityTitle: parentCardAuth.title,
+    extra: { from: 'medium', to: 'urgent' },
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userSarah.id,
+    action: 'status_changed',
+    entityType: EntityType.card,
+    entityId: parentCardRealtime.id,
+    entityTitle: parentCardRealtime.title,
+    extra: { from: 'not_started', to: 'active', isComplete: false },
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'time_logged',
+    entityType: EntityType.card,
+    entityId: parentCardAuth.id,
+    entityTitle: parentCardAuth.title,
+    extra: { minutes: 120, loggedTotal: 270 },
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userSarah.id,
+    action: 'deleted',
+    entityType: EntityType.assignee,
+    entityId: parentCardAuth.id,
+    entityTitle: parentCardAuth.title,
+    extra: { userId: userSarah.id },
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'created',
+    entityType: EntityType.card,
+    entityId: authSubIds[0],
+    entityTitle: authSubSpecs[0].title,
+    extra: { parentCardId: parentCardAuth.id },
+  });
+
+  // ---- 17f. Activities: comments (created / updated) ------------------------------
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userSarah.id,
+    action: 'created',
+    entityType: EntityType.comment,
+    entityId: commentReply.id,
+    entityTitle: 'reply on OAuth 2.0 & SSO Integration',
+  });
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userAlex.id,
+    action: 'updated',
+    entityType: EntityType.comment,
+    entityId: commentRoot.id,
+    entityTitle: 'comment on OAuth 2.0 & SSO Integration',
+    details: { field: 'content' },
+  });
+
+  // ---- 17g. Activities: documents (updated / archived, board-less) ----------------
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userSarah.id,
+    action: 'updated',
+    entityType: EntityType.document,
+    entityId: docStandalone.id,
+    entityTitle: docStandalone.title,
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userMarcus.id,
+    action: 'archived',
+    entityType: EntityType.document,
+    entityId: docArchived.id,
+    entityTitle: docArchived.title,
+  });
+
+  // ---- 17h. Activities: labels ----------------------------------------------------
+  await ensureActivity({
+    boardId: boardSprint.id,
+    userId: userElena.id,
+    action: 'created',
+    entityType: EntityType.label,
+    entityId: labelFrontend.id,
+    entityTitle: labelFrontend.name,
+  });
+
+  // ---- 17i. Activities: workspace membership (board-less) --------------------------
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userAlex.id,
+    action: 'created',
+    entityType: EntityType.workspace,
+    entityId: workspaceAcme.id,
+    entityTitle: workspaceAcme.name,
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userElena.id,
+    action: 'member_added',
+    entityType: EntityType.workspace,
+    entityId: workspaceAcme.id,
+    extra: { role: 'member' },
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userElena.id,
+    action: 'member_role_changed',
+    entityType: EntityType.workspace,
+    entityId: workspaceAcme.id,
+    extra: { oldRole: 'member', newRole: 'admin' },
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userGrace.id,
+    action: 'member_removed',
+    entityType: EntityType.workspace,
+    entityId: workspaceAcme.id,
+    extra: { userId: userGrace.id },
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceAcme.id,
+    userId: userMarcus.id,
+    action: 'member_left',
+    entityType: EntityType.workspace,
+    entityId: workspaceAcme.id,
+    extra: { userId: userMarcus.id },
+  });
+  await ensureActivity({
+    boardId: null,
+    workspaceId: workspaceRoadmap.id,
+    userId: userSarah.id,
+    action: 'ownership_transferred',
+    entityType: EntityType.workspace,
+    entityId: workspaceRoadmap.id,
+    extra: { previousOwnerId: userSarah.id, newOwnerId: userAlex.id },
+  });
+
   log(
     'activities',
-    'created/updated/deleted/moved/archived/unarchived x board/list/card/comment/label/assignee/attachment/document',
+    '41 rows: all listener actions (card priority/status/time/subcard/assignee, comment, document, list, board, workspace member/role/ownership) + bulk creations for feed pagination',
   );
 
   // ---- Summary -------------------------------------------------------------------------------
