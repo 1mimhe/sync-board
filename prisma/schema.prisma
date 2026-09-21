@@ -373,7 +373,7 @@ model Activity {
   @@index([workspaceId, boardId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_board")
   @@index([workspaceId, actorId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_actor_workspace")
   @@index([entityType, entityId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_entity")
-  @@map("activity_events")
+  @@map("activities")
 }
 
 model CardChecklist {

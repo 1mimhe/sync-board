@@ -35,14 +35,14 @@ export interface ActivityWithActor extends Activity {
 
 /**
  * Database repository managing the partitioned activity audit log
- * (`activity_events`, Prisma model `Activity`).
+ * (Prisma model `Activity`, table `activities`).
  */
 @Injectable()
 export class ActivityRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Appends an audit log record into the partitioned `activity_events` table.
+   * Appends an audit log record into the partitioned `activities` table.
    *
    * @param data - Activity input including workspace, entity, actor, and payload
    * @returns Promise resolving when the record has been persisted
@@ -100,7 +100,7 @@ export class ActivityRepository {
   }
 
   /**
-   * Pre-creates monthly partitions for the activity_events table.
+   * Pre-creates monthly partitions for the activities table.
    *
    * @returns Promise resolving when partition upkeep completes
    */

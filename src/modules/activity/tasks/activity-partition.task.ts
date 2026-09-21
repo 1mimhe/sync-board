@@ -4,7 +4,7 @@ import { ActivityRepository } from '../repositories/activity.repository';
 
 /**
  * Scheduled maintenance task ensuring future monthly partitions exist for the
- * `activity_events` partitioned table. Runs daily at 04:00 UTC to avoid lock contention
+ * `activities` partitioned table. Runs daily at 04:00 UTC to avoid lock contention
  * with the notification cleanup task running at 03:00 UTC.
  */
 @Injectable()
