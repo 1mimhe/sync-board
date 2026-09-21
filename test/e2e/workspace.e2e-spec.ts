@@ -63,7 +63,7 @@ describe('Workspace module (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   describe('§1 Create workspace', () => {
