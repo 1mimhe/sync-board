@@ -35,7 +35,7 @@ describe('Golden journey (e2e)', () => {
 
   afterAll(async () => {
     if (sockA) await closeSocket(sockA).catch(() => undefined);
-    await app.close();
+    if (app) await app.close();
   });
 
   it('step 1–2: register + login both users (verified via the real email flow)', async () => {

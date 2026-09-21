@@ -68,7 +68,7 @@ describe('Documents module (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   // =========================================================================

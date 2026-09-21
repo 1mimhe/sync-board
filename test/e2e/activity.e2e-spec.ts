@@ -1,9 +1,9 @@
-ï»¿/**
- * Activity / Audit Log module e2e â€” HTTP via supertest against the real AppModule.
+/**
+ * Activity / Audit Log module e2e — HTTP via supertest against the real AppModule.
  *
  * Covers: test-cases-activity.md
- *   Â§1 Recording (board-level feed â€” also covered in board.e2e-spec.ts)
- *   Â§2 Workspace-scoped feed (2.1â€“2.7) against the unified Activity model
+ *   §1 Recording (board-level feed — also covered in board.e2e-spec.ts)
+ *   §2 Workspace-scoped feed (2.1–2.7) against the unified Activity model
  *      (workspace-scoped, monthly-partitioned, JSONB payload).
  *
  * Endpoints:
@@ -63,16 +63,16 @@ describe('Activity module (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   // =========================================================================
-  // Â§1 Recording â€” board-level feed also covered by board.e2e-spec.ts
-  // "Activity feed" describe â†’ records card creation
+  // §1 Recording — board-level feed also covered by board.e2e-spec.ts
+  // "Activity feed" describe ? records card creation
   // =========================================================================
 
   // =========================================================================
-  describe('Â§2 Workspace-scoped Feed', () => {
+  describe('§2 Workspace-scoped Feed', () => {
     beforeAll(async () => {
       // Seed: 25 card creations to produce activity rows
       for (let i = 0; i < 25; i++) {
@@ -87,7 +87,7 @@ describe('Activity module (e2e)', () => {
       }
     });
 
-    it('2.1 cursor walk: seed â‰¥ 20 events â†’ page limit 20 hasMore+cursor; next page no dupes', async () => {
+    it('2.1 cursor walk: seed = 20 events ? page limit 20 hasMore+cursor; next page no dupes', async () => {
       const p1 = expectData<{
         items: Array<{ id: unknown }>;
         pagination: { cursor: string | null; hasMore: boolean };
@@ -152,7 +152,7 @@ describe('Activity module (e2e)', () => {
       }
     });
 
-    it('2.6 RBAC: viewer can read; outsider â†’ 403/404; unauthenticated â†’ 401', async () => {
+    it('2.6 RBAC: viewer can read; outsider ? 403/404; unauthenticated ? 401', async () => {
       const viewerRes = await req(server())
         .get(wsActivityUrl())
         .set(auth(viewer));
