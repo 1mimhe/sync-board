@@ -657,7 +657,7 @@ async function main() {
   try {
     await prisma.$executeRaw`SELECT ensure_activity_partitions()`;
   } catch {
-    console.log('Skipping partition ensure: run prisma/phase-6b-activity.sql first');
+    console.log('Skipping partition ensure: run prisma/activity-partitions.sql first');
   }
   const passwordHash = await bcrypt.hash('Password123!', 10);
 

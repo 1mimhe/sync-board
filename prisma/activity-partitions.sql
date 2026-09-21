@@ -6,7 +6,11 @@ ALTER TYPE public.entity_type ADD VALUE IF NOT EXISTS 'workspace';
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.activity_events') AND relkind <> 'p') THEN
-    RAISE EXCEPTION 'activity_events must be created by this script before prisma db push';
+    IF (SELECT count(*) FROM public.activity_events) = 0 THEN
+      DROP TABLE public.activity_events CASCADE;
+    ELSE
+      RAISE EXCEPTION 'activity_events must be created as a partitioned table before prisma db push';
+    END IF;
   END IF;
 END $$;
 
