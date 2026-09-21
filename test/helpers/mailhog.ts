@@ -26,8 +26,13 @@ interface MailhogListResponse {
   items: MailhogItem[];
 }
 
+/** Per-request ceiling so a stalled MailHog cannot defeat the poll deadline. */
+const MAILHOG_REQUEST_TIMEOUT_MS = 5000;
+
 async function listMessages(limit = 100): Promise<MailhogItem[]> {
-  const res = await fetch(`${MAILHOG_URL}/api/v2/messages?limit=${limit}`);
+  const res = await fetch(`${MAILHOG_URL}/api/v2/messages?limit=${limit}`, {
+    signal: AbortSignal.timeout(MAILHOG_REQUEST_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new Error(`MailHog API unavailable (${res.status}) — is compose up?`);
   }
@@ -36,7 +41,10 @@ async function listMessages(limit = 100): Promise<MailhogItem[]> {
 }
 
 export async function purgeMailbox(): Promise<void> {
-  await fetch(`${MAILHOG_URL}/api/v1/messages`, { method: 'DELETE' });
+  await fetch(`${MAILHOG_URL}/api/v1/messages`, {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(MAILHOG_REQUEST_TIMEOUT_MS),
+  });
 }
 
 function messageMatches(item: MailhogItem, email: string): boolean {

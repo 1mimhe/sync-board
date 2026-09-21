@@ -12,7 +12,9 @@ export class PrismaService
   constructor(configService?: ConfigService) {
     const connectionString =
       configService?.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
-    const pool = new Pool({ connectionString });
+    // Fail fast at boot when the database accepts but never answers
+    // (pg default waits forever and would hang module init).
+    const pool = new Pool({ connectionString, connectionTimeoutMillis: 10_000 });
     const adapter = new PrismaPg(pool);
     super({ adapter });
   }
