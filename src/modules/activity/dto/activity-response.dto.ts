@@ -1,9 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
- * Response DTO representing an activity event item.
+ * Actor profile embedded in an activity item.
  */
-export class ActivityEventResponseDto {
+export class ActivityActorDto {
+  @ApiProperty({ description: 'Actor user UUID' })
+  id!: string;
+
+  @ApiProperty({ description: 'Actor display name' })
+  displayName!: string;
+
+  @ApiPropertyOptional({ description: 'Actor avatar URL', nullable: true })
+  avatarUrl!: string | null;
+}
+
+/**
+ * Response DTO representing a single activity item.
+ */
+export class ActivityResponseDto {
   @ApiProperty({
     description: 'Monotonic event id (decimal string of a bigint)',
   })
@@ -29,6 +43,9 @@ export class ActivityEventResponseDto {
 
   @ApiProperty({ description: 'UUID of the acting user' })
   actorId!: string;
+
+  @ApiProperty({ description: 'Acting user profile', type: ActivityActorDto })
+  actor!: ActivityActorDto;
 
   @ApiProperty({
     description: 'Action payload (entityTitle, list moves, etc.)',
@@ -57,14 +74,14 @@ export class ActivityPaginationMetaDto {
 }
 
 /**
- * Paginated envelope response for activity event listings.
+ * Paginated envelope response for activity listings.
  */
-export class PaginatedActivityEventResponseDto {
+export class PaginatedActivityResponseDto {
   @ApiProperty({
-    type: [ActivityEventResponseDto],
-    description: 'List of activity event items',
+    type: [ActivityResponseDto],
+    description: 'List of activity items',
   })
-  items!: ActivityEventResponseDto[];
+  items!: ActivityResponseDto[];
 
   @ApiProperty({
     type: ActivityPaginationMetaDto,
@@ -72,4 +89,3 @@ export class PaginatedActivityEventResponseDto {
   })
   pagination!: ActivityPaginationMetaDto;
 }
-

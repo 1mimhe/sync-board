@@ -1,4 +1,4 @@
-import type { ActivityEvent } from '@prisma/client';
+import type { Activity } from '@prisma/client';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { BadRequestException } from '@nestjs/common';
 import { ActivityRepository } from '../../repositories/activity.repository';
@@ -12,7 +12,7 @@ describe('ActivityRepository', () => {
   const row = (
     id: bigint,
     createdAt = '2026-09-01T00:00:00.000Z',
-  ): ActivityEvent => ({
+  ): Activity => ({
     id,
     createdAt: new Date(createdAt),
     workspaceId: 'ws-1',
@@ -23,7 +23,6 @@ describe('ActivityRepository', () => {
     actorId: 'u-1',
     payload: {},
     metadata: null,
-    legacyId: `00000000-0000-4000-8000-${id.toString().padStart(12, '0')}`,
   });
 
   beforeEach(() => {
@@ -36,8 +35,8 @@ describe('ActivityRepository', () => {
   });
 
   describe('record', () => {
-    it('should append an activity event with defaults', async () => {
-      prismaService.activityEvent.create.mockResolvedValue(row(1n));
+    it('should append an activity with defaults', async () => {
+      prismaService.activity.create.mockResolvedValue(row(1n));
 
       await repository.record({
         workspaceId: 'ws-1',
@@ -48,7 +47,7 @@ describe('ActivityRepository', () => {
         actorId: 'u-1',
       });
 
-      expect(prismaService.activityEvent.create).toHaveBeenCalledWith({
+      expect(prismaService.activity.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           workspaceId: 'ws-1',
           boardId: null,
@@ -61,7 +60,7 @@ describe('ActivityRepository', () => {
     });
 
     it('should pass payload and metadata through', async () => {
-      prismaService.activityEvent.create.mockResolvedValue(row(1n));
+      prismaService.activity.create.mockResolvedValue(row(1n));
 
       await repository.record({
         workspaceId: 'ws-1',
@@ -74,7 +73,7 @@ describe('ActivityRepository', () => {
         metadata: { source: 'test' },
       });
 
-      expect(prismaService.activityEvent.create).toHaveBeenCalledWith({
+      expect(prismaService.activity.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           payload: { fromListId: 'l-1', toListId: 'l-2' },
           metadata: { source: 'test' },
@@ -85,19 +84,11 @@ describe('ActivityRepository', () => {
 
   describe('getWorkspacePage', () => {
     it('should fetch limit+1 and compute hasMore with iso|id cursor', async () => {
-      prismaService.activityEvent.findMany.mockResolvedValue([
-        row(5n),
-        row(4n),
-      ]);
+      prismaService.activity.findMany.mockResolvedValue([row(5n), row(4n)]);
 
-      const result = await repository.getWorkspacePage(
-        'ws-1',
-        {},
-        undefined,
-        1,
-      );
+      const result = await repository.getWorkspacePage('ws-1', {}, undefined, 1);
 
-      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+      expect(prismaService.activity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 2 }),
       );
       expect(result.items).toHaveLength(1);
@@ -108,7 +99,7 @@ describe('ActivityRepository', () => {
     });
 
     it('should apply cursor boundary via OR predicate', async () => {
-      prismaService.activityEvent.findMany.mockResolvedValue([]);
+      prismaService.activity.findMany.mockResolvedValue([]);
       const cursor = encodeActivityCursor(
         new Date('2026-09-01T00:00:00.000Z'),
         '42',
@@ -116,7 +107,7 @@ describe('ActivityRepository', () => {
 
       await repository.getWorkspacePage('ws-1', {}, cursor, 20);
 
-      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+      expect(prismaService.activity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             workspaceId: 'ws-1',
@@ -136,7 +127,7 @@ describe('ActivityRepository', () => {
       await expect(
         repository.getWorkspacePage('ws-1', {}, 'not-a-cursor', 20),
       ).rejects.toThrow(BadRequestException);
-      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
+      expect(prismaService.activity.findMany).not.toHaveBeenCalled();
     });
 
     it('should reject cursor with out-of-range bigint id', async () => {
@@ -151,7 +142,7 @@ describe('ActivityRepository', () => {
     });
 
     it('should pass each filter through', async () => {
-      prismaService.activityEvent.findMany.mockResolvedValue([]);
+      prismaService.activity.findMany.mockResolvedValue([]);
 
       await repository.getWorkspacePage(
         'ws-1',
@@ -160,7 +151,7 @@ describe('ActivityRepository', () => {
         20,
       );
 
-      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
+      expect(prismaService.activity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             workspaceId: 'ws-1',
@@ -171,74 +162,6 @@ describe('ActivityRepository', () => {
           }),
         }),
       );
-    });
-  });
-
-  describe('getLegacyBoardPage', () => {
-    it('preserves UUID pagination and workspace scoping', async () => {
-      prismaService.activityEvent.findMany.mockResolvedValue([
-        row(2n),
-        row(1n),
-      ]);
-      const result = await repository.getLegacyBoardPage(
-        'ws-1',
-        'b-1',
-        undefined,
-        1,
-      );
-      expect(result.pagination).toEqual({
-        hasMore: true,
-        cursor: row(2n).legacyId,
-      });
-      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith({
-        where: { workspaceId: 'ws-1', boardId: 'b-1' },
-        orderBy: [{ createdAt: 'desc' }, { legacyId: 'desc' }],
-        take: 2,
-      });
-    });
-
-    it('uses a scoped cursor lookup and timestamp tie breaker', async () => {
-      const boundary = row(2n);
-      prismaService.activityEvent.findFirst.mockResolvedValue(boundary);
-      prismaService.activityEvent.findMany.mockResolvedValue([row(1n)]);
-      await repository.getLegacyBoardPage('ws-1', 'b-1', boundary.legacyId, 20);
-      expect(prismaService.activityEvent.findFirst).toHaveBeenCalledWith({
-        where: {
-          workspaceId: 'ws-1',
-          boardId: 'b-1',
-          legacyId: boundary.legacyId,
-        },
-      });
-      expect(prismaService.activityEvent.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            workspaceId: 'ws-1',
-            boardId: 'b-1',
-            OR: [
-              { createdAt: { lt: boundary.createdAt } },
-              {
-                createdAt: boundary.createdAt,
-                legacyId: { lt: boundary.legacyId },
-              },
-            ],
-          },
-        }),
-      );
-    });
-
-    it('rejects unknown or foreign-board cursors without querying a page', async () => {
-      prismaService.activityEvent.findFirst.mockResolvedValue(null);
-      await expect(
-        repository.getLegacyBoardPage('ws-1', 'b-1', row(1n).legacyId, 20),
-      ).rejects.toThrow(BadRequestException);
-      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
-    });
-
-    it('rejects malformed UUID cursors before querying', async () => {
-      await expect(
-        repository.getLegacyBoardPage('ws-1', 'b-1', 'invalid', 20),
-      ).rejects.toThrow(BadRequestException);
-      expect(prismaService.activityEvent.findMany).not.toHaveBeenCalled();
     });
   });
 

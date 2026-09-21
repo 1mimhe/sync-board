@@ -6,7 +6,21 @@ import type { ActivityService } from '../../services/activity.service';
 
 describe('Activity controllers', () => {
   const page = {
-    items: [{ id: 1n }],
+    items: [
+      {
+        id: 1n,
+        workspaceId: 'ws-1',
+        boardId: 'b-1',
+        entityType: 'card',
+        entityId: 'c-1',
+        action: 'created',
+        actorId: 'u-1',
+        actor: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
+        payload: {},
+        metadata: null,
+        createdAt: new Date('2026-09-01T00:00:00.000Z'),
+      },
+    ],
     pagination: { cursor: null, hasMore: false },
   };
 
@@ -18,21 +32,17 @@ describe('Activity controllers', () => {
     const result = await controller.getWorkspaceFeed('ws-1', {});
     expect(service.getWorkspaceFeed).toHaveBeenCalledWith('ws-1', {});
     expect(result.items[0].id).toBe('1');
+    expect(result.items[0].actor.displayName).toBe('Jane');
   });
 
-  it('delegates legacy board feed preserving UUID cursors', async () => {
+  it('delegates board feed with composite cursor', async () => {
     const service = {
-      getLegacyBoardFeed: jest
-        .fn()
-        .mockResolvedValue({ items: [], pagination: {} }),
       getBoardFeed: jest.fn().mockResolvedValue(page),
     };
     const controller = new BoardActivityController(
       service as unknown as ActivityService,
     );
-    await controller.getBoardFeed('ws-1', 'b-1', {});
-    expect(service.getLegacyBoardFeed).toHaveBeenCalledWith('ws-1', 'b-1', {});
-    const result = await controller.getBoardActivity('ws-1', 'b-1', {});
+    const result = await controller.getBoardFeed('ws-1', 'b-1', {});
     expect(service.getBoardFeed).toHaveBeenCalledWith('ws-1', 'b-1', {});
     expect(result.items[0].id).toBe('1');
   });

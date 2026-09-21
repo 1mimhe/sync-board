@@ -7,12 +7,12 @@ import { EntityNotFoundException } from '../../../../common/exceptions/app.excep
 
 describe('ActivityService', () => {
   let service: ActivityService;
-  let repo: { getWorkspacePage: jest.Mock; getLegacyBoardPage: jest.Mock };
+  let repo: { getWorkspacePage: jest.Mock };
   let boardService: { assertActiveBoard: jest.Mock };
   let authService: { getProfile: jest.Mock };
 
   beforeEach(async () => {
-    repo = { getWorkspacePage: jest.fn(), getLegacyBoardPage: jest.fn() };
+    repo = { getWorkspacePage: jest.fn() };
     boardService = {
       assertActiveBoard: jest.fn().mockResolvedValue(undefined),
     };
@@ -28,12 +28,30 @@ describe('ActivityService', () => {
     service = module.get(ActivityService);
   });
 
-  it('passes filters without cursor/limit leakage', async () => {
+  it('passes filters without cursor/limit leakage and enriches actors', async () => {
     repo.getWorkspacePage.mockResolvedValue({
-      items: [],
+      items: [
+        {
+          actorId: 'u-1',
+          id: 1n,
+          workspaceId: 'ws-1',
+          boardId: null,
+          entityType: 'card',
+          entityId: 'c-1',
+          action: 'created',
+          payload: {},
+          metadata: null,
+          createdAt: new Date(),
+        },
+      ],
       pagination: { cursor: null, hasMore: false },
     });
-    await service.getWorkspaceFeed('ws-1', {
+    authService.getProfile.mockResolvedValue({
+      id: 'u-1',
+      displayName: 'Jane',
+      avatarUrl: null,
+    });
+    const result = await service.getWorkspaceFeed('ws-1', {
       entityType: 'card',
       limit: 10,
     } as never);
@@ -43,6 +61,9 @@ describe('ActivityService', () => {
       undefined,
       10,
     );
+    expect(result.items[0]).toMatchObject({
+      actor: { id: 'u-1', displayName: 'Jane' },
+    });
   });
 
   it('forces board filter on board feed', async () => {
@@ -60,8 +81,8 @@ describe('ActivityService', () => {
     );
   });
 
-  it('enriches legacy feed with profiles and unknown-user fallback', async () => {
-    repo.getLegacyBoardPage.mockResolvedValue({
+  it('enriches feed with profiles and unknown-user fallback', async () => {
+    repo.getWorkspacePage.mockResolvedValue({
       items: [{ actorId: 'u-1' }, { actorId: 'u-missing' }],
       pagination: { cursor: null, hasMore: false },
     });
@@ -72,7 +93,7 @@ describe('ActivityService', () => {
         avatarUrl: null,
       })
       .mockRejectedValueOnce(new EntityNotFoundException('User', 'u-missing'));
-    const result = await service.getLegacyBoardFeed('ws-1', 'b-1', {});
+    const result = await service.getWorkspaceFeed('ws-1', {});
     expect(result.items[0]).toMatchObject({
       actor: { id: 'u-1', displayName: 'Jane' },
     });
@@ -82,12 +103,12 @@ describe('ActivityService', () => {
   });
 
   it('rethrows non-404 actor errors', async () => {
-    repo.getLegacyBoardPage.mockResolvedValue({
+    repo.getWorkspacePage.mockResolvedValue({
       items: [{ actorId: 'u-1' }],
       pagination: {},
     });
     authService.getProfile.mockRejectedValue(new Error('db down'));
-    await expect(service.getLegacyBoardFeed('ws-1', 'b-1', {})).rejects.toThrow(
+    await expect(service.getWorkspaceFeed('ws-1', {})).rejects.toThrow(
       'db down',
     );
   });
