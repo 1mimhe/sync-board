@@ -7,8 +7,7 @@ BEGIN;
 SET LOCAL TIME ZONE 'UTC';
 SELECT pg_advisory_xact_lock(6062026);
 
--- Start clean: drop the interim table and the plain table from db push.
-DROP TABLE IF EXISTS public.activity_events CASCADE;
+-- Start clean: drop the plain table from db push.
 DROP TABLE IF EXISTS public.activities CASCADE;
 
 -- Partitioned audit log. Composite PK must include the partition key;

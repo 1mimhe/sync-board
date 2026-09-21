@@ -20,9 +20,23 @@ import { NotificationPushGateway } from '../notification-push.gateway';
 import { UNREAD_COUNT_TTL_SECONDS } from '../notification.constants';
 import { unreadCountKey } from '../utils/notification-cache.util';
 
+/** Max persist attempts before a message is dead-lettered. */
 const MAX_RETRIES = 3;
+/** Base backoff: delays run 1s, 2s, 4s (base * 2^retryCount). */
 const RETRY_BASE_MS = 1000;
 
+/** Raw consume context passed through by the RabbitMQ subscriber. */
+interface ConsumeContext {
+  headers?: Record<string, unknown>;
+  routingKey?: string;
+}
+
+/**
+ * Guards the exactly-once gate: malformed messages can never be persisted.
+ *
+ * @param payload - Incoming notification payload
+ * @returns True when the payload carries every required field
+ */
 function isValidPayload(
   payload: NotificationMessagePayload | undefined,
 ): payload is NotificationMessagePayload {
@@ -39,7 +53,8 @@ function isValidPayload(
 
 /**
  * Persists notification messages exactly-once (DB unique gate) and pushes
- * to the recipient's private WebSocket room.
+ * to the recipient's private WebSocket room. Fail-open past persistence:
+ * counter and push failures are logged and never requeue the message.
  */
 @Injectable()
 export class NotificationConsumerListener {
@@ -52,6 +67,16 @@ export class NotificationConsumerListener {
     private readonly publisher: RabbitPublisherService,
   ) {}
 
+  /**
+   * Consumes one notification message: validate → deduplicate → persist
+   * (or schedule retry) → bump unread counter → push to the user.
+   *
+   * @param msg - Domain message wrapping the notification payload
+   * @param _ctx - Subscriber context (unused)
+   * @param _channel - AMQP channel (unused)
+   * @param raw - Raw headers and routing key for retry accounting
+   * @returns Nack without requeue once retries are exhausted, void otherwise
+   */
   @RabbitSubscribe({
     exchange: EXCHANGES.NOTIFICATION,
     routingKey: ROUTING_KEYS.NOTIFICATION_ALL,
@@ -61,7 +86,7 @@ export class NotificationConsumerListener {
     msg: DomainMessage<NotificationMessagePayload>,
     _ctx?: unknown,
     _channel?: unknown,
-    raw?: { headers?: Record<string, unknown>; routingKey?: string },
+    raw?: ConsumeContext,
   ): Promise<void | Nack> {
     if (
       !msg ||
@@ -85,9 +110,28 @@ export class NotificationConsumerListener {
       return;
     }
 
-    let stored: Notification | null = null;
+    const stored = await this.persistOrScheduleRetry(msg, raw);
+    if (stored instanceof Nack) return stored;
+    if (!stored) return;
+
+    await this.bumpUnreadCounter(msg.payload.userId);
+    this.pushToUser(msg.payload.userId, stored);
+  }
+
+  /**
+   * Persists the message, or schedules a delayed retry on transient failure.
+   *
+   * @param msg - Domain message wrapping the notification payload
+   * @param raw - Raw headers and routing key for retry accounting
+   * @returns Stored row, null when already persisted or a retry was scheduled,
+   *   Nack without requeue once retries are exhausted
+   */
+  private async persistOrScheduleRetry(
+    msg: DomainMessage<NotificationMessagePayload>,
+    raw: ConsumeContext | undefined,
+  ): Promise<Notification | null | Nack> {
     try {
-      stored = await this.notificationRepo.createOnce({
+      return await this.notificationRepo.createOnce({
         messageId: msg.messageId,
         userId: msg.payload.userId,
         workspaceId: msg.payload.workspaceId,
@@ -102,14 +146,7 @@ export class NotificationConsumerListener {
         cardId: msg.payload.cardId ?? null,
       });
     } catch (error) {
-      try {
-        await this.redis.del(`msg:processed:${msg.messageId}`);
-      } catch (delError) {
-        this.logger.warn('Failed to release idempotency key on retry', {
-          messageId: msg.messageId,
-          error: (delError as Error).message,
-        });
-      }
+      await this.releaseIdempotencyKey(msg.messageId);
       const retryCount = retryCountFrom(raw?.headers);
       if (retryCount < MAX_RETRIES) {
         const delayMs = RETRY_BASE_MS * 2 ** retryCount;
@@ -120,7 +157,7 @@ export class NotificationConsumerListener {
           delayMs,
           retryCount + 1,
         );
-        return;
+        return null;
       }
       this.logger.error(
         `Notification ${msg.messageId} exhausted retries, dead-lettering`,
@@ -128,9 +165,34 @@ export class NotificationConsumerListener {
       );
       return new Nack(false);
     }
-    if (!stored) return;
+  }
+
+  /**
+   * Releases the Redis idempotency key so a scheduled retry can proceed.
+   *
+   * @param messageId - Consumed message UUID
+   * @returns Promise resolving when the release attempt completes
+   */
+  private async releaseIdempotencyKey(messageId: string): Promise<void> {
     try {
-      const key = unreadCountKey(msg.payload.userId);
+      await this.redis.del(`msg:processed:${messageId}`);
+    } catch (delError) {
+      this.logger.warn('Failed to release idempotency key on retry', {
+        messageId,
+        error: (delError as Error).message,
+      });
+    }
+  }
+
+  /**
+   * Increments the cached unread counter (best-effort).
+   *
+   * @param userId - Recipient user UUID
+   * @returns Promise resolving when the increment attempt completes
+   */
+  private async bumpUnreadCounter(userId: string): Promise<void> {
+    try {
+      const key = unreadCountKey(userId);
       await this.redis.incr(key);
       await this.redis.expire(key, UNREAD_COUNT_TTL_SECONDS);
     } catch (error) {
@@ -138,8 +200,17 @@ export class NotificationConsumerListener {
         error: (error as Error).message,
       });
     }
+  }
+
+  /**
+   * Pushes the stored notification to the recipient's WebSocket room.
+   *
+   * @param userId - Recipient user UUID
+   * @param notification - Persisted notification row
+   */
+  private pushToUser(userId: string, notification: Notification): void {
     try {
-      this.pushGateway.emitToUser(msg.payload.userId, stored);
+      this.pushGateway.emitToUser(userId, notification);
     } catch (error) {
       this.logger.warn('Notification push failed', {
         error: (error as Error).message,
