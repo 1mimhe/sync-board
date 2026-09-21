@@ -81,6 +81,10 @@ export class NotificationConsumerListener {
     exchange: EXCHANGES.NOTIFICATION,
     routingKey: ROUTING_KEYS.NOTIFICATION_ALL,
     queue: QUEUES.NOTIFICATION,
+    // Queues are asserted once at boot from rabbitmq.module.ts topology.
+    // Re-declaring here without arguments would 406-conflict with the
+    // configured durable/DLX/max-length queue, so only check + bind.
+    createQueueIfNotExists: false,
   })
   async handle(
     msg: DomainMessage<NotificationMessagePayload>,
