@@ -25,10 +25,6 @@ SET LOCAL TIME ZONE 'UTC';
 -- processes never CREATE the same monthly partition at once.
 SELECT pg_advisory_xact_lock(6062026);
 
--- Provides gen_random_uuid() for ad-hoc inserts/debugging. Harmless when
--- already installed; required on fresh Postgres instances.
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 -- Fresh start: drop the interim `activity_events` table from the previous
 -- iteration and any plain `activities` table created by `prisma db push`.
 -- CASCADE also removes their monthly partitions and indexes.
