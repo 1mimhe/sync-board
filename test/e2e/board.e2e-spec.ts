@@ -621,7 +621,7 @@ describe('Board module (e2e)', () => {
       expect(card.id).toEqual(expect.any(String));
 
       const feed = await req(server())
-        .get(`${boardUrl()}/activities`)
+        .get(`${boardUrl()}/activity`)
         .set(auth(bundle.viewer));
       const data = expectData<{
         items?: Array<{ action: string; entityType: string; entityId: string }>;
