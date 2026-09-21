@@ -5,7 +5,6 @@ import {
   PrismaClient,
   WorkspaceRole,
   InvitationStatus,
-  ActionType,
   EntityType,
   AttachmentType,
   CardPriority,
@@ -606,7 +605,7 @@ async function ensureRefreshToken(params: {
 async function ensureActivity(params: {
   boardId: string | null;
   userId: string;
-  action: ActionType;
+  action: string;
   entityType: EntityType;
   entityId: string;
   entityTitle?: string | null;
@@ -617,7 +616,7 @@ async function ensureActivity(params: {
   const scope = params.boardId
     ? await prisma.board.findUniqueOrThrow({ where: { id: params.boardId }, select: { workspaceId: true } })
     : await prisma.document.findUniqueOrThrow({ where: { id: params.entityId }, select: { workspaceId: true } });
-  const existing = await prisma.activityEvent.findFirst({
+  const existing = await prisma.activity.findFirst({
     where: {
       workspaceId: scope.workspaceId,
       boardId: params.boardId,
@@ -629,7 +628,7 @@ async function ensureActivity(params: {
     orderBy: { createdAt: 'asc' },
   });
   if (existing) return existing;
-  return prisma.activityEvent.create({
+  return prisma.activity.create({
     data: {
       workspaceId: scope.workspaceId,
       boardId: params.boardId,
@@ -1747,11 +1746,11 @@ async function main() {
     'active + rotated chain (replacedBy) + revoked/expired',
   );
 
-  // ---- 17. Activities: every ActionType + representative EntityTypes ------------------------
+  // ---- 17. Activities: every action + representative EntityTypes ------------------------
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userAlex.id,
-    action: ActionType.created,
+    action: 'created',
     entityType: EntityType.card,
     entityId: parentCardAuth.id,
     entityTitle: parentCardAuth.title,
@@ -1761,7 +1760,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userSarah.id,
-    action: ActionType.moved,
+    action: 'moved',
     entityType: EntityType.card,
     entityId: parentCardRealtime.id,
     entityTitle: parentCardRealtime.title,
@@ -1772,7 +1771,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userAlex.id,
-    action: ActionType.updated,
+    action: 'updated',
     entityType: EntityType.board,
     entityId: boardSprint.id,
     entityTitle: boardSprint.title,
@@ -1781,7 +1780,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userSarah.id,
-    action: ActionType.archived,
+    action: 'archived',
     entityType: EntityType.list,
     entityId: listArchived.id,
     entityTitle: listArchived.title,
@@ -1789,7 +1788,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userAlex.id,
-    action: ActionType.unarchived,
+    action: 'unarchived',
     entityType: EntityType.card,
     entityId: cardArchived.id,
     entityTitle: cardArchived.title,
@@ -1797,7 +1796,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userMarcus.id,
-    action: ActionType.deleted,
+    action: 'deleted',
     entityType: EntityType.comment,
     entityId: commentRoot.id,
     entityTitle: 'comment on OAuth 2.0 & SSO Integration',
@@ -1805,7 +1804,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userAlex.id,
-    action: ActionType.created,
+    action: 'created',
     entityType: EntityType.attachment,
     entityId: attachmentSpec.id,
     entityTitle: attachmentSpec.name,
@@ -1813,7 +1812,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userElena.id,
-    action: ActionType.created,
+    action: 'created',
     entityType: EntityType.label,
     entityId: labelBug.id,
     entityTitle: labelBug.name,
@@ -1821,7 +1820,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userSarah.id,
-    action: ActionType.created,
+    action: 'created',
     entityType: EntityType.assignee,
     entityId: parentCardAuth.id,
     entityTitle: parentCardAuth.title,
@@ -1830,7 +1829,7 @@ async function main() {
   await ensureActivity({
     boardId: boardSprint.id,
     userId: userAlex.id,
-    action: ActionType.created,
+    action: 'created',
     entityType: EntityType.document,
     entityId: docRfc.id,
     entityTitle: docRfc.title,
@@ -1860,7 +1859,7 @@ async function main() {
     fieldValues: await prisma.cardFieldValue.count(),
     timeEntries: await prisma.cardTimeEntry.count(),
     refreshTokens: await prisma.refreshToken.count(),
-    activities: await prisma.activityEvent.count(),
+    activities: await prisma.activity.count(),
     stars: await prisma.userStarredBoard.count(),
   };
   console.log('📊 Seed counts:', JSON.stringify(counts, null, 2));

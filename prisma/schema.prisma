@@ -24,17 +24,6 @@ enum InvitationStatus {
   @@map("invitation_status")
 }
 
-enum ActionType {
-  created
-  updated
-  deleted
-  moved
-  archived
-  unarchived
-
-  @@map("action_type")
-}
-
 enum EntityType {
   board
   list
@@ -108,7 +97,6 @@ model User {
   assignedCards        CardAssignee[]
   cardComments         CardComment[]
   uploadedAttachments  CardAttachment[]
-  activities           Activity[]
   createdDocuments     Document[]           @relation("DocumentCreator")
   documentSnapshots    DocumentSnapshot[]   @relation("SnapshotCreator")
   timeEntries          CardTimeEntry[]
@@ -216,7 +204,6 @@ model Board {
   creator    User               @relation("BoardCreator", fields: [createdBy], references: [id])
   starredBy  UserStarredBoard[]
   lists      List[]
-  activities Activity[]
 
   @@map("boards")
 }
@@ -369,9 +356,8 @@ model CardAttachment {
   @@map("card_attachments")
 }
 
-model ActivityEvent {
+model Activity {
   id          BigInt     @default(autoincrement())
-  legacyId    String     @default(uuid()) @map("legacy_id") @db.Uuid
   workspaceId String     @map("workspace_id") @db.Uuid
   boardId     String?    @map("board_id") @db.Uuid
   entityType  EntityType @map("entity_type")
@@ -383,32 +369,11 @@ model ActivityEvent {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@id([id, createdAt])
-  @@index([legacyId], map: "idx_activity_legacy")
   @@index([workspaceId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_workspace")
   @@index([workspaceId, boardId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_board")
   @@index([workspaceId, actorId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_actor_workspace")
   @@index([entityType, entityId, createdAt(sort: Desc), id(sort: Desc)], map: "idx_activity_entity")
   @@map("activity_events")
-}
-
-model Activity {
-  id          String     @id @default(uuid()) @db.Uuid
-  boardId     String?    @map("board_id") @db.Uuid
-  userId      String     @map("user_id") @db.Uuid
-  action      ActionType
-  entityType  EntityType @map("entity_type")
-  entityId    String     @map("entity_id") @db.Uuid
-  entityTitle String?    @db.VarChar(500)
-  fromListId  String?    @map("from_list_id") @db.Uuid
-  toListId    String?    @map("to_list_id") @db.Uuid
-  details     Json?      @db.JsonB
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
-
-  board Board? @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([boardId], map: "idx_activities_board")
-  @@map("activities")
 }
 
 model CardChecklist {
