@@ -286,7 +286,7 @@ export const boardApi = {
     if (query.cursor) params.set('cursor', query.cursor)
     if (query.limit) params.set('limit', String(query.limit || 20))
     return apiFetch<PaginatedResult<ActivityLog>>(
-      `/workspaces/${workspaceId}/boards/${boardId}/activities?${params.toString()}`,
+      `/workspaces/${workspaceId}/boards/${boardId}/activity?${params.toString()}`,
     )
   },
 }

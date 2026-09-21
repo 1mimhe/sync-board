@@ -356,24 +356,32 @@ export interface EditorInfo {
 }
 
 // ── Activities & Audit Logs ──────────────────────────────────────────────────
+// Unified Activity: workspace-scoped, monthly-partitioned, JSONB payload.
+// `payload.entityTitle` carries the human-readable title (see backend
+// ActivityResponseDto). `actor` is the enriched acting-user profile.
 
 export interface ActivityLog {
   id: string
-  boardId?: string | null
   workspaceId: string
-  userId: string
-  action: string
+  boardId?: string | null
   entityType: string
   entityId: string
-  entityTitle: string
-  metadata?: Record<string, unknown> | null
-  createdAt: string
-  user?: {
+  action: string
+  actorId: string
+  actor: {
     id: string
     displayName: string
-    email: string
     avatarUrl?: string | null
   }
+  payload: {
+    entityTitle?: string | null
+    fromListId?: string | null
+    toListId?: string | null
+    details?: unknown
+    [key: string]: unknown
+  }
+  metadata?: Record<string, unknown> | null
+  createdAt: string
 }
 
 export interface HealthStatusResponse {
