@@ -1,13 +1,13 @@
-ï»¿/**
- * Files & Attachments (S3) module e2e â€” HTTP via supertest against the real AppModule.
+/**
+ * Files & Attachments (S3) module e2e — HTTP via supertest against the real AppModule.
  *
  * Covers: test-cases-files.md
- *   Â§1 Presigned Upload â€” phase 1 (1.1â€“1.6)
- *   Â§2 Confirm â€” phase 2 (2.1â€“2.3)
- *   Â§3 Download (3.1â€“3.3)
- *   Â§4 Management & Listing (4.1â€“4.4)
+ *   §1 Presigned Upload — phase 1 (1.1–1.6)
+ *   §2 Confirm — phase 2 (2.1–2.3)
+ *   §3 Download (3.1–3.3)
+ *   §4 Management & Listing (4.1–4.4)
  *
- * â›” BLOCKED â€” Phase 6 pending.
+ * ? BLOCKED — Phase 6 pending.
  * `src/modules/file/file.module.ts` is an empty stub.
  * Remove `.skip` from each `describe.skip` block once the module lands.
  * NOTE: link-type card attachments are already covered in board.e2e-spec.ts.
@@ -77,8 +77,8 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§1 Presigned Upload â€” phase 1', () => {
-    it('1.1 happy request â†’ 200 {fileId, uploadUrl, s3Key, expiresIn}; DB row status=pending', async () => {
+  describe.skip('§1 Presigned Upload — phase 1', () => {
+    it('1.1 happy request ? 200 {fileId, uploadUrl, s3Key, expiresIn}; DB row status=pending', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -100,7 +100,7 @@ describe('Files (S3) module (e2e)', () => {
       expect(data.s3Key).toContain(cardId);
     });
 
-    it('1.2 MIME allowlist: .exe â†’ 422 UNSUPPORTED_FILE_TYPE', async () => {
+    it('1.2 MIME allowlist: .exe ? 422 UNSUPPORTED_FILE_TYPE', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -114,7 +114,7 @@ describe('Files (S3) module (e2e)', () => {
       expectError(res, 422, 'UNSUPPORTED_FILE_TYPE');
     });
 
-    it('1.3 size cap: > 25MB â†’ 422 FILE_TOO_LARGE', async () => {
+    it('1.3 size cap: > 25MB ? 422 FILE_TOO_LARGE', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -128,7 +128,7 @@ describe('Files (S3) module (e2e)', () => {
       expectError(res, 422, 'FILE_TOO_LARGE');
     });
 
-    it('1.5 entityId not in workspace â†’ 404 before URL issued', async () => {
+    it('1.5 entityId not in workspace ? 404 before URL issued', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -142,7 +142,7 @@ describe('Files (S3) module (e2e)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('1.6 RBAC: viewer â†’ 403 FORBIDDEN', async () => {
+    it('1.6 RBAC: viewer ? 403 FORBIDDEN', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(viewer))
@@ -158,8 +158,8 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§2 Confirm â€” phase 2', () => {
-    it('2.1 POST /files/:id/confirm â†’ status completed; row returned with metadata', async () => {
+  describe.skip('§2 Confirm — phase 2', () => {
+    it('2.1 POST /files/:id/confirm ? status completed; row returned with metadata', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -179,7 +179,7 @@ describe('Files (S3) module (e2e)', () => {
       expect(data.status).toBe('completed');
     });
 
-    it('2.3 double confirm is idempotent or â†’ 409 (document actual behavior)', async () => {
+    it('2.3 double confirm is idempotent or ? 409 (document actual behavior)', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -202,8 +202,8 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§3 Download', () => {
-    it('3.1 completed file â†’ 200 {downloadUrl}; URL expires â‰¤ 1h', async () => {
+  describe.skip('§3 Download', () => {
+    it('3.1 completed file ? 200 {downloadUrl}; URL expires = 1h', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -226,7 +226,7 @@ describe('Files (S3) module (e2e)', () => {
       expect(data.downloadUrl).toContain('http');
     });
 
-    it('3.3 archived/deleted file â†’ 404 FILE_NOT_FOUND', async () => {
+    it('3.3 archived/deleted file ? 404 FILE_NOT_FOUND', async () => {
       const res = await req(server())
         .get(`${filesUrl()}/00000000-0000-4000-8000-000000000000/download`)
         .set(auth(owner));
@@ -235,8 +235,8 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§4 Management & Listing', () => {
-    it('4.2 uploader soft-archives: subsequent download â†’ 404', async () => {
+  describe.skip('§4 Management & Listing', () => {
+    it('4.2 uploader soft-archives: subsequent download ? 404', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -261,7 +261,7 @@ describe('Files (S3) module (e2e)', () => {
       expect(dl.status).toBe(404);
     });
 
-    it('4.4 plain member cannot delete another member file â†’ 403', async () => {
+    it('4.4 plain member cannot delete another member file ? 403', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
