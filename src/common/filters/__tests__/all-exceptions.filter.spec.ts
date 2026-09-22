@@ -484,4 +484,40 @@ describe('AllExceptionsFilter', () => {
       );
     });
   });
+
+  describe('Non-HTTP contexts (RabbitMQ consumer)', () => {
+    it('should rethrow the original error when there is no request', () => {
+      const rpcHost = {
+        switchToHttp: () => ({
+          getResponse: () => undefined,
+          getRequest: () => undefined,
+        }),
+      } as unknown as ArgumentsHost;
+      const original = new Error('broker boom');
+
+      expect(() => filter.catch(original, rpcHost)).toThrow(original);
+    });
+
+    it('should rethrow the original error when the response is not writable', () => {
+      const rpcHost = {
+        switchToHttp: () => ({
+          getResponse: () => ({}),
+          getRequest: () => mockRequest,
+        }),
+      } as unknown as ArgumentsHost;
+
+      expect(() => filter.catch(new Error('nope'), rpcHost)).toThrow('nope');
+    });
+
+    it('should rethrow when the response is missing but the request exists', () => {
+      const rpcHost = {
+        switchToHttp: () => ({
+          getResponse: () => undefined,
+          getRequest: () => mockRequest,
+        }),
+      } as unknown as ArgumentsHost;
+
+      expect(() => filter.catch(new Error('gone'), rpcHost)).toThrow('gone');
+    });
+  });
 });

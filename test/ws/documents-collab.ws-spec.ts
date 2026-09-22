@@ -1,17 +1,17 @@
-ï»¿/**
- * Document collaboration WebSocket e2e â€” socket.io-client against in-process app.
+/**
+ * Document collaboration WebSocket e2e — socket.io-client against in-process app.
  *
- * Covers: test-cases-realtime-ws.md Â§4 (Document Collaboration)
- *   Â§4.1 doc:join returns full state
- *   Â§4.2 update relay verbatim
- *   Â§4.3 convergence (sv+diffs)
- *   Â§4.4 awareness relay (peers only)
- *   Â§4.5 editor lifecycle (joined/left)
- *   Â§4.6 doc:saved event after debounce
- *   Â§4.7 outsider doc:join â†’ DOCUMENT_ACCESS_DENIED
- *   Â§4.8 rate limits
+ * Covers: test-cases-realtime-ws.md §4 (Document Collaboration)
+ *   §4.1 doc:join returns full state
+ *   §4.2 update relay verbatim
+ *   §4.3 convergence (sv+diffs)
+ *   §4.4 awareness relay (peers only)
+ *   §4.5 editor lifecycle (joined/left)
+ *   §4.6 doc:saved event after debounce
+ *   §4.7 outsider doc:join ? DOCUMENT_ACCESS_DENIED
+ *   §4.8 rate limits
  *
- * â›” BLOCKED â€” Phase 5 pending.
+ * ? BLOCKED — Phase 5 pending.
  * `src/modules/document/document.module.ts` is an empty stub.
  * Remove `.skip` from each `describe.skip` block once the module lands.
  * Cross-check event names against the final DocumentGateway constants before activating.
@@ -31,7 +31,7 @@ import {
 import { expectData, req } from '../helpers/http';
 
 /**
- * Document WS event names (Phase 5 target â€” update when DocumentGateway lands).
+ * Document WS event names (Phase 5 target — update when DocumentGateway lands).
  * These are intentionally consts here so they can be updated in one place.
  */
 const DOC_EVENTS = {
@@ -80,11 +80,11 @@ describe('Documents collaboration (ws)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   // =========================================================================
-  describe.skip('Â§4.1 doc:join returns full initial state', () => {
+  describe.skip('§4.1 doc:join returns full initial state', () => {
     it('joining a document receives initialState bytes', async () => {
       const sock = await connect(app.url, owner.accessToken);
       const joined = collect(sock, DOC_EVENTS.JOINED);
@@ -98,8 +98,8 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§4.2 update relay verbatim', () => {
-    it('A sends binary update frame â†’ B receives identical bytes', async () => {
+  describe.skip('§4.2 update relay verbatim', () => {
+    it('A sends binary update frame ? B receives identical bytes', async () => {
       const sockA = await connect(app.url, owner.accessToken);
       const sockB = await connect(app.url, member.accessToken);
 
@@ -125,8 +125,8 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§4.4 awareness relay (peers only, not sender)', () => {
-    it('A emits awareness â†’ B gets it; A does NOT receive own frame', async () => {
+  describe.skip('§4.4 awareness relay (peers only, not sender)', () => {
+    it('A emits awareness ? B gets it; A does NOT receive own frame', async () => {
       const sockA = await connect(app.url, owner.accessToken);
       const sockB = await connect(app.url, member.accessToken);
 
@@ -159,8 +159,8 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§4.5 editor lifecycle: joined/left frames', () => {
-    it('B joins â†’ A receives editor:joined; B disconnects â†’ A receives editor:left', async () => {
+  describe.skip('§4.5 editor lifecycle: joined/left frames', () => {
+    it('B joins ? A receives editor:joined; B disconnects ? A receives editor:left', async () => {
       const sockA = await connect(app.url, owner.accessToken);
       sockA.emit(DOC_EVENTS.JOIN, { docId });
       await onceEvent(sockA, DOC_EVENTS.JOINED);
@@ -185,7 +185,7 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('Â§4.7 outsider doc:join â†’ DOCUMENT_ACCESS_DENIED', () => {
+  describe.skip('§4.7 outsider doc:join ? DOCUMENT_ACCESS_DENIED', () => {
     it('outsider receives an error frame DOCUMENT_ACCESS_DENIED', async () => {
       const sock = await connect(app.url, outsider.accessToken);
       const errors = collect(sock, 'error');

@@ -91,7 +91,14 @@ export class CardViewRepository {
       where.title = { contains: filters.search, mode: 'insensitive' };
     }
 
-    const sortField = ['title', 'dueDate', 'priority', 'status', 'createdAt', 'updatedAt'].includes(filters.sortBy || '')
+    const sortField = [
+      'title',
+      'dueDate',
+      'priority',
+      'status',
+      'createdAt',
+      'updatedAt',
+    ].includes(filters.sortBy || '')
       ? (filters.sortBy as string)
       : 'updatedAt';
     const sortDirection = filters.sortOrder === 'asc' ? 'asc' : 'desc';

@@ -35,6 +35,11 @@ export const QUEUE_LIMITS = {
 
 export const RABBITMQ_DEFAULTS = {
   DEFAULT_URI: 'amqp://guest:guest@localhost:5672',
+  /**
+   * Max wait for the initial broker connection at boot. Exceeding it fails
+   * startup loudly instead of hanging subscriber setup forever.
+   */
+  BOOT_TIMEOUT_MS: 15_000,
 } as const;
 
 export type ExchangeName = (typeof EXCHANGES)[keyof typeof EXCHANGES];

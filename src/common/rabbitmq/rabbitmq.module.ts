@@ -72,7 +72,13 @@ import {
             },
           },
         ],
-        connectionInitOptions: { wait: false },
+        // Fail fast at boot when the broker is unreachable: subscriber setup
+        // in onApplicationBootstrap awaits a channel, so wait:false would hang
+        // startup indefinitely instead of reporting the real problem.
+        connectionInitOptions: {
+          wait: true,
+          timeout: RABBITMQ_DEFAULTS.BOOT_TIMEOUT_MS,
+        },
         enableDirectReplyTo: false,
         registerHandlers: true,
       }),

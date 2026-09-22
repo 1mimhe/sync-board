@@ -15,6 +15,11 @@ import { resolveTemplatesDir } from './utils/mail-template.util';
           host: config.get<string>('SMTP_HOST', 'localhost'),
           port: config.get<number>('SMTP_PORT', 1025),
           secure: config.get<boolean>('SMTP_SECURE', false),
+          // Fail fast when the SMTP server accepts but never answers
+          // (nodemailer defaults wait minutes and would hang requests).
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 15_000,
           ...(config.get<string>('SMTP_USER')
             ? {
                 auth: {

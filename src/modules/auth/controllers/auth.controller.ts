@@ -198,11 +198,7 @@ export class AuthController {
     }
 
     if (rawToken) {
-      await this.authService.logout(
-        rawToken,
-        jti,
-        expDate,
-      );
+      await this.authService.logout(rawToken, jti, expDate);
     }
     res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
       ...getRefreshTokenCookieOptions(),
@@ -351,12 +347,11 @@ export class AuthController {
     await this.authService.validateOAuthState(state);
 
     const user = req.user as User;
-    const { tokens } =
-      await this.authService.handleGoogleCallback(
-        user,
-        req.ip,
-        req.headers['user-agent'],
-      );
+    const { tokens } = await this.authService.handleGoogleCallback(
+      user,
+      req.ip,
+      req.headers['user-agent'],
+    );
     this.setAuthCookie(res, tokens.refreshToken);
 
     const clientUrl = this.authService.getClientUrl();

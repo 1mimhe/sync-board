@@ -67,6 +67,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    // Non-HTTP context (RabbitMQ consumer): there is no response to write.
+    // Log the original error and rethrow so the caller keeps its semantics
+    // (broker redelivery) instead of masking it with a TypeError here.
+    if (!request || !response || typeof response.status !== 'function') {
+      this.logger.error(
+        `Unhandled non-HTTP exception: ${
+          exception instanceof Error ? exception.message : String(exception)
+        }`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+      throw exception;
+    }
+
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let errorCode = 'INTERNAL_ERROR';
     let message = 'An unexpected error occurred';

@@ -4,20 +4,17 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { BoardService } from '../../services/board.service';
 import { BoardRepository } from '../../repositories/board.repository';
 import { LabelRepository } from '../../../label/repositories/label.repository';
-import { ActivityRepository } from '../../../../activity/repositories/activity.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 
 describe('BoardService', () => {
   let service: BoardService;
   let boardRepo: DeepMockProxy<BoardRepository>;
   let labelRepo: DeepMockProxy<LabelRepository>;
-  let activityRepo: DeepMockProxy<ActivityRepository>;
   let eventEmitter: DeepMockProxy<EventEmitter2>;
 
   beforeEach(async () => {
     boardRepo = mockDeep<BoardRepository>();
     labelRepo = mockDeep<LabelRepository>();
-    activityRepo = mockDeep<ActivityRepository>();
     eventEmitter = mockDeep<EventEmitter2>();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +22,6 @@ describe('BoardService', () => {
         BoardService,
         { provide: BoardRepository, useValue: boardRepo },
         { provide: LabelRepository, useValue: labelRepo },
-        { provide: ActivityRepository, useValue: activityRepo },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
@@ -325,45 +321,34 @@ describe('BoardService', () => {
     });
   });
 
-  describe('Activities', () => {
-    it('should get board activities with cursor pagination if board found', async () => {
-      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
-      activityRepo.findByBoardIdPage.mockResolvedValue([
-        { id: 'act-1' },
-      ] as any);
+  describe('findWorkspaceIdByBoardId', () => {
+    it('should resolve workspace from active board', async () => {
+      boardRepo.findById.mockResolvedValue({ workspaceId: 'ws-1' } as any);
+      boardRepo.findByIdIncludingArchived.mockResolvedValue(null);
 
-      const result = await service.getBoardActivities('b-1', 'ws-1', {
-        limit: 20,
-      });
+      const result = await service.findWorkspaceIdByBoardId('b-1');
 
-      expect(activityRepo.findByBoardIdPage).toHaveBeenCalledWith(
-        'b-1',
-        undefined,
-        20,
-      );
-      expect(result.items).toEqual([{ id: 'act-1' }]);
-      expect(result.pagination).toEqual({ cursor: null, hasMore: false });
+      expect(result).toBe('ws-1');
     });
 
-    it('should default limit when query omitted', async () => {
-      boardRepo.findById.mockResolvedValue({ id: 'b-1' } as any);
-      activityRepo.findByBoardIdPage.mockResolvedValue([]);
-
-      await service.getBoardActivities('b-1', 'ws-1');
-
-      expect(activityRepo.findByBoardIdPage).toHaveBeenCalledWith(
-        'b-1',
-        undefined,
-        20,
-      );
-    });
-
-    it('should throw EntityNotFoundException if board not found when getting activities', async () => {
+    it('should fall back to archived board when active lookup misses', async () => {
       boardRepo.findById.mockResolvedValue(null);
+      boardRepo.findByIdIncludingArchived.mockResolvedValue({
+        workspaceId: 'ws-2',
+      } as any);
 
-      await expect(service.getBoardActivities('b-99', 'ws-1')).rejects.toThrow(
-        EntityNotFoundException,
-      );
+      const result = await service.findWorkspaceIdByBoardId('b-2');
+
+      expect(result).toBe('ws-2');
+    });
+
+    it('should return null when board does not exist', async () => {
+      boardRepo.findById.mockResolvedValue(null);
+      boardRepo.findByIdIncludingArchived.mockResolvedValue(null);
+
+      const result = await service.findWorkspaceIdByBoardId('b-99');
+
+      expect(result).toBeNull();
     });
   });
 

@@ -3,7 +3,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Board } from '@prisma/client';
 import { BoardRepository } from '../repositories/board.repository';
 import { LabelRepository } from '../../label/repositories/label.repository';
-import { ActivityRepository } from '../../../activity/repositories/activity.repository';
 import {
   CreateBoardDto,
   UpdateBoardDto,
@@ -24,10 +23,7 @@ import {
   BoardDeletedEvent,
 } from '../events/board.events';
 import { BOARD_EVENTS } from '../events/board-events.constants';
-import type {
-  ActivityWithAuthor,
-  BoardWithFullContent,
-} from '../interfaces/board.interfaces';
+import type { BoardWithFullContent } from '../interfaces/board.interfaces';
 
 /**
  * Service encapsulating business logic for boards, labels, stars, and board activity history.
@@ -40,7 +36,6 @@ export class BoardService {
     private readonly boardRepo: BoardRepository,
     @Inject(forwardRef(() => LabelRepository))
     private readonly labelRepo: LabelRepository,
-    private readonly activityRepo: ActivityRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -367,35 +362,8 @@ export class BoardService {
   }
 
   // ============================================================
-  // ACTIVITY LOG
+  // CROSS-MODULE LOOKUPS
   // ============================================================
-
-  /**
-   * Retrieves a cursor page of activities (audit log) for a board.
-   *
-   * @param boardId - Board UUID
-   * @param workspaceId - Workspace UUID
-   * @param query - Cursor and limit parameters
-   * @returns PaginatedResult with `items` and `pagination.cursor/hasMore`
-   * @throws {EntityNotFoundException} If board is not found
-   */
-  async getBoardActivities(
-    boardId: string,
-    workspaceId: string,
-    query: CursorPaginationQueryDto = {},
-  ): Promise<PaginatedResult<ActivityWithAuthor>> {
-    const board = await this.boardRepo.findById(boardId, workspaceId);
-    if (!board) {
-      throw new EntityNotFoundException('Board', boardId);
-    }
-    const limit = query.limit ?? 20;
-    const rows = await this.activityRepo.findByBoardIdPage(
-      boardId,
-      query.cursor,
-      limit,
-    );
-    return buildCursorPagination(rows, limit);
-  }
 
   /**
    * Resolves the workspace that owns a board. Used by cross-module consumers
@@ -404,6 +372,12 @@ export class BoardService {
    * @param boardId - Board UUID
    * @returns Workspace UUID, or null when the board does not exist
    */
+  async assertActiveBoard(boardId: string, workspaceId: string): Promise<void> {
+    if (!(await this.boardRepo.findById(boardId, workspaceId))) {
+      throw new EntityNotFoundException('Board', boardId);
+    }
+  }
+
   async findWorkspaceIdByBoardId(boardId: string): Promise<string | null> {
     this.logger.debug(`Resolving workspace for board ${boardId}`);
     const board =

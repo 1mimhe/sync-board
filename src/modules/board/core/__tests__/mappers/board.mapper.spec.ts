@@ -10,7 +10,6 @@ import {
   toBoardWithContentResponseDto,
   toBoardContentPaginationDto,
   toCardCommentResponseDto,
-  toActivityResponseDto,
   toCardWithSubcardsResponseDto,
 } from '../../mappers/board.mapper';
 import { AttachmentType } from '@prisma/client';
@@ -379,52 +378,4 @@ describe('BoardMapper Functions', () => {
     });
   });
 
-  describe('toActivityResponseDto', () => {
-    it('should default null boardId to empty string', () => {
-      const activity: any = {
-        id: 'act-1',
-        boardId: null,
-        user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
-        action: 'created',
-        entityType: 'document',
-        entityId: 'd-1',
-        entityTitle: 'Doc',
-        fromListId: null,
-        toListId: null,
-        details: null,
-        createdAt: now,
-      };
-
-      expect(toActivityResponseDto(activity).boardId).toBe('');
-    });
-    it('should map activity entity with actor details', () => {
-      const activity: any = {
-        id: 'act-1',
-        boardId: 'b-1',
-        user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
-        action: 'created',
-        entityType: 'card',
-        entityId: 'c-1',
-        entityTitle: 'New Task',
-        fromListId: null,
-        toListId: null,
-        details: { key: 'value' },
-        createdAt: now,
-      };
-
-      expect(toActivityResponseDto(activity)).toEqual({
-        id: 'act-1',
-        boardId: 'b-1',
-        user: { id: 'u-1', displayName: 'Jane', avatarUrl: null },
-        action: 'created',
-        entityType: 'card',
-        entityId: 'c-1',
-        entityTitle: 'New Task',
-        fromListId: null,
-        toListId: null,
-        details: { key: 'value' },
-        createdAt: now,
-      });
-    });
-  });
 });

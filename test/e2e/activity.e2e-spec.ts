@@ -1,19 +1,17 @@
-﻿/**
- * Activity / Audit Log module e2e — HTTP via supertest against the real AppModule.
+/**
+ * Activity / Audit Log module e2e � HTTP via supertest against the real AppModule.
  *
  * Covers: test-cases-activity.md
- *   §1 Recording (board-level feed — already covered in board.e2e-spec.ts)
- *   §2 Workspace-scoped feed (2.1–2.7) — BLOCKED pending ActivityModule wiring
+ *   �1 Recording (board-level feed � also covered in board.e2e-spec.ts)
+ *   �2 Workspace-scoped feed (2.1�2.7) against the unified Activity model
+ *      (workspace-scoped, monthly-partitioned, JSONB payload).
  *
- * Status (2026-08-30):
- *   ✅ Board-level feed (`GET …/boards/:id/activities`) covered by board.e2e-spec.ts.
- *   ⛔ §2 workspace-scoped feed BLOCKED — `ActivityModule` has no workspace feed endpoint.
- *      Remove `.skip` from each `describe.skip` block once the endpoint lands.
- *
- *   §3 Partitioning & Migration rows are infrastructure-level and require manual validation.
+ * Endpoints:
+ *   GET /api/workspaces/:workspaceId/activity (workspace feed, composite cursor)
+ *   GET /api/workspaces/:workspaceId/boards/:boardId/activity (board feed)
  */
 import { createTestApp, type TestApp } from '../helpers/app';
-import { expectData, expectError, req } from '../helpers/http';
+import { expectData, req } from '../helpers/http';
 import {
   createVerifiedUser,
   createWorkspace,
@@ -38,7 +36,7 @@ describe('Activity module (e2e)', () => {
   const auth = (u: TestUser) => ({ Authorization: `Bearer ${u.accessToken}` });
   const wsActivityUrl = () => `/api/workspaces/${workspaceId}/activity`;
   const boardActivityUrl = () =>
-    `/api/workspaces/${workspaceId}/boards/${boardId}/activities`;
+    `/api/workspaces/${workspaceId}/boards/${boardId}/activity`;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -65,16 +63,16 @@ describe('Activity module (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   // =========================================================================
-  // §1 Recording — board-level feed already covered by board.e2e-spec.ts
-  // "Activity feed" describe → records card creation
+  // �1 Recording � board-level feed also covered by board.e2e-spec.ts
+  // "Activity feed" describe ? records card creation
   // =========================================================================
 
   // =========================================================================
-  describe.skip('§2 Workspace-scoped Feed', () => {
+  describe('�2 Workspace-scoped Feed', () => {
     beforeAll(async () => {
       // Seed: 25 card creations to produce activity rows
       for (let i = 0; i < 25; i++) {
@@ -89,7 +87,7 @@ describe('Activity module (e2e)', () => {
       }
     });
 
-    it('2.1 cursor walk: seed ≥ 20 events → page limit 20 hasMore+cursor; next page no dupes', async () => {
+    it('2.1 cursor walk: seed = 20 events ? page limit 20 hasMore+cursor; next page no dupes', async () => {
       const p1 = expectData<{
         items: Array<{ id: unknown }>;
         pagination: { cursor: string | null; hasMore: boolean };
@@ -154,7 +152,7 @@ describe('Activity module (e2e)', () => {
       }
     });
 
-    it('2.6 RBAC: viewer can read; outsider → 403/404; unauthenticated → 401', async () => {
+    it('2.6 RBAC: viewer can read; outsider ? 403/404; unauthenticated ? 401', async () => {
       const viewerRes = await req(server())
         .get(wsActivityUrl())
         .set(auth(viewer));

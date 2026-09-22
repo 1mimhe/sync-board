@@ -137,11 +137,16 @@ guides) and `docs/project-kit/` (reusable templates used to bootstrap projects l
 
 ```bash
 cp .env.example .env             # fill values
-docker compose up -d             # PostgreSQL + Redis (+ MailHog)
+docker compose up -d             # PostgreSQL + Redis + MailHog + RabbitMQ
 mkdir keys && openssl genrsa -out keys/private.pem 2048
 openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 npm install
-npx prisma migrate dev           # or: npx prisma migrate deploy
+npx prisma generate
+npx prisma db push               # creates all tables (no migrate/ directory in this repo)
+# Order matters: partitions BEFORE seed (push leaves activities as a plain table)
+docker exec -i syncboard-postgres psql -U syncuser -d syncboard < prisma/activity-partitions.sql
+docker exec -i syncboard-postgres psql -U syncuser -d syncboard < prisma/custom-indexes.sql
+npm run db:seed                  # idempotent demo data (calls ensure_activity_partitions itself)
 npm run start:dev
 ```
 

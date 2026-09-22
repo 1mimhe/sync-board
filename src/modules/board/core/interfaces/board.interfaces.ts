@@ -1,5 +1,4 @@
 import type {
-  Activity,
   Board,
   List,
   Card,
@@ -83,17 +82,6 @@ export interface BoardWithFullContent extends Board {
  */
 export interface CardCommentWithAuthor extends CardComment {
   author: {
-    id: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
-}
-
-/**
- * Activity log entry with actor user profile details.
- */
-export interface ActivityWithAuthor extends Activity {
-  user: {
     id: string;
     displayName: string;
     avatarUrl: string | null;

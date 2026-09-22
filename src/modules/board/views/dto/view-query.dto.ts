@@ -104,12 +104,17 @@ export class TableViewQueryDto {
   @IsUUID('4')
   assigneeId?: string;
 
-  @ApiPropertyOptional({ description: 'Search term for card title or description' })
+  @ApiPropertyOptional({
+    description: 'Search term for card title or description',
+  })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Sort field', enum: ['title', 'dueDate', 'priority', 'status', 'createdAt', 'updatedAt'] })
+  @ApiPropertyOptional({
+    description: 'Sort field',
+    enum: ['title', 'dueDate', 'priority', 'status', 'createdAt', 'updatedAt'],
+  })
   @IsOptional()
   @IsString()
   sortBy?: string;

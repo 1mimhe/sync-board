@@ -12,6 +12,11 @@ export interface ActivityDrawerProps {
   boardId: string
 }
 
+function activityTitle(a: ActivityLog): string {
+  const title = a.payload?.entityTitle
+  return typeof title === 'string' && title.length > 0 ? title : ''
+}
+
 export function ActivityDrawer({
   isOpen,
   onClose,
@@ -74,18 +79,17 @@ export function ActivityDrawer({
             }}
           >
             <Avatar
-              name={a.user?.displayName}
-              email={a.user?.email}
-              avatarUrl={a.user?.avatarUrl}
+              name={a.actor?.displayName}
+              avatarUrl={a.actor?.avatarUrl}
               size={32}
             />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-                <b style={{ color: '#fff' }}>{a.user?.displayName || 'Someone'}</b>{' '}
+                <b style={{ color: '#fff' }}>{a.actor?.displayName || 'Someone'}</b>{' '}
                 <span style={{ color: 'var(--muted)' }}>
                   {a.action.replace(':', ' ')}
                 </span>{' '}
-                <b style={{ color: 'var(--violet2)' }}>{a.entityTitle}</b>{' '}
+                <b style={{ color: 'var(--violet2)' }}>{activityTitle(a)}</b>{' '}
                 <span className="badge" style={{ fontSize: 10, marginLeft: 4 }}>
                   {a.entityType}
                 </span>

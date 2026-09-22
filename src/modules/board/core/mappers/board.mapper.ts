@@ -1,6 +1,5 @@
-import type { Activity, Board, Card, Label, List } from '@prisma/client';
+import type { Board, Card, Label, List } from '@prisma/client';
 import {
-  ActivityResponseDto,
   BoardContentPaginationDto,
   BoardResponseDto,
   BoardWithContentResponseDto,
@@ -290,26 +289,4 @@ export function toCardCommentResponseDto(
   };
 }
 
-/**
- * Maps an Activity entity with author to ActivityResponseDto.
- *
- * @param activity - Activity database entity with actor user details
- * @returns Mapped ActivityResponseDto
- */
-export function toActivityResponseDto(
-  activity: Activity & { user: AuthorShape },
-): ActivityResponseDto {
-  return {
-    id: activity.id,
-    boardId: activity.boardId ?? '',
-    user: toCommentAuthorDto(activity.user),
-    action: activity.action,
-    entityType: activity.entityType,
-    entityId: activity.entityId,
-    entityTitle: activity.entityTitle,
-    fromListId: activity.fromListId,
-    toListId: activity.toListId,
-    details: activity.details,
-    createdAt: activity.createdAt,
-  };
-}
+
