@@ -6,6 +6,7 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import * as handlebars from 'handlebars';
 import { MailModule } from '../../mail.module';
+import { RedisService } from '../../../../common/redis/redis.service';
 
 describe('MailModule wiring', () => {
   it('should build the SMTP transport and Handlebars template config from env', async () => {
@@ -27,7 +28,10 @@ describe('MailModule wiring', () => {
         }),
         MailModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue({ set: jest.fn(), del: jest.fn() })
+      .compile();
 
     const mailer = moduleRef.get(PackageMailerService);
     expect(mailer).toBeDefined();
@@ -68,7 +72,10 @@ describe('MailModule wiring', () => {
         }),
         MailModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue({ set: jest.fn(), del: jest.fn() })
+      .compile();
 
     const mailer = moduleRef.get(PackageMailerService);
     const smtpOptions = (

@@ -3,16 +3,27 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { MailListener } from '../../listeners/mail.listener';
+import { RabbitPublisherService } from '../../../../common/rabbitmq/publisher.service';
+import {
+  EXCHANGES,
+  ROUTING_KEYS,
+} from '../../../../common/rabbitmq/rabbitmq.constants';
 
 describe('MailListener', () => {
   let listener: MailListener;
   let mailerService: DeepMockProxy<MailerService>;
   let config: DeepMockProxy<ConfigService>;
+  let publisher: DeepMockProxy<RabbitPublisherService>;
 
   beforeEach(async () => {
     mailerService = mockDeep<MailerService>();
     config = mockDeep<ConfigService>();
-    config.get.mockReturnValue('http://localhost:3001');
+    publisher = mockDeep<RabbitPublisherService>();
+    config.get.mockImplementation((key: string, defaultValue?: unknown) => {
+      if (key === 'ASYNC_MAIL') return false;
+      if (key === 'CLIENT_URL') return 'http://localhost:3001';
+      return defaultValue;
+    });
     mailerService.sendMail.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
@@ -20,6 +31,7 @@ describe('MailListener', () => {
         MailListener,
         { provide: MailerService, useValue: mailerService },
         { provide: ConfigService, useValue: config },
+        { provide: RabbitPublisherService, useValue: publisher },
       ],
     }).compile();
 
@@ -168,6 +180,90 @@ describe('MailListener', () => {
           email: 'x@example.com',
           token: 't',
         }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('async queue mode (ASYNC_MAIL=true)', () => {
+    beforeEach(() => {
+      config.get.mockImplementation((key: string, defaultValue?: unknown) => {
+        if (key === 'ASYNC_MAIL') return true;
+        if (key === 'CLIENT_URL') return 'http://localhost:3001';
+        return defaultValue;
+      });
+    });
+
+    it('should publish welcome-verify instead of sending on registered', async () => {
+      await listener.onRegistered({
+        userId: 'u-1',
+        email: 'new@example.com',
+        displayName: 'New User',
+        verificationToken: 'tok',
+      });
+
+      expect(publisher.publish).toHaveBeenCalledTimes(1);
+      expect(publisher.publish).toHaveBeenCalledWith(
+        EXCHANGES.EMAIL,
+        ROUTING_KEYS.EMAIL_SEND,
+        expect.objectContaining({
+          template: 'welcome-verify',
+          to: 'new@example.com',
+        }),
+      );
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should publish email-verified instead of sending', async () => {
+      await listener.onEmailVerified({
+        userId: 'u-1',
+        email: 'v@example.com',
+        displayName: 'V',
+      });
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        EXCHANGES.EMAIL,
+        ROUTING_KEYS.EMAIL_SEND,
+        expect.objectContaining({ template: 'email-verified' }),
+      );
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should publish password-reset instead of sending', async () => {
+      await listener.onPasswordResetRequested({
+        userId: 'u-1',
+        email: 'r@example.com',
+        token: 't',
+      });
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        EXCHANGES.EMAIL,
+        ROUTING_KEYS.EMAIL_SEND,
+        expect.objectContaining({ template: 'password-reset' }),
+      );
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should publish invitation instead of sending', async () => {
+      await listener.onInvitationCreated({
+        workspaceId: 'ws-1',
+        email: 'i@example.com',
+        invitedBy: 'o-1',
+        token: 't',
+      });
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        EXCHANGES.EMAIL,
+        ROUTING_KEYS.EMAIL_SEND,
+        expect.objectContaining({ template: 'invitation' }),
+      );
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('must not propagate publish failures', async () => {
+      publisher.publish.mockRejectedValue(new Error('broker down'));
+
+      await expect(
+        listener.onEmailVerified({ userId: 'u-1', email: 'x@example.com' }),
       ).resolves.toBeUndefined();
     });
   });

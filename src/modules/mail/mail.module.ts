@@ -3,10 +3,13 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailListener } from './listeners/mail.listener';
+import { EmailConsumer } from './listeners/email.consumer';
+import { RedisModule } from '../../common/redis/redis.module';
 import { resolveTemplatesDir } from './utils/mail-template.util';
 
 @Module({
   imports: [
+    RedisModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -43,6 +46,6 @@ import { resolveTemplatesDir } from './utils/mail-template.util';
       }),
     }),
   ],
-  providers: [MailListener],
+  providers: [MailListener, EmailConsumer],
 })
 export class MailModule {}
