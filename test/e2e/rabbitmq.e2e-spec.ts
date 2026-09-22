@@ -147,7 +147,7 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
         workspaceId,
         'Board to Archive',
       );
-      await boardService.archiveBoard(workspaceId, tempBoard.id, user.id);
+      await boardService.archive(tempBoard.id, workspaceId, user.id);
 
       const resolvedWs = await boardService.findWorkspaceIdByBoardId(
         tempBoard.id,
@@ -175,8 +175,8 @@ describe('RabbitMQ & Messaging Foundation (e2e)', () => {
     });
 
     it('CardService.findAssigneeIdsByCardId should return assignees for card', async () => {
-      if (!hasInfra || !cardId || !user) return;
-      await cardService.assignUser(cardId, user.id);
+      if (!hasInfra || !cardId || !user || !boardId || !workspaceId) return;
+      await cardService.addAssignee(boardId, workspaceId, cardId, user.id, user.id);
 
       const assignees = await cardService.findAssigneeIdsByCardId(cardId);
       expect(assignees).toContain(user.id);
