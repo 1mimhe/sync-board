@@ -1,25 +1,9 @@
-import type {
-  Board,
-  List,
-  Card,
-  Label,
-  CardComment,
-  CardAttachment,
-} from '@prisma/client';
+import type { Board, List, Card, Label, CardComment } from '@prisma/client';
 
 /**
- * Card attachment entity including basic uploader user profile details.
- */
-export interface CardAttachmentWithUser extends CardAttachment {
-  uploadedBy: {
-    id: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
-}
-
-/**
- * Card entity with its full relational graph (assignees, labels, and attachments).
+ * Card entity with its full relational graph (assignees and labels).
+ * File attachments are served via the dedicated attachments route backed
+ * by S3-backed files, not nested here.
  */
 export interface CardWithDetails extends Card {
   assignees: {
@@ -32,7 +16,6 @@ export interface CardWithDetails extends Card {
   labels: {
     label: Label;
   }[];
-  attachments?: CardAttachmentWithUser[];
   subcards?: Card[];
 }
 

@@ -4,7 +4,6 @@ import {
   toListResponseDto,
   toBoardLabelResponseDto,
   toCardResponseDto,
-  toCardAttachmentResponseDto,
   toCardWithDetailsResponseDto,
   toListWithCardsResponseDto,
   toBoardWithContentResponseDto,
@@ -12,7 +11,6 @@ import {
   toCardCommentResponseDto,
   toCardWithSubcardsResponseDto,
 } from '../../mappers/board.mapper';
-import { AttachmentType } from '@prisma/client';
 
 describe('BoardMapper Functions', () => {
   const now = new Date();
@@ -116,40 +114,8 @@ describe('BoardMapper Functions', () => {
     });
   });
 
-  describe('toCardAttachmentResponseDto', () => {
-    it('should map attachment with user to CardAttachmentResponseDto', () => {
-      const attachment: any = {
-        id: 'att-1',
-        cardId: 'c-1',
-        type: AttachmentType.file,
-        url: 'https://example.com/doc.pdf',
-        name: 'doc.pdf',
-        mimeType: 'application/pdf',
-        fileSize: 1024,
-        coverUrl: null,
-        createdAt: now,
-        updatedAt: now,
-        uploadedBy: { id: 'u-1', displayName: 'Jane Doe', avatarUrl: null },
-      };
-
-      expect(toCardAttachmentResponseDto(attachment)).toEqual({
-        id: 'att-1',
-        cardId: 'c-1',
-        uploadedBy: { id: 'u-1', displayName: 'Jane Doe', avatarUrl: null },
-        type: AttachmentType.file,
-        url: 'https://example.com/doc.pdf',
-        name: 'doc.pdf',
-        mimeType: 'application/pdf',
-        fileSize: 1024,
-        coverUrl: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-  });
-
   describe('toCardWithDetailsResponseDto', () => {
-    it('should map card with nested assignees, labels, and attachments', () => {
+    it('should map card with nested assignees and labels (attachments served via the files route)', () => {
       const cardWithDetails: any = {
         id: 'c-1',
         listId: 'l-1',

@@ -411,33 +411,43 @@ async function ensureAttachment(params: {
   coverUrl?: string | null;
   archivedAt?: Date | null;
 }) {
-  const existing = await prisma.cardAttachment.findFirst({
-    where: { cardId: params.cardId, name: params.name },
+  const card = await prisma.card.findUnique({
+    where: { id: params.cardId },
+    include: { list: { include: { board: true } } },
+  });
+  if (!card) {
+    throw new Error(`Seed card not found: ${params.cardId}`);
+  }
+  const existing = await prisma.fileAttachment.findFirst({
+    where: {
+      entityType: 'card',
+      entityId: params.cardId,
+      originalName: params.name,
+    },
     orderBy: { createdAt: 'asc' },
   });
   if (existing) {
-    return prisma.cardAttachment.update({
+    return prisma.fileAttachment.update({
       where: { id: existing.id },
       data: {
-        type: params.type,
-        url: params.url,
-        mimeType: params.mimeType ?? null,
-        fileSize: params.fileSize ?? null,
-        coverUrl: params.coverUrl ?? null,
+        mimeType: params.mimeType ?? 'application/octet-stream',
+        fileSize: params.fileSize ?? 0,
         archivedAt: params.archivedAt ?? null,
       },
     });
   }
-  return prisma.cardAttachment.create({
+  return prisma.fileAttachment.create({
     data: {
-      cardId: params.cardId,
-      name: params.name,
-      type: params.type,
-      url: params.url,
-      uploadedById: params.uploadedById,
-      mimeType: params.mimeType ?? null,
-      fileSize: params.fileSize ?? null,
-      coverUrl: params.coverUrl ?? null,
+      workspaceId: card.list.board.workspaceId,
+      uploadedBy: params.uploadedById,
+      s3Bucket: 'seed',
+      s3Key: `seed/${params.cardId}/${params.name}`,
+      originalName: params.name,
+      mimeType: params.mimeType ?? 'application/octet-stream',
+      fileSize: params.fileSize ?? 0,
+      entityType: 'card',
+      entityId: params.cardId,
+      status: 'completed',
       archivedAt: params.archivedAt ?? null,
     },
   });
@@ -626,8 +636,14 @@ async function ensureActivity(params: {
   const scope = params.workspaceId
     ? { workspaceId: params.workspaceId }
     : params.boardId
-      ? await prisma.board.findUniqueOrThrow({ where: { id: params.boardId }, select: { workspaceId: true } })
-      : await prisma.document.findUniqueOrThrow({ where: { id: params.entityId }, select: { workspaceId: true } });
+      ? await prisma.board.findUniqueOrThrow({
+          where: { id: params.boardId },
+          select: { workspaceId: true },
+        })
+      : await prisma.document.findUniqueOrThrow({
+          where: { id: params.entityId },
+          select: { workspaceId: true },
+        });
   const existing = await prisma.activity.findFirst({
     where: {
       workspaceId: scope.workspaceId,
@@ -669,7 +685,9 @@ async function main() {
   try {
     await prisma.$executeRaw`SELECT ensure_activity_partitions()`;
   } catch {
-    console.log('Skipping partition ensure: run prisma/activity-partitions.sql first');
+    console.log(
+      'Skipping partition ensure: run prisma/activity-partitions.sql first',
+    );
   }
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
@@ -1822,7 +1840,7 @@ async function main() {
     action: 'created',
     entityType: EntityType.attachment,
     entityId: attachmentSpec.id,
-    entityTitle: attachmentSpec.name,
+    entityTitle: attachmentSpec.originalName,
   });
   await ensureActivity({
     boardId: boardSprint.id,
@@ -1912,15 +1930,69 @@ async function main() {
     title: string;
     listId: string;
   }> = [
-    { boardId: boardInfra.id, userId: userSarah.id, cardId: infraCard1.id, title: infraCard1.title, listId: infraDoing.id },
-    { boardId: boardInfra.id, userId: userAlex.id, cardId: infraCard2.id, title: infraCard2.title, listId: infraTodo.id },
-    { boardId: boardRoadmap.id, userId: userSarah.id, cardId: roadmapCard1.id, title: roadmapCard1.title, listId: roadmapObjectives.id },
-    { boardId: boardRoadmap.id, userId: userAlex.id, cardId: roadmapCard2.id, title: roadmapCard2.title, listId: roadmapRisks.id },
-    { boardId: boardSprint.id, userId: userElena.id, cardId: cardCalendar.id, title: cardCalendar.title, listId: listDone.id },
-    { boardId: boardSprint.id, userId: userMarcus.id, cardId: cardFields.id, title: cardFields.title, listId: listReview.id },
-    { boardId: boardSprint.id, userId: userAlex.id, cardId: cardPerformance.id, title: cardPerformance.title, listId: listBacklog.id },
-    { boardId: boardSprint.id, userId: userMarcus.id, cardId: cardOverdue.id, title: cardOverdue.title, listId: listBacklog.id },
-    { boardId: boardSprint.id, userId: userElena.id, cardId: cardIdea.id, title: cardIdea.title, listId: listBacklog.id },
+    {
+      boardId: boardInfra.id,
+      userId: userSarah.id,
+      cardId: infraCard1.id,
+      title: infraCard1.title,
+      listId: infraDoing.id,
+    },
+    {
+      boardId: boardInfra.id,
+      userId: userAlex.id,
+      cardId: infraCard2.id,
+      title: infraCard2.title,
+      listId: infraTodo.id,
+    },
+    {
+      boardId: boardRoadmap.id,
+      userId: userSarah.id,
+      cardId: roadmapCard1.id,
+      title: roadmapCard1.title,
+      listId: roadmapObjectives.id,
+    },
+    {
+      boardId: boardRoadmap.id,
+      userId: userAlex.id,
+      cardId: roadmapCard2.id,
+      title: roadmapCard2.title,
+      listId: roadmapRisks.id,
+    },
+    {
+      boardId: boardSprint.id,
+      userId: userElena.id,
+      cardId: cardCalendar.id,
+      title: cardCalendar.title,
+      listId: listDone.id,
+    },
+    {
+      boardId: boardSprint.id,
+      userId: userMarcus.id,
+      cardId: cardFields.id,
+      title: cardFields.title,
+      listId: listReview.id,
+    },
+    {
+      boardId: boardSprint.id,
+      userId: userAlex.id,
+      cardId: cardPerformance.id,
+      title: cardPerformance.title,
+      listId: listBacklog.id,
+    },
+    {
+      boardId: boardSprint.id,
+      userId: userMarcus.id,
+      cardId: cardOverdue.id,
+      title: cardOverdue.title,
+      listId: listBacklog.id,
+    },
+    {
+      boardId: boardSprint.id,
+      userId: userElena.id,
+      cardId: cardIdea.id,
+      title: cardIdea.title,
+      listId: listBacklog.id,
+    },
   ];
   for (const c of bulkCreatedCards) {
     await ensureActivity({
@@ -2102,7 +2174,7 @@ async function main() {
     lists: await prisma.list.count(),
     cards: await prisma.card.count(),
     comments: await prisma.cardComment.count(),
-    attachments: await prisma.cardAttachment.count(),
+    attachments: await prisma.fileAttachment.count(),
     checklists: await prisma.cardChecklist.count(),
     checklistItems: await prisma.checklistItem.count(),
     documents: await prisma.document.count(),

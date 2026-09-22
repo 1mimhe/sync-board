@@ -96,7 +96,7 @@ model User {
   createdCards         Card[]                @relation("CardCreator")
   assignedCards        CardAssignee[]
   cardComments         CardComment[]
-  uploadedAttachments  CardAttachment[]
+  files                FileAttachment[]
   createdDocuments     Document[]           @relation("DocumentCreator")
   documentSnapshots    DocumentSnapshot[]   @relation("SnapshotCreator")
   timeEntries          CardTimeEntry[]
@@ -147,6 +147,7 @@ model Workspace {
   documents   Document[]
   fieldDefs   CardFieldDef[]
   notifications Notification[]
+  files       FileAttachment[]
 
   @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
@@ -278,7 +279,6 @@ model Card {
   assignees   CardAssignee[]
   labels      CardLabel[]
   comments    CardComment[]
-  attachments CardAttachment[]
   checklists  CardChecklist[]
   documents   Document[]
   fieldValues CardFieldValue[]
@@ -335,25 +335,37 @@ model CardComment {
   @@map("card_comments")
 }
 
-model CardAttachment {
-  id           String         @id @default(uuid()) @db.Uuid
-  cardId       String         @map("card_id") @db.Uuid
-  uploadedById String         @map("uploaded_by_id") @db.Uuid
-  type         AttachmentType @default(file)
-  url          String         @db.Text
-  name         String         @db.VarChar(255)
-  mimeType     String?        @map("mime_type") @db.VarChar(100)
-  fileSize     Int?           @map("file_size")
-  coverUrl     String?        @map("cover_url") @db.Text
-  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  archivedAt   DateTime?      @map("archived_at") @db.Timestamptz
+enum AttachmentStatus {
+  pending
+  completed
+  failed
 
-  card       Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  @@map("attachment_status")
+}
 
-  @@index([cardId], map: "idx_card_attachments_card")
-  @@map("card_attachments")
+model FileAttachment {
+  id           String           @id @default(uuid()) @db.Uuid
+  workspaceId  String           @map("workspace_id") @db.Uuid
+  uploadedBy   String           @map("uploaded_by") @db.Uuid
+  s3Bucket     String           @map("s3_bucket") @db.VarChar(100)
+  s3Key        String           @unique @map("s3_key") @db.VarChar(500)
+  originalName String           @map("original_name") @db.VarChar(255)
+  mimeType     String           @map("mime_type") @db.VarChar(100)
+  fileSize     Int              @map("file_size")
+  entityType   EntityType       @map("entity_type")
+  entityId     String           @map("entity_id") @db.Uuid
+  status       AttachmentStatus @default(pending)
+  archivedAt   DateTime?        @map("archived_at") @db.Timestamptz()
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploader  User      @relation(fields: [uploadedBy], references: [id])
+
+  @@index([entityType, entityId], map: "idx_attachments_entity")
+  @@index([workspaceId], map: "idx_attachments_workspace")
+  @@index([status, createdAt], map: "idx_attachments_pending_cleanup")
+  @@map("file_attachments")
 }
 
 model Activity {
