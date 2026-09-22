@@ -116,14 +116,6 @@ export class CardViewRepository {
           },
         },
         labels: { include: { label: true } },
-        attachments: {
-          where: { archivedAt: null },
-          include: {
-            uploadedBy: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
-        },
       },
       orderBy,
       take: limit + 1,

@@ -55,14 +55,6 @@ export class CardRepository {
           labels: {
             include: { label: true },
           },
-          attachments: {
-            where: { archivedAt: null },
-            include: {
-              uploadedBy: {
-                select: { id: true, displayName: true, avatarUrl: true },
-              },
-            },
-          },
         },
       });
     });
@@ -96,14 +88,6 @@ export class CardRepository {
         },
         labels: {
           include: { label: true },
-        },
-        attachments: {
-          where: { archivedAt: null },
-          include: {
-            uploadedBy: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
         },
       },
     });
@@ -284,14 +268,6 @@ export class CardRepository {
         },
         labels: {
           include: { label: true },
-        },
-        attachments: {
-          where: { archivedAt: null },
-          include: {
-            uploadedBy: {
-              select: { id: true, displayName: true, avatarUrl: true },
-            },
-          },
         },
       },
       orderBy: [{ archivedAt: 'desc' }, { id: 'desc' }],

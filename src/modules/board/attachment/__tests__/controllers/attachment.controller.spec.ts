@@ -1,139 +1,105 @@
+import { AttachmentStatus } from '@prisma/client';
 import { CardAttachmentController } from '../../controllers/attachment.controller';
-import { CardAttachmentService } from '../../services/attachment.service';
+import { FileService } from '../../../../file/services/file.service';
+import { BoardRepository } from '../../../core/repositories/board.repository';
+import { CardRepository } from '../../../card/repositories/card.repository';
 import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
 
-describe('CardAttachmentController', () => {
+describe('CardAttachmentController (file proxy)', () => {
   let controller: CardAttachmentController;
-  let attachmentService: jest.Mocked<CardAttachmentService>;
+  let fileService: { listForEntity: jest.Mock };
+  let boardRepo: { findById: jest.Mock };
+  let cardRepo: { findActiveById: jest.Mock };
 
-  const mockUser: JwtPayload = {
-    sub: 'user-uuid-1',
-    email: 'user@test.com',
-    jti: 'jti-1',
-  };
-
-  const mockAttachment = {
-    id: 'att-1',
-    cardId: 'card-1',
-    type: 'file' as any,
-    url: 'https://example.com/file.pdf',
-    name: 'document.pdf',
-    mimeType: 'application/pdf',
+  const user = { sub: 'user-1' } as JwtPayload;
+  const fileRow = (overrides = {}) => ({
+    id: 'file-1',
+    workspaceId: 'ws-1',
+    uploadedBy: 'user-1',
+    s3Bucket: 'b',
+    s3Key: 'k',
+    originalName: 'photo.png',
+    mimeType: 'image/png',
     fileSize: 1024,
-    coverUrl: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    uploadedBy: {
-      id: 'user-uuid-1',
-      displayName: 'User',
-      avatarUrl: null,
-    },
-  };
+    entityType: 'card',
+    entityId: 'card-1',
+    status: AttachmentStatus.completed,
+    archivedAt: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    ...overrides,
+  });
 
   beforeEach(() => {
-    attachmentService = {
-      addAttachment: jest.fn(),
-      getAttachments: jest.fn(),
-      updateAttachment: jest.fn(),
-      deleteAttachment: jest.fn(),
-    } as unknown as jest.Mocked<CardAttachmentService>;
-
-    controller = new CardAttachmentController(attachmentService);
+    fileService = { listForEntity: jest.fn() };
+    boardRepo = { findById: jest.fn().mockResolvedValue({ id: 'board-1' }) };
+    cardRepo = {
+      findActiveById: jest.fn().mockResolvedValue({ id: 'card-1' }),
+    };
+    controller = new CardAttachmentController(
+      fileService as unknown as FileService,
+      boardRepo as unknown as BoardRepository,
+      cardRepo as unknown as CardRepository,
+    );
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
-  describe('create', () => {
-    it('should add attachment to card', async () => {
-      attachmentService.addAttachment.mockResolvedValue(mockAttachment as any);
+  it('delegates listing to FileService and maps to the legacy shape', async () => {
+    fileService.listForEntity.mockResolvedValue([fileRow()]);
 
-      const result = await controller.create(
-        'ws-1',
-        'board-1',
-        'card-1',
-        {
-          name: 'document.pdf',
-          url: 'https://example.com/file.pdf',
-          type: 'file',
-        },
-        mockUser,
-      );
+    const result = await controller.list('ws-1', 'board-1', 'card-1', user);
 
-      expect(attachmentService.addAttachment).toHaveBeenCalledWith(
-        'board-1',
-        'ws-1',
-        'card-1',
-        {
-          name: 'document.pdf',
-          url: 'https://example.com/file.pdf',
-          type: 'file',
-        },
-        'user-uuid-1',
-      );
-      expect(result.id).toBe('att-1');
-      expect(result.name).toBe('document.pdf');
-    });
+    expect(fileService.listForEntity).toHaveBeenCalledWith(
+      'card',
+      'card-1',
+      'user-1',
+      'ws-1',
+    );
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'file-1',
+        cardId: 'card-1',
+        type: 'image',
+        url: '',
+        name: 'photo.png',
+        mimeType: 'image/png',
+        fileSize: 1024,
+      }),
+    ]);
   });
 
-  describe('list', () => {
-    it('should list attachments on card', async () => {
-      attachmentService.getAttachments.mockResolvedValue([
-        mockAttachment as any,
-      ]);
+  it('maps non-image MIME types to file type', async () => {
+    fileService.listForEntity.mockResolvedValue([
+      fileRow({ id: 'file-2', mimeType: 'application/pdf' }),
+    ]);
 
-      const result = await controller.list('ws-1', 'board-1', 'card-1');
+    const result = await controller.list('ws-1', 'board-1', 'card-1', user);
 
-      expect(attachmentService.getAttachments).toHaveBeenCalledWith(
-        'board-1',
-        'ws-1',
-        'card-1',
-      );
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('att-1');
-    });
+    expect(result[0].type).toBe('file');
+    expect(result[0].url).toBe('');
   });
 
-  describe('update', () => {
-    it('should update attachment metadata', async () => {
-      attachmentService.updateAttachment.mockResolvedValue({
-        ...mockAttachment,
-        name: 'renamed.pdf',
-      } as any);
+  it('throws when the board is outside the workspace', async () => {
+    boardRepo.findById.mockResolvedValue(null);
 
-      const result = await controller.update(
-        'ws-1',
-        'board-1',
-        'card-1',
-        'att-1',
-        { name: 'renamed.pdf' },
-      );
-
-      expect(attachmentService.updateAttachment).toHaveBeenCalledWith(
-        'board-1',
-        'ws-1',
-        'card-1',
-        'att-1',
-        { name: 'renamed.pdf' },
-      );
-      expect(result.name).toBe('renamed.pdf');
-    });
+    await expect(
+      controller.list('ws-1', 'board-1', 'card-1', user),
+    ).rejects.toThrow();
+    expect(fileService.listForEntity).not.toHaveBeenCalled();
   });
 
-  describe('delete', () => {
-    it('should delete attachment', async () => {
-      attachmentService.deleteAttachment.mockResolvedValue(undefined);
-
-      await controller.delete('ws-1', 'board-1', 'card-1', 'att-1', mockUser);
-
-      expect(attachmentService.deleteAttachment).toHaveBeenCalledWith(
-        'board-1',
-        'ws-1',
-        'card-1',
-        'att-1',
-        'user-uuid-1',
-      );
-    });
+  it('exposes no create/update/delete routes', () => {
+    expect(
+      (controller as unknown as Record<string, unknown>).create,
+    ).toBeUndefined();
+    expect(
+      (controller as unknown as Record<string, unknown>).update,
+    ).toBeUndefined();
+    expect(
+      (controller as unknown as Record<string, unknown>).delete,
+    ).toBeUndefined();
   });
 });

@@ -20,10 +20,8 @@ import {
   ListWithCardsResponseDto,
 } from '../../list/dto/list-response.dto';
 import { LabelResponseDto } from '../../label/dto/board-label-response.dto';
-import { CardAttachmentResponseDto } from '../../attachment/dto/card-attachment-response.dto';
 import type {
   BoardWithFullContent,
-  CardAttachmentWithUser,
   CardCommentWithAuthor,
   CardWithDetails,
   ListWithCards,
@@ -164,33 +162,11 @@ export function toCardWithSubcardsResponseDto(
 }
 
 /**
- * Maps a CardAttachmentWithUser entity to CardAttachmentResponseDto.
- *
- * @param attachment - Attachment entity with uploader details
- * @returns Mapped CardAttachmentResponseDto
- */
-export function toCardAttachmentResponseDto(
-  attachment: CardAttachmentWithUser,
-): CardAttachmentResponseDto {
-  return {
-    id: attachment.id,
-    cardId: attachment.cardId,
-    uploadedBy: toCommentAuthorDto(attachment.uploadedBy),
-    type: attachment.type,
-    url: attachment.url,
-    name: attachment.name,
-    mimeType: attachment.mimeType,
-    fileSize: attachment.fileSize,
-    coverUrl: attachment.coverUrl,
-    createdAt: attachment.createdAt,
-    updatedAt: attachment.updatedAt,
-  };
-}
-
-/**
  * Maps a CardWithDetails relational entity to CardWithDetailsResponseDto.
+ * Attachments are intentionally empty here — file attachments are served
+ * via the dedicated card-attachments route backed by S3-backed files.
  *
- * @param card - Card entity with assignees, labels, attachments
+ * @param card - Card entity with assignees and labels
  * @returns Mapped CardWithDetailsResponseDto
  */
 export function toCardWithDetailsResponseDto(
@@ -204,9 +180,7 @@ export function toCardWithDetailsResponseDto(
     labels: card.labels.map((item): CardLabelItemDto => ({
       label: toBoardLabelResponseDto(item.label),
     })),
-    attachments: card.attachments
-      ? card.attachments.map(toCardAttachmentResponseDto)
-      : [],
+    attachments: [],
     subcards: (card as any).subcards
       ? (card as any).subcards.map(toCardResponseDto)
       : [],
@@ -288,5 +262,3 @@ export function toCardCommentResponseDto(
     deletedAt: comment.deletedAt,
   };
 }
-
-

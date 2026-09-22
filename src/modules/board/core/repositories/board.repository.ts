@@ -117,18 +117,6 @@ export class BoardRepository {
                     label: true,
                   },
                 },
-                attachments: {
-                  where: { archivedAt: null },
-                  include: {
-                    uploadedBy: {
-                      select: {
-                        id: true,
-                        displayName: true,
-                        avatarUrl: true,
-                      },
-                    },
-                  },
-                },
                 subcards: {
                   where: { archivedAt: null, deletedAt: null },
                   select: {
