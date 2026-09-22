@@ -10,10 +10,10 @@ import { RedisIoAdapter } from '../../src/common/redis/redis-io.adapter';
 import { PrismaService } from '../../src/common/database/prisma.service';
 import { RedisService } from '../../src/common/redis/redis.service';
 import {
-  ThrottlerGuard,
   ThrottlerStorageService,
   getStorageToken,
 } from '@nestjs/throttler';
+import { HttpThrottlerGuard } from '../../src/common/guards/http-throttler.guard';
 
 /**
  * Bootstraps the real AppModule in-process, wiring the exact same globals as
@@ -57,7 +57,9 @@ export async function createTestApp(
     builder
       .overrideProvider(WsRateLimiterService)
       .useValue({ checkRateLimit: async () => true });
-    builder.overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true });
+    builder
+      .overrideGuard(HttpThrottlerGuard)
+      .useValue({ canActivate: () => true });
     builder
       .overrideGuard(WsRateLimitGuard)
       .useValue({ canActivate: () => true });

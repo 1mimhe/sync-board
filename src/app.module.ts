@@ -6,7 +6,8 @@ import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { HttpThrottlerGuard } from './common/guards/http-throttler.guard';
 import { AppConfigModule } from './common/config/config.module';
 import { PrismaModule } from './common/database/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
@@ -102,7 +103,7 @@ const isRabbitEnabled = process.env.RABBITMQ_ENABLE?.toLowerCase() !== 'false';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: HttpThrottlerGuard,
     },
   ],
 })
