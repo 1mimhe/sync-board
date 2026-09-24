@@ -5,13 +5,9 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import Joi from 'joi';
 import { RequestWithWorkspaceMember } from '../../../common/interfaces/request-with-workspace-member.interface';
 import { WorkspaceMemberRepository } from '../repositories/workspace-member.repository';
-
-// Matches ParseUUIDPipe's default (v4) validation so malformed
-// :workspaceId params fail fast instead of hitting the database.
-const UUID_V4_SCHEMA = Joi.string().uuid({ version: 'uuidv4' }).required();
+import { UUID_V4_SCHEMA } from './workspace-member.constants';
 
 /**
  * Guard that verifies the authenticated user is an active member of the target workspace.

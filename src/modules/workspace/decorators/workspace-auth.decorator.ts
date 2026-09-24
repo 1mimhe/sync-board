@@ -4,6 +4,7 @@ import { WorkspaceRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from '../../../common/guards/email-verified.guard';
 import { RbacGuard } from '../../../common/guards/rbac.guard';
+import { ROLES_METADATA_KEY } from '../../../common/guards/rbac.constants';
 import { WorkspaceMemberGuard } from '../guards/workspace-member.guard';
 
 /**
@@ -11,13 +12,11 @@ import { WorkspaceMemberGuard } from '../guards/workspace-member.guard';
  * enforcement, workspace membership verification, RBAC role checking, and Swagger
  * annotations.
  *
- * @param roles Permitted workspace roles (e.g. 'owner', 'admin', 'member', 'viewer')
+ * @param roles - Permitted workspace roles; prefer the `WORKSPACE_*_ROLES` sets
  */
 export function WorkspaceAuth(...roles: WorkspaceRole[]) {
-  const normalizedRoles = roles.map((r) => r.toLowerCase() as WorkspaceRole);
-
   return applyDecorators(
-    SetMetadata('roles', normalizedRoles),
+    SetMetadata(ROLES_METADATA_KEY, roles),
     UseGuards(
       JwtAuthGuard,
       EmailVerifiedGuard,
