@@ -28,6 +28,7 @@ const BoardPage = React.lazy(() => import('./pages/BoardPage').then((m) => ({ de
 const DocumentsListPage = React.lazy(() => import('./pages/DocumentsListPage').then((m) => ({ default: m.DocumentsListPage })))
 const DocumentPage = React.lazy(() => import('./pages/DocumentPage').then((m) => ({ default: m.DocumentPage })))
 const HealthPage = React.lazy(() => import('./pages/HealthPage').then((m) => ({ default: m.HealthPage })))
+const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const AuthCallbackPage = React.lazy(() => import('./pages/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage })))
 const WorkspaceSlugRedirectPage = React.lazy(() => import('./pages/WorkspaceSlugRedirectPage').then((m) => ({ default: m.WorkspaceSlugRedirectPage })))
 
@@ -324,6 +325,14 @@ export default function App() {
             element={
               <ProtectedLayout>
                 <DocumentPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedLayout>
+                <NotificationsPage />
               </ProtectedLayout>
             }
           />

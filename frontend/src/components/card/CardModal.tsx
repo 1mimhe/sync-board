@@ -18,6 +18,8 @@ import {
   attachmentApi,
 } from '../../api/endpoints'
 import { useToast } from '../../stores/toast.store'
+import { isCardComplete } from '../../utils'
+import { PriorityBadge, StatusSelect } from './PriorityStatus'
 import { Modal } from '../common/Modal'
 import { LabelPicker } from './LabelPicker'
 import { AssigneePicker } from './AssigneePicker'
@@ -38,7 +40,6 @@ import {
   IconCamera,
   IconSubtask,
   IconClock,
-  IconFlag,
   IconLink,
   IconTrash,
   IconX,
@@ -58,30 +59,16 @@ export interface CardModalProps {
 
 type TabType = 'overview' | 'subtasks' | 'checklists' | 'time' | 'comments' | 'attachments' | 'docs'
 
-const PRIORITY_OPTIONS: { value: CardPriority; label: string; color: string }[] = [
-  { value: 'lowest', label: 'Lowest', color: '#71717a' },
-  { value: 'low', label: 'Low', color: '#3b82f6' },
-  { value: 'medium', label: 'Medium', color: '#f59e0b' },
-  { value: 'high', label: 'High', color: '#f97316' },
-  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
-]
-
-const STATUS_OPTIONS: { value: CardStatus; label: string; color: string }[] = [
-  { value: 'not_started', label: 'To Do', color: '#a1a1aa' },
-  { value: 'active', label: 'In Progress', color: '#60a5fa' },
-  { value: 'done', label: 'Done', color: '#34d399' },
-  { value: 'closed', label: 'Closed', color: '#c084fc' },
-]
-
 function parseCardDescription(desc: unknown): string {
   if (!desc) return ''
   if (typeof desc === 'string') return desc
   if (typeof desc === 'object') {
-    if ('text' in (desc as any) && typeof (desc as any).text === 'string') {
-      return (desc as any).text
+    const record = desc as Record<string, unknown>
+    if (typeof record['text'] === 'string') {
+      return record['text']
     }
-    if ('content' in (desc as any) && typeof (desc as any).content === 'string') {
-      return (desc as any).content
+    if (typeof record['content'] === 'string') {
+      return record['content']
     }
     try {
       return JSON.stringify(desc)
@@ -111,14 +98,14 @@ export function CardModal({
   const [attachments, setAttachments] = useState<CardAttachment[]>([])
   const [tab, setTab] = useState<TabType>('overview')
 
-  // Form states
+  // Form states — status is the source of truth; isCompleted is derived.
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(() => parseCardDescription(card.description))
   const [dueDate, setDueDate] = useState(card.dueDate ? card.dueDate.slice(0, 10) : '')
-  const [isCompleted, setIsCompleted] = useState(card.isCompleted || card.isComplete || false)
   const [priority, setPriority] = useState<CardPriority>(card.priority || 'medium')
   const [status, setStatus] = useState<CardStatus>(card.status || 'not_started')
   const [coverUrl, setCoverUrl] = useState(card.coverUrl || '')
+  const isCompleted = isCardComplete(status)
 
   const loadCardDetails = useCallback(async () => {
     try {
@@ -135,7 +122,6 @@ export function CardModal({
         setTitle(cardRes.data.title)
         setDescription(parseCardDescription(cardRes.data.description))
         setDueDate(cardRes.data.dueDate ? cardRes.data.dueDate.slice(0, 10) : '')
-        setIsCompleted(!!(cardRes.data.isCompleted || cardRes.data.isComplete))
         if (cardRes.data.priority) setPriority(cardRes.data.priority)
         if (cardRes.data.status) setStatus(cardRes.data.status)
         setCoverUrl(cardRes.data.coverUrl || '')
@@ -162,10 +148,10 @@ export function CardModal({
       if (attachmentsRes.success && attachmentsRes.data) {
         setAttachments(attachmentsRes.data)
       }
-    } catch (err) {
-      console.error('Failed to load full card details', err)
+    } catch {
+      addToast('Failed to load full card details', 'error')
     }
-  }, [workspaceId, boardId, card.id])
+  }, [workspaceId, boardId, card.id, addToast])
 
   useEffect(() => {
     if (isOpen) {
@@ -197,9 +183,7 @@ export function CardModal({
   }
 
   const handleToggleCompletion = async () => {
-    const next = !isCompleted
-    setIsCompleted(next)
-    const nextStatus: CardStatus = next ? 'done' : 'not_started'
+    const nextStatus: CardStatus = isCompleted ? 'not_started' : 'done'
     setStatus(nextStatus)
     await cardApi.updateStatus(workspaceId, boardId, card.id, { status: nextStatus })
     onCardUpdated()
@@ -207,7 +191,6 @@ export function CardModal({
 
   const handleChangeStatus = async (nextStatus: CardStatus) => {
     setStatus(nextStatus)
-    setIsCompleted(nextStatus === 'done' || nextStatus === 'closed')
     const res = await cardApi.updateStatus(workspaceId, boardId, card.id, { status: nextStatus })
     if (res.success) {
       addToast(`Status updated to ${nextStatus.replace('_', ' ')}`, 'success')
@@ -411,7 +394,7 @@ export function CardModal({
           />
         )}
 
-        {/* Status & Priority Ribbon */}
+        {/* Status & Priority Ribbon — single source CARD_*_META */}
         <div
           style={{
             display: 'flex',
@@ -424,57 +407,9 @@ export function CardModal({
             flexWrap: 'wrap',
           }}
         >
-          {/* Status Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Status:</span>
-            <select
-              value={status}
-              onChange={(e) => handleChangeStatus(e.target.value as CardStatus)}
-              style={{
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: '4px 8px',
-                borderRadius: 6,
-                background: 'var(--bg2)',
-                color: STATUS_OPTIONS.find((s) => s.value === status)?.color || 'var(--text)',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-              }}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <StatusSelect status={status} onChange={(s) => void handleChangeStatus(s)} />
 
-          {/* Priority Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <IconFlag size={13} /> Priority:
-            </span>
-            <select
-              value={priority}
-              onChange={(e) => handleChangePriority(e.target.value as CardPriority)}
-              style={{
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: '4px 8px',
-                borderRadius: 6,
-                background: 'var(--bg2)',
-                color: PRIORITY_OPTIONS.find((p) => p.value === priority)?.color || 'var(--text)',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-              }}
-            >
-              {PRIORITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PriorityBadge priority={priority} onChange={(p) => void handleChangePriority(p)} />
 
           {/* Due Date in Ribbon */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from '../stores/auth.store'
 import { refreshAccessToken } from '../api/client'
+import { SOCKET_CONFIG } from '../constants'
 
 interface AuthedSocket extends Socket {
   _isRefreshing?: boolean
@@ -13,9 +14,9 @@ export function createAuthedSocket(): Socket {
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 8,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
+    reconnectionAttempts: SOCKET_CONFIG.reconnectionAttempts,
+    reconnectionDelay: SOCKET_CONFIG.reconnectionDelay,
+    reconnectionDelayMax: SOCKET_CONFIG.reconnectionDelayMax,
   }) as AuthedSocket
 
   const handleAuthError = async (err: unknown) => {

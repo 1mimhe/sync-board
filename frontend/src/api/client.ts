@@ -1,7 +1,12 @@
 import type { ApiResponse } from '../types'
 import { useAuth } from '../stores/auth.store'
-
-export const API_BASE = '/api'
+import {
+  API_BASE,
+  AUTH_HEADER_PREFIX,
+  LOGIN_PATH,
+  INVITE_PATH_PREFIX,
+  REFRESH_DEBOUNCE_MS,
+} from '../constants'
 
 let refreshPromise: Promise<string | null> | null = null
 
@@ -37,7 +42,7 @@ export async function refreshAccessToken(): Promise<string | null> {
     } finally {
       setTimeout(() => {
         refreshPromise = null
-      }, 500)
+      }, REFRESH_DEBOUNCE_MS)
     }
   })()
 
@@ -61,7 +66,7 @@ export async function apiFetch<T = unknown>(
   }
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers['Authorization'] = `${AUTH_HEADER_PREFIX}${token}`
   }
 
   try {
@@ -118,7 +123,7 @@ export async function apiFetch<T = unknown>(
         return apiFetch<T>(path, { ...options, token: freshToken, _retry: true })
       } else {
         // If refresh fails on protected page, redirect to login
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/invite')) {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith(LOGIN_PATH) && !window.location.pathname.startsWith(INVITE_PATH_PREFIX)) {
           useAuth.getState().clearAuth()
         }
       }

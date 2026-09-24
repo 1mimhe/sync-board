@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import type { Card, CardPriority, CardStatus, WorkspaceMember } from '../../../types'
+import type { Card, WorkspaceMember } from '../../../types'
+import { CARD_PRIORITY_META, CARD_STATUS_META } from '../../../constants'
 import { boardViewApi } from '../../../api/endpoints'
 import { CardModal } from '../../card/CardModal'
 import { IconFlag, IconCalendar, IconCheck } from '../../common/Icons'
@@ -9,21 +10,8 @@ export interface TimelineViewProps {
   boardId: string
   members: WorkspaceMember[]
   onBoardUpdated: () => void
-}
-
-const PRIORITY_COLORS: Record<CardPriority, string> = {
-  lowest: '#71717a',
-  low: '#3b82f6',
-  medium: '#f59e0b',
-  high: '#f97316',
-  urgent: '#ef4444',
-}
-
-const STATUS_LABELS: Record<CardStatus, { label: string; bg: string; color: string }> = {
-  not_started: { label: 'To Do', bg: 'rgba(113, 113, 122, 0.15)', color: '#a1a1aa' },
-  active: { label: 'Active', bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' },
-  done: { label: 'Done', bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399' },
-  closed: { label: 'Closed', bg: 'rgba(124, 58, 237, 0.15)', color: '#c084fc' },
+  hasUpdates?: boolean
+  onRefresh?: () => void
 }
 
 export function TimelineView({
@@ -31,6 +19,8 @@ export function TimelineView({
   boardId,
   members,
   onBoardUpdated,
+  hasUpdates,
+  onRefresh,
 }: TimelineViewProps) {
   const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(false)
@@ -51,6 +41,34 @@ export function TimelineView({
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {hasUpdates && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            borderRadius: 10,
+            padding: '8px 12px',
+            fontSize: 12.5,
+            color: '#fbbf24',
+          }}
+        >
+          <span>Updated — refresh to see latest cards (read-only view, no live patch).</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              onRefresh?.()
+              void loadTimelineData()
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
       {/* Header Info */}
       <div
         style={{
@@ -100,8 +118,8 @@ export function TimelineView({
           <div style={{ position: 'relative', display: 'grid', gap: 10 }}>
             {cards.map((card) => {
               const isDone = card.isComplete || card.isCompleted
-              const priorityColor = card.priority ? PRIORITY_COLORS[card.priority] : '#f59e0b'
-              const statusBadge = card.status ? STATUS_LABELS[card.status] : null
+              const priorityMeta = card.priority ? CARD_PRIORITY_META[card.priority] : CARD_PRIORITY_META.medium
+              const statusMeta = card.status ? CARD_STATUS_META[card.status] : null
               const isOverdue = card.dueDate && new Date(card.dueDate) < new Date() && !isDone
 
               return (
@@ -136,7 +154,7 @@ export function TimelineView({
                         width: 10,
                         height: 10,
                         borderRadius: '50%',
-                        background: priorityColor,
+                        background: priorityMeta.color,
                         flexShrink: 0,
                       }}
                       title={`Priority: ${card.priority || 'medium'}`}
@@ -170,18 +188,18 @@ export function TimelineView({
 
                   {/* Right: Badges */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {statusBadge && (
+                    {statusMeta && (
                       <span
                         style={{
                           fontSize: 11,
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: 6,
-                          background: statusBadge.bg,
-                          color: statusBadge.color,
+                          background: `${statusMeta.color}26`,
+                          color: statusMeta.color,
                         }}
                       >
-                        {statusBadge.label}
+                        {statusMeta.label}
                       </span>
                     )}
 
@@ -190,7 +208,7 @@ export function TimelineView({
                         style={{
                           fontSize: 11,
                           fontWeight: 700,
-                          color: priorityColor,
+                          color: priorityMeta.color,
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4,

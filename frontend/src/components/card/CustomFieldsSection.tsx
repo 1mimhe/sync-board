@@ -42,28 +42,32 @@ export function CustomFieldsSection({
           map[item.fieldId] = item.value
         }
         setValues(map)
+      } else if (valuesRes.success === false) {
+        addToast(valuesRes.error?.message || 'Failed to load field values', 'error')
       }
-    } catch (err) {
-      console.error('Failed to load custom fields', err)
+    } catch {
+      addToast('Failed to load custom fields', 'error')
     }
     setLoading(false)
-  }, [workspaceId, boardId, cardId])
+  }, [workspaceId, boardId, cardId, addToast])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
   const handleSaveValue = async (fieldId: string, value: unknown) => {
+    const normalized =
+      typeof value === 'string' ? (value.trim() === '' ? null : value.trim()) : (value === '' ? null : value)
     setSavingFieldId(fieldId)
     // Update local optimistic state
-    setValues((prev) => ({ ...prev, [fieldId]: value }))
+    setValues((prev) => ({ ...prev, [fieldId]: normalized }))
 
     const res = await cardFieldApi.setCardValue(
       workspaceId,
       boardId,
       cardId,
       fieldId,
-      value === '' ? null : value,
+      normalized,
     )
 
     setSavingFieldId(null)
@@ -175,6 +179,7 @@ export function CustomFieldsSection({
             {def.fieldType === 'text' && (
               <input
                 type="text"
+                aria-label={def.name}
                 value={typeof val === 'string' ? val : ''}
                 placeholder="Empty…"
                 onChange={(e) => setValues((prev) => ({ ...prev, [def.id]: e.target.value }))}
@@ -186,6 +191,7 @@ export function CustomFieldsSection({
             {def.fieldType === 'number' && (
               <input
                 type="number"
+                aria-label={def.name}
                 value={typeof val === 'number' ? val : val === '' ? '' : ''}
                 placeholder="0"
                 onChange={(e) => {
@@ -203,6 +209,7 @@ export function CustomFieldsSection({
             {def.fieldType === 'date' && (
               <input
                 type="date"
+                aria-label={def.name}
                 value={typeof val === 'string' && val ? val.slice(0, 10) : ''}
                 onChange={(e) => handleSaveValue(def.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
                 style={controlStyle}
@@ -211,6 +218,7 @@ export function CustomFieldsSection({
 
             {def.fieldType === 'select' && (
               <select
+                aria-label={def.name}
                 value={typeof val === 'string' ? val : ''}
                 onChange={(e) => handleSaveValue(def.id, e.target.value || null)}
                 style={controlStyle}
@@ -226,6 +234,7 @@ export function CustomFieldsSection({
 
             {def.fieldType === 'user' && (
               <select
+                aria-label={def.name}
                 value={typeof val === 'string' ? val : ''}
                 onChange={(e) => handleSaveValue(def.id, e.target.value || null)}
                 style={controlStyle}
