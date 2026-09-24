@@ -3,7 +3,7 @@ import { HealthIndicatorService } from '@nestjs/terminus';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { RabbitMQHealthIndicator } from '../rabbitmq-health.indicator';
 
-describe('RabbitMQHealthIndicator (Phase 6A extra)', () => {
+describe('RabbitMQHealthIndicator', () => {
   const makeHarness = (enabled: boolean, amqp: AmqpConnection | null) => {
     const config = {
       get: jest.fn().mockReturnValue(enabled),

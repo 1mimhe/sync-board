@@ -97,10 +97,3 @@ export class RabbitPublisherService {
     }
   }
 }
-
-/**
- * Reads the retry attempt from consumed message headers (default 0).
- * Canonical implementation lives in `idempotency.util.ts`; re-exported here
- * so existing consumers keep a single import site.
- */
-export { retryCountFrom } from './idempotency.util';

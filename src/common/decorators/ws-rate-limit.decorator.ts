@@ -1,30 +1,15 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
-import { WsRateLimitCategory } from '../../modules/board/realtime/events/ws-events.constants';
-
-export const WS_RATE_LIMIT_KEY = 'ws_rate_limit';
-
-export interface WsRateLimitOptions {
-  category: WsRateLimitCategory;
-  limit: number;
-  windowMs: number;
-  silent?: boolean;
-}
+import {
+  WS_RATE_LIMIT_DEFAULTS,
+  WS_RATE_LIMIT_KEY,
+} from '../constants/ws-rate-limit.constants';
+import type { WsRateLimitOptions } from './ws-rate-limit.interface';
 
 /**
- * Decorator to apply rate limiting configuration to a WebSocket event handler.
- * Evaluated by `WsRateLimitGuard`.
+ * Applies rate limiting configuration to a WebSocket event handler.
  *
- * @example
- * // Using configuration constant object:
- * @WsRateLimit(WS_RATE_LIMITS.ROOM_JOINS)
- * @SubscribeMessage(WS_EVENTS.WORKSPACE_JOIN)
- * handleWorkspaceJoin(...) {}
- *
- * @example
- * // Using individual parameters:
- * @WsRateLimit('cursor', 20, 1000, true)
- * @SubscribeMessage(WS_EVENTS.PRESENCE_CURSOR)
- * handleCursor(...) {}
+ * @param config - Rate limit options or positional category, limit, window, and silent flag.
+ * @returns Parameter decorator storing the configuration as metadata.
  */
 export function WsRateLimit(
   config: WsRateLimitOptions,
@@ -46,8 +31,8 @@ export function WsRateLimit(
   }
   return SetMetadata(WS_RATE_LIMIT_KEY, {
     category: configOrCategory,
-    limit: limit ?? 60,
-    windowMs: windowMs ?? 60_000,
+    limit: limit ?? WS_RATE_LIMIT_DEFAULTS.limit,
+    windowMs: windowMs ?? WS_RATE_LIMIT_DEFAULTS.windowMs,
     silent,
   });
 }

@@ -174,7 +174,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     statusCode: number,
     rawMessage?: string,
   ): string {
-    if (statusCode === HttpStatus.UNAUTHORIZED) {
+    const status: HttpStatus = statusCode;
+    if (status === HttpStatus.UNAUTHORIZED) {
       if (rawMessage && this.unauthorizedErrorMap[rawMessage]) {
         return this.unauthorizedErrorMap[rawMessage].code;
       }
@@ -183,16 +184,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       return 'UNAUTHORIZED';
     }
-    if (statusCode === HttpStatus.FORBIDDEN) {
+    if (status === HttpStatus.FORBIDDEN) {
       if (rawMessage && this.forbiddenErrorMap[rawMessage]) {
         return this.forbiddenErrorMap[rawMessage].code;
       }
       return 'FORBIDDEN';
     }
-    if (statusCode === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
-    if (statusCode === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
-    if (statusCode === HttpStatus.CONFLICT) return 'CONFLICT';
-    if (statusCode === HttpStatus.TOO_MANY_REQUESTS) return 'TOO_MANY_REQUESTS';
+    if (status === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
+    if (status === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
+    if (status === HttpStatus.CONFLICT) return 'CONFLICT';
+    if (status === HttpStatus.TOO_MANY_REQUESTS) return 'TOO_MANY_REQUESTS';
     if (rawMessage && this.forbiddenCodes.has(rawMessage)) {
       return this.forbiddenErrorMap[rawMessage].code;
     }
@@ -208,7 +209,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     statusCode: number,
     rawMessage: string,
   ): string {
-    if (statusCode === HttpStatus.UNAUTHORIZED) {
+    const status: HttpStatus = statusCode;
+    if (status === HttpStatus.UNAUTHORIZED) {
       if (this.unauthorizedErrorMap[rawMessage]) {
         return this.unauthorizedErrorMap[rawMessage].message;
       }

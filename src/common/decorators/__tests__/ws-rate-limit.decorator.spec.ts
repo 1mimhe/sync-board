@@ -1,4 +1,5 @@
-import { WsRateLimit, WS_RATE_LIMIT_KEY } from '../ws-rate-limit.decorator';
+import { WsRateLimit } from '../ws-rate-limit.decorator';
+import { WS_RATE_LIMIT_KEY } from '../../constants/ws-rate-limit.constants';
 
 describe('WsRateLimit Decorator', () => {
   it('should set metadata when passed an options object', () => {

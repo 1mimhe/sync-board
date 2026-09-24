@@ -41,7 +41,3 @@ export const RABBITMQ_DEFAULTS = {
    */
   BOOT_TIMEOUT_MS: 15_000,
 } as const;
-
-export type ExchangeName = (typeof EXCHANGES)[keyof typeof EXCHANGES];
-export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
-export type RoutingKey = (typeof ROUTING_KEYS)[keyof typeof ROUTING_KEYS];

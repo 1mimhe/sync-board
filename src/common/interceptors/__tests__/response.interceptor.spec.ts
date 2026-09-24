@@ -85,6 +85,21 @@ describe('ResponseInterceptor', () => {
     });
   });
 
+  it('should not envelope non-HTTP contexts (RabbitMQ handlers)', (done) => {
+    const context = {
+      getType: () => 'rabbitmq',
+      switchToHttp: () => {
+        throw new Error('must not touch HTTP in rabbit context');
+      },
+    } as unknown as ExecutionContext;
+    const handler = createMockCallHandler('ok');
+
+    interceptor.intercept(context, handler).subscribe((result) => {
+      expect(result).toBe('ok');
+      done();
+    });
+  });
+
   it('should fallback requestId to empty string when no id source is present', (done) => {
     const context = createMockContext();
     const handler = createMockCallHandler('ok');

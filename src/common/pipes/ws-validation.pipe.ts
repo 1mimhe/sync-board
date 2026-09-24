@@ -6,7 +6,7 @@ import { ValidationError } from 'class-validator';
 /**
  * Global/Gateway WebSocket validation pipe.
  * Automatically validates incoming @MessageBody() payloads against DTO classes.
- * Formats validation errors into WsException with code 'INVALID_PAYLOAD' to match the WS error spec.
+ * Formats validation errors into WsException with code 'INVALID_PAYLOAD'.
  */
 @Injectable()
 export class WsValidationPipe extends ValidationPipe {

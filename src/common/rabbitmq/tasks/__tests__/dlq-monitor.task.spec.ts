@@ -4,7 +4,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { DlqMonitorTask } from '../dlq-monitor.task';
 
-describe('DlqMonitorTask (Phase 6A)', () => {
+describe('DlqMonitorTask', () => {
   let task: DlqMonitorTask;
   let amqp: DeepMockProxy<AmqpConnection>;
   let config: DeepMockProxy<ConfigService>;

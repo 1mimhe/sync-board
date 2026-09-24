@@ -3,7 +3,10 @@ import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { WsUser } from '../ws-user.decorator';
 import type { JwtPayload } from '../../../modules/auth/interfaces/jwt-payload.interface';
 
-function getParamDecoratorFactory(decorator: Function, data?: any) {
+function getParamDecoratorFactory(
+  decorator: (...args: unknown[]) => ParameterDecorator,
+  data?: any,
+) {
   class TestTarget {
     public test(@decorator(data) _param: any) {}
   }

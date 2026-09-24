@@ -16,11 +16,17 @@ describe('RedisIoAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    const pubListeners: Record<string, Function[]> = {};
-    const subListeners: Record<string, Function[]> = {};
+    const pubListeners: Record<
+      string,
+      Array<(...args: unknown[]) => void>
+    > = {};
+    const subListeners: Record<
+      string,
+      Array<(...args: unknown[]) => void>
+    > = {};
 
     mockPubClient = {
-      on: jest.fn((event: string, cb: Function) => {
+      on: jest.fn((event: string, cb: (...args: unknown[]) => void) => {
         pubListeners[event] = pubListeners[event] || [];
         pubListeners[event].push(cb);
         return mockPubClient;
@@ -33,7 +39,7 @@ describe('RedisIoAdapter', () => {
     };
 
     mockSubClient = {
-      on: jest.fn((event: string, cb: Function) => {
+      on: jest.fn((event: string, cb: (...args: unknown[]) => void) => {
         subListeners[event] = subListeners[event] || [];
         subListeners[event].push(cb);
         return mockSubClient;

@@ -118,10 +118,13 @@ describe('Health Module', () => {
         checkHeap: jest
           .fn()
           .mockResolvedValue({ memory_heap: { status: 'up' } }),
+        checkRSS: jest.fn().mockResolvedValue({ memory_rss: { status: 'up' } }),
       };
 
       const mockDiskIndicator = {
-        checkStorage: jest.fn().mockResolvedValue({ disk: { status: 'up' } }),
+        checkStorage: jest
+          .fn()
+          .mockResolvedValue({ storage: { status: 'up' } }),
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -143,6 +146,27 @@ describe('Health Module', () => {
       const result = await controller.check();
       expect(result.status).toBe('ok');
       expect(healthCheckService.check).toHaveBeenCalled();
+    });
+
+    it('should check heap, rss, and storage with configured thresholds', async () => {
+      const internals = controller as unknown as {
+        memory: { checkHeap: jest.Mock; checkRSS: jest.Mock };
+        disk: { checkStorage: jest.Mock };
+      };
+      const { memory, disk } = internals;
+      await controller.check();
+      expect(memory.checkHeap).toHaveBeenCalledWith(
+        'memory_heap',
+        512 * 1024 * 1024,
+      );
+      expect(memory.checkRSS).toHaveBeenCalledWith(
+        'memory_rss',
+        768 * 1024 * 1024,
+      );
+      expect(disk.checkStorage).toHaveBeenCalledWith(
+        'storage',
+        expect.objectContaining({ thresholdPercent: 0.9 }),
+      );
     });
 
     it('should execute liveness probe check', async () => {
