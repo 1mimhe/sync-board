@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ActivityRepository } from '../repositories/activity.repository';
-import { ActivityActionType } from '../repositories/activity.repository';
-import { RecordActivityInput } from '../repositories/activity.repository';
+import type {
+  ActivityActionType,
+  RecordActivityInput,
+} from '../interfaces/activity.interfaces';
 import { BoardService } from '../../board/core/services/board.service';
 import type {
   CardCreatedEvent,

@@ -1,4 +1,7 @@
-import type { FileEntityType } from '../constants/file.constants';
+import type { SUPPORTED_ENTITY_TYPES } from '../constants/file.constants';
+
+/** Entity types that can host a file attachment. */
+export type FileEntityType = (typeof SUPPORTED_ENTITY_TYPES)[number];
 
 /**
  * Result of a presigned-upload request: identifiers plus the PUT target.

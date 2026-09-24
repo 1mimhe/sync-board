@@ -72,15 +72,14 @@ export function toFileDownloadResponseDto(
 }
 
 /**
- * Maps a FileAttachment to the legacy card-attachment shape for the
- * attachment proxy route. Bytes are served via files/download, so the
- * URL is intentionally empty.
+ * Maps a FileAttachment to the CardAttachmentResponseDto shape for the
+ * card attachments endpoint. Bytes are served via files/download.
  *
  * @param file - File attachment entity
  * @param cardId - Hosting card UUID
- * @returns Legacy-shaped CardAttachmentResponseDto
+ * @returns Mapped CardAttachmentResponseDto
  */
-export function toLegacyCardAttachmentResponseDto(
+export function toCardAttachmentResponseDto(
   file: FileAttachment,
   cardId: string,
 ): CardAttachmentResponseDto {

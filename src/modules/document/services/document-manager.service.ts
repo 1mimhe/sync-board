@@ -5,12 +5,7 @@ import * as Y from 'yjs';
 import { DocumentRepository } from '../repositories/document.repository';
 import { DocumentSavedEvent } from '../events/document.events';
 import type { ActiveDocument } from '../interfaces';
-import {
-  DOCUMENT_EVENTS,
-  SAVE_DEBOUNCE_MS,
-  IDLE_UNLOAD_MS,
-  PREVIEW_MAX_LENGTH,
-} from '../constants';
+import { DOCUMENT_EVENTS, DOCUMENT_CONSTANTS } from '../constants';
 
 /**
  * In-memory CRDT hub: load-once Y.Doc cache per document, debounced persistence
@@ -278,7 +273,7 @@ export class DocumentManagerService implements OnModuleDestroy {
           err.stack,
         ),
       );
-    }, SAVE_DEBOUNCE_MS);
+    }, DOCUMENT_CONSTANTS.SAVE_DEBOUNCE_MS);
   }
 
   /**
@@ -311,7 +306,7 @@ export class DocumentManagerService implements OnModuleDestroy {
   private extractPlainText(ydoc: Y.Doc): string {
     return (ydoc.getText('content') as unknown as { toString(): string })
       .toString()
-      .slice(0, PREVIEW_MAX_LENGTH);
+      .slice(0, DOCUMENT_CONSTANTS.PREVIEW_MAX_LENGTH);
   }
 
   /**
@@ -320,7 +315,7 @@ export class DocumentManagerService implements OnModuleDestroy {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async unloadIdle(): Promise<void> {
-    const cutoff = Date.now() - IDLE_UNLOAD_MS;
+    const cutoff = Date.now() - DOCUMENT_CONSTANTS.IDLE_UNLOAD_MS;
     for (const [id, entry] of this.docs) {
       if (
         entry.connections.size === 0 &&

@@ -15,16 +15,14 @@ import type {
 } from '../../board/card/events/card.events';
 import { COMMENT_EVENTS } from '../../board/comment/events/comment-events.constants';
 import type { CommentCreatedEvent } from '../../board/comment/events/comment.events';
-import { parseMentionedEmails } from '../../board/comment/services/mention-parser.util';
+import { parseMentionedEmails } from '../../board/comment/utils/mention-parser.util';
 import { WORKSPACE_EVENTS } from '../../workspace/events/workspace-events.constants';
 import type {
   WorkspaceMemberAddedEvent,
   WorkspaceMemberRoleChangedEvent,
 } from '../../workspace/events/workspace.events';
-import {
-  NOTIFICATION_ROUTING_KEYS,
-  type NotificationMessagePayload,
-} from '../notification.messages';
+import { NOTIFICATION_ROUTING_KEYS } from '../constants/notification-routing.constants';
+import type { NotificationMessagePayload } from '../interfaces/notification-message.interface';
 
 /**
  * Domain-event fan-out producing idempotent notification messages.

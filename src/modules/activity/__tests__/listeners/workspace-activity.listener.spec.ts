@@ -84,7 +84,10 @@ describe('WorkspaceActivityListener', () => {
         entityType: 'workspace',
         actorId: 'u-1',
         action: 'member_role_changed',
-        payload: { oldRole: WorkspaceRole.member, newRole: WorkspaceRole.admin },
+        payload: {
+          oldRole: WorkspaceRole.member,
+          newRole: WorkspaceRole.admin,
+        },
       }),
     );
   });

@@ -86,7 +86,12 @@ describe('ActivityRepository', () => {
     it('should fetch limit+1 and compute hasMore with iso|id cursor', async () => {
       prismaService.activity.findMany.mockResolvedValue([row(5n), row(4n)]);
 
-      const result = await repository.getWorkspacePage('ws-1', {}, undefined, 1);
+      const result = await repository.getWorkspacePage(
+        'ws-1',
+        {},
+        undefined,
+        1,
+      );
 
       expect(prismaService.activity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 2 }),

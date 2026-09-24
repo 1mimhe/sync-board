@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { NotificationRepository } from '../repositories/notification.repository';
-import { NOTIFICATION_CLEANUP_CRON } from '../notification.constants';
+import { NOTIFICATION_CLEANUP_CRON } from '../constants';
 
 /** Monthly purge of old read notifications (uses partial cleanup index). */
 @Injectable()

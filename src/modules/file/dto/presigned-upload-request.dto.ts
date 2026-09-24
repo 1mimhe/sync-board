@@ -11,7 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { SUPPORTED_ENTITY_TYPES } from '../constants/file.constants';
-import type { FileEntityType } from '../constants/file.constants';
+import type { FileEntityType } from '../interfaces/file.interfaces';
 
 /**
  * Request payload for initiating a 2-phase S3 upload.
@@ -35,11 +35,14 @@ export class PresignedUploadRequestDto {
   @Transform(({ value }) => value?.trim())
   mimeType!: string;
 
-  @ApiProperty({ description: 'File size in bytes (1..MAX_FILE_SIZE_BYTES)' })
+  @ApiProperty({
+    description:
+      'File size in bytes (transport sanity cap; FileService enforces MAX_FILE_SIZE_BYTES)',
+  })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(26214400)
+  @Max(104857600)
   fileSize!: number;
 
   @ApiProperty({

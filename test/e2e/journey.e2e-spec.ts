@@ -1,7 +1,6 @@
 /**
  * Golden journey e2e — the critical cross-module user path.
  *
- * Covers: e2e-test-generation.md §4 golden journey template
  *   register A+B → login both → A workspace → invite B → B accept →
  *   B board/list/card → A lists board → move card → comments (+cursor) →
  *   star → archive/unarchive → logoutAll → 401 probe.
@@ -124,13 +123,13 @@ describe('Golden journey (e2e)', () => {
     expect(expectData<{ listId: string }>(move, 200).listId).toBe(second.id);
   });
 
-  it('step 8: comments page 1 + cursor page 2', async () => {
+  it('step 8: comments cursor walk — 25 seeded, page 20 + hasMore, page 2 completes', async () => {
     const commentsUrl = `/api/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments`;
-    for (const content of ['first', 'second', 'third']) {
+    for (let i = 0; i < 25; i++) {
       const res = await req(server())
         .post(commentsUrl)
         .set(auth(alice))
-        .send({ content });
+        .send({ content: `comment ${i}` });
       expectData(res, 201);
     }
 
@@ -138,20 +137,24 @@ describe('Golden journey (e2e)', () => {
       items: Array<{ content: string }>;
       pagination: { cursor: string | null; hasMore: boolean };
     }>(
-      await req(server()).get(commentsUrl).query({ limit: 2 }).set(auth(bob)),
+      await req(server()).get(commentsUrl).query({ limit: 20 }).set(auth(bob)),
       200,
     );
-    expect(p1.items).toHaveLength(2);
+    expect(p1.items).toHaveLength(20);
     expect(p1.pagination.hasMore).toBe(true);
 
-    const p2 = expectData<{ items: Array<{ content: string }> }>(
+    const p2 = expectData<{
+      items: Array<{ content: string }>;
+      pagination: { cursor: string | null; hasMore: boolean };
+    }>(
       await req(server())
         .get(commentsUrl)
-        .query({ limit: 2, cursor: p1.pagination.cursor })
+        .query({ limit: 20, cursor: p1.pagination.cursor })
         .set(auth(bob)),
       200,
     );
-    expect(p2.items).toHaveLength(1);
+    expect(p2.items).toHaveLength(5);
+    expect(p2.pagination.hasMore).toBe(false);
   });
 
   it('step 9: A stars and unstars the board', async () => {

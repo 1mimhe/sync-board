@@ -28,6 +28,7 @@ import {
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import { WORKSPACE_ADMIN_ROLES, WORKSPACE_READ_ROLES, WORKSPACE_WRITE_ROLES } from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing document snapshot endpoints: capture, history, restore.
@@ -42,7 +43,7 @@ export class DocumentSnapshotController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a snapshot of the document content' })
   @ApiParam({
     name: 'workspaceId',
@@ -77,7 +78,7 @@ export class DocumentSnapshotController {
    * Lists the document's snapshots, newest first (metadata only).
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List document snapshots' })
   @ApiParam({
     name: 'workspaceId',
@@ -107,7 +108,7 @@ export class DocumentSnapshotController {
    */
   @Post(':snapshotId/restore')
   @HttpCode(HttpStatus.OK)
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Restore a snapshot into the live document' })
   @ApiParam({
     name: 'workspaceId',

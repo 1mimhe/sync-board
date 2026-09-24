@@ -12,8 +12,10 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -38,6 +40,9 @@ export class NotificationController {
   /** Lists the caller's notifications newest-first. */
   @Get()
   @ApiOperation({ summary: "List caller's notifications" })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'unreadOnly', required: false, type: Boolean })
   @ApiOkResponse({
     type: PaginatedNotificationResponseDto,
     description: 'Paginated list of user notifications',
@@ -52,7 +57,10 @@ export class NotificationController {
   /** Returns the caller's unread count (Redis fast-path with DB fallback). */
   @Get('unread-count')
   @ApiOperation({ summary: 'Get unread notification count' })
-  @ApiOkResponse({ description: 'Unread count' })
+  @ApiOkResponse({
+    description: 'Unread count',
+    schema: { example: { count: 3 } },
+  })
   async unreadCount(
     @CurrentUser() user: JwtPayload,
   ): Promise<{ count: number }> {
@@ -63,6 +71,7 @@ export class NotificationController {
   @Post('read-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Mark all notifications as read' })
+  @ApiNoContentResponse({ description: 'All notifications marked as read' })
   async markAllRead(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.notificationService.markAllRead(user.sub);
   }

@@ -1,16 +1,5 @@
 /**
  * Documents module e2e — HTTP via supertest against the real AppModule.
- *
- * Covers: test-cases-documents.md
- *   §1 Create & CRUD (1.1–1.9)
- *   §2 Listing & Search (2.1–2.6)
- *   §3 Snapshots (3.1–3.6)
- *   §4 Persistence & Lifecycle Edge (4.7)
- *
- * ⛔ BLOCKED — Phase 5 pending.
- * `src/modules/document/document.module.ts` is an empty stub.
- * Remove `.skip` from each `describe.skip` block once the module lands.
- * Cross-check response shapes against the final DTOs before activating.
  */
 import { createTestApp, type TestApp } from '../helpers/app';
 import { expectData, expectError, req } from '../helpers/http';
@@ -72,7 +61,7 @@ describe('Documents module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§1 Create & CRUD', () => {
+  describe('Create & CRUD', () => {
     it('1.1 POST /documents {title} → 201; status=active; createdBy=owner', async () => {
       const res = await req(server())
         .post(docsUrl())
@@ -193,7 +182,7 @@ describe('Documents module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§2 Listing & Search', () => {
+  describe('Listing & Search', () => {
     it('2.1 cursor walk: 25 docs, page limit 20 → hasMore; page 2 returns remaining', async () => {
       for (let i = 0; i < 25; i++) {
         await req(server())
@@ -256,7 +245,7 @@ describe('Documents module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§3 Snapshots', () => {
+  describe('Snapshots', () => {
     let docId: string;
 
     beforeAll(async () => {
@@ -295,6 +284,32 @@ describe('Documents module (e2e)', () => {
         403,
         'FORBIDDEN',
       );
+    });
+  });
+
+  // =========================================================================
+  describe('Persistence & Lifecycle Edge', () => {
+    it('7.7 create/archive emit activity rows visible in the workspace feed', async () => {
+      const created = expectData<{ id: string; title: string }>(
+        await req(server())
+          .post(docsUrl())
+          .set(auth(owner))
+          .send({ title: 'Feed Doc' }),
+        201,
+      );
+      await req(server()).delete(docUrl(created.id)).set(auth(owner));
+
+      const feed = expectData<{
+        items: Array<{ entityType: string; entityId: string; action: string }>;
+      }>(
+        await req(server())
+          .get(`/api/workspaces/${workspaceId}/activity`)
+          .set(auth(owner)),
+        200,
+      );
+      const rows = feed.items.filter((r) => r.entityId === created.id);
+      expect(rows.some((r) => r.action === 'created')).toBe(true);
+      expect(rows.some((r) => r.action === 'archived')).toBe(true);
     });
   });
 });

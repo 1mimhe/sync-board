@@ -1,5 +1,5 @@
 import { EditorPresenceService } from '../../realtime/editor-presence.service';
-import { COLLABORATOR_COLORS } from '../../../board/realtime/events/ws-events.constants';
+import { COLLABORATOR_COLORS } from '../../../../common/utils/collaborator-color.util';
 import type { EditorInfo } from '../../interfaces/document.interfaces';
 
 const DOC = '00000000-0000-4000-8000-000000000001';

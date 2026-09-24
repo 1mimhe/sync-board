@@ -6,12 +6,17 @@ import { RedisService } from '../../../common/redis/redis.service';
 import { RabbitPublisherService } from '../../../common/rabbitmq/publisher.service';
 import { NotificationPushGateway } from '../notification-push.gateway';
 import type { DomainMessage } from '../../../common/rabbitmq/interfaces/domain-message.interface';
-import type { NotificationMessagePayload } from '../notification.messages';
+import type { NotificationMessagePayload } from '../interfaces/notification-message.interface';
 
 describe('NotificationConsumerListener', () => {
   let listener: NotificationConsumerListener;
   let repo: { createOnce: jest.Mock };
-  let redis: { set: jest.Mock; del: jest.Mock; incr: jest.Mock; expire: jest.Mock };
+  let redis: {
+    set: jest.Mock;
+    del: jest.Mock;
+    incr: jest.Mock;
+    expire: jest.Mock;
+  };
   let gateway: { emitToUser: jest.Mock };
   let publisher: { publishRetry: jest.Mock };
 

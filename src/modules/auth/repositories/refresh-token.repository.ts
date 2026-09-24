@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RefreshToken, User } from '@prisma/client';
 import { PrismaService } from '../../../common/database/prisma.service';
-
-export type RefreshTokenWithUser = RefreshToken & { user: User };
+import type { RefreshTokenWithUser } from '../interfaces/refresh-token.interface';
 
 /**
  * Repository handling database operations for RefreshToken entities.

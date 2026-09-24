@@ -9,10 +9,7 @@ import { ResponseInterceptor } from '../../src/common/interceptors/response.inte
 import { RedisIoAdapter } from '../../src/common/redis/redis-io.adapter';
 import { PrismaService } from '../../src/common/database/prisma.service';
 import { RedisService } from '../../src/common/redis/redis.service';
-import {
-  ThrottlerStorageService,
-  getStorageToken,
-} from '@nestjs/throttler';
+import { ThrottlerStorageService, getStorageToken } from '@nestjs/throttler';
 import { HttpThrottlerGuard } from '../../src/common/guards/http-throttler.guard';
 
 /**

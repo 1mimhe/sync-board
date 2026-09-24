@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
-import {
-  DocumentRepository,
-  DOCUMENT_META_SELECT,
-} from '../../repositories/document.repository';
+import { DocumentRepository } from '../../repositories/document.repository';
+import { DOCUMENT_META_SELECT } from '../../constants/document.constants';
 import { PrismaService } from '../../../../common/database/prisma.service';
 
 describe('DocumentRepository', () => {

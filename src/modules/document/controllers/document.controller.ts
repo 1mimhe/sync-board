@@ -23,7 +23,7 @@ import {
 import type {
   DocumentMetadata,
   DocumentWithParentCard,
-} from '../repositories/document.repository';
+} from '../interfaces/document.interfaces';
 import { DocumentService } from '../services/document.service';
 import {
   CreateDocumentDto,
@@ -31,13 +31,14 @@ import {
   SearchDocumentsDto,
   DocumentResponseDto,
   PaginatedDocumentsResponseDto,
-  CursorPaginationQueryDto,
 } from '../dto';
+import { CursorPaginationQueryDto } from '../../../common/dto/cursor-pagination-query.dto';
 import { toDocumentResponseDto } from '../mappers/document.mapper';
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
+import { WORKSPACE_READ_ROLES, WORKSPACE_WRITE_ROLES } from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for workspace document CRUD and search.
@@ -52,7 +53,7 @@ export class DocumentController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a new collaborative document' })
   @ApiParam({
     name: 'workspaceId',
@@ -81,7 +82,7 @@ export class DocumentController {
    * Lists or full-text searches active workspace documents (cursor page).
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
     summary:
       'List workspace documents (cursor pagination, optional ?search= full-text)',
@@ -114,7 +115,7 @@ export class DocumentController {
    * Fetches a single active document.
    */
   @Get(':documentId')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get a single active document' })
   @ApiParam({
     name: 'workspaceId',
@@ -147,7 +148,7 @@ export class DocumentController {
    * Renames a document.
    */
   @Patch(':documentId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Rename a document' })
   @ApiParam({
     name: 'workspaceId',
@@ -185,7 +186,7 @@ export class DocumentController {
    */
   @Delete(':documentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Archive a document' })
   @ApiParam({
     name: 'workspaceId',

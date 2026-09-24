@@ -1,8 +1,7 @@
 import { Socket, io } from 'socket.io-client';
 
 /**
- * WebSocket helpers for socket.io-client based e2e specs
- * (e2e-test-generation.md §3.2).
+ * WebSocket helpers for socket.io-client based e2e specs.
  */
 
 export type AnyPayload = Record<string, unknown>;

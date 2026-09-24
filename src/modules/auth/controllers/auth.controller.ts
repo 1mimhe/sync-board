@@ -21,6 +21,7 @@ import {
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
   ApiConflictResponse,
+  ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -40,7 +41,7 @@ import {
   UpdateProfileDto,
   ChangePasswordDto,
   AuthResponseDto,
-  TokenPairDto,
+  TokenResponseDto,
   UserResponseDto,
   MessageResponseDto,
   GoogleAuthUrlResponseDto,
@@ -48,9 +49,9 @@ import {
 import type { JwtPayload } from '../interfaces/jwt-payload.interface';
 import {
   REFRESH_TOKEN_COOKIE_NAME,
-  getRefreshTokenCookieOptions,
   AUTH_THROTTLE_CONFIG,
 } from '../auth.constants';
+import { getRefreshTokenCookieOptions } from '../utils/auth-cookies.util';
 
 /**
  * Controller providing REST API endpoints for user authentication,
@@ -65,7 +66,10 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @Throttle(AUTH_THROTTLE_CONFIG.register)
   @UseGuards(AnonymousGuard)
-  @ApiOperation({ summary: 'Register a new user account' })
+  @ApiOperation({
+    summary: 'Register a new user account',
+    description: 'Refresh token delivered via HttpOnly cookie',
+  })
   @ApiCreatedResponse({
     type: AuthResponseDto,
     description: 'User registered successfully',
@@ -99,7 +103,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle(AUTH_THROTTLE_CONFIG.login)
   @UseGuards(AnonymousGuard)
-  @ApiOperation({ summary: 'Authenticate with email and password' })
+  @ApiOperation({
+    summary: 'Authenticate with email and password',
+    description: 'Refresh token delivered via HttpOnly cookie',
+  })
   @ApiOkResponse({
     type: AuthResponseDto,
     description: 'Login successful',
@@ -136,7 +143,7 @@ export class AuthController {
     summary: 'Refresh access token using httpOnly refresh token cookie',
   })
   @ApiOkResponse({
-    type: TokenPairDto,
+    type: TokenResponseDto,
     description: 'Access token refreshed successfully',
   })
   @ApiUnauthorizedResponse({
@@ -145,7 +152,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenPairDto> {
+  ): Promise<TokenResponseDto> {
     const cookies = req.cookies as Record<string, unknown> | undefined;
     const rawToken =
       typeof cookies?.[REFRESH_TOKEN_COOKIE_NAME] === 'string'
@@ -172,7 +179,10 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout current device (revoke refresh token)' })
+  @ApiOperation({
+    summary: 'Logout current device (revoke refresh token)',
+    description: 'Clears the HttpOnly refresh token cookie',
+  })
   @ApiNoContentResponse({ description: 'Device logged out successfully' })
   async logout(
     @Req() req: Request,
@@ -210,7 +220,10 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiOperation({
+    summary: 'Logout from all devices',
+    description: 'Clears the HttpOnly refresh token cookie',
+  })
   @ApiNoContentResponse({
     description: 'All device sessions revoked successfully',
   })
@@ -259,9 +272,10 @@ export class AuthController {
   @ApiOperation({
     summary:
       'Reset password using valid reset token and issue fresh access token',
+    description: 'Refresh token delivered via HttpOnly cookie',
   })
   @ApiOkResponse({
-    type: TokenPairDto,
+    type: TokenResponseDto,
     description: 'Password reset successfully, user logged in with new tokens',
   })
   @ApiBadRequestResponse({
@@ -273,7 +287,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() dto: ResetPasswordDto,
-  ): Promise<TokenPairDto> {
+  ): Promise<TokenResponseDto> {
     const tokens = await this.authService.resetPassword(
       dto.token,
       dto.newPassword,
@@ -338,7 +352,12 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Google OAuth callback handler' })
+  @ApiOperation({
+    summary: 'Google OAuth callback handler',
+    description:
+      'Sets the refresh token via HttpOnly cookie, then redirects to the client callback URL',
+  })
+  @ApiResponse({ status: 302, description: 'Redirect to client auth callback' })
   async googleCallback(
     @Req() req: Request,
     @Res() res: Response,
@@ -398,9 +417,10 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Change current user password and issue fresh access token',
+    description: 'Refresh token delivered via HttpOnly cookie',
   })
   @ApiOkResponse({
-    type: TokenPairDto,
+    type: TokenResponseDto,
     description: 'Password changed successfully and new tokens issued',
   })
   @ApiBadRequestResponse({
@@ -412,7 +432,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChangePasswordDto,
-  ): Promise<TokenPairDto> {
+  ): Promise<TokenResponseDto> {
     const tokens = await this.authService.changePassword(
       user.sub,
       dto,

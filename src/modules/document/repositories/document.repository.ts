@@ -6,34 +6,11 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../../common/database/prisma.service';
-
-/** Metadata-only document representation omitting heavy binary yjsState and previewText */
-export type DocumentMetadata = {
-  id: string;
-  workspaceId: string;
-  title: string;
-  parentCardId: string | null;
-  createdBy: string;
-  status: DocumentStatus;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type DocumentWithParentCard = DocumentMetadata & {
-  parentCard?: { id: string; title: string } | null;
-};
-
-/** Metadata-only column selection to omit heavy binary yjsState and previewText */
-export const DOCUMENT_META_SELECT = {
-  id: true,
-  workspaceId: true,
-  title: true,
-  parentCardId: true,
-  createdBy: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} as const;
+import type {
+  DocumentMetadata,
+  DocumentWithParentCard,
+} from '../interfaces/document.interfaces';
+import { DOCUMENT_META_SELECT } from '../constants/document.constants';
 
 /**
  * Repository handling database operations for documents and their snapshots.

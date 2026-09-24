@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FileAttachment, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../common/database/prisma.service';
-import type { FileEntityType } from '../constants/file.constants';
+import type { FileEntityType } from '../interfaces/file.interfaces';
 
 /**
  * Repository handling database operations for S3-backed file attachments.

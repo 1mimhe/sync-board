@@ -5,11 +5,10 @@ import { RedisService } from '../../../common/redis/redis.service';
 import { NotificationRepository } from '../repositories/notification.repository';
 import type { NotificationListQueryDto } from '../dto/notification-query.dto';
 import type { NotificationResponseDto } from '../dto/notification-response.dto';
-import { toNotificationResponseDto } from '../dto/notification-response.dto';
+import { toNotificationResponseDto } from '../mappers/notification.mapper';
 
-import { UNREAD_COUNT_TTL_SECONDS } from '../notification.constants';
+import { UNREAD_COUNT_TTL_SECONDS } from '../constants';
 import { unreadCountKey } from '../utils/notification-cache.util';
-
 
 /** Thin facade over NotificationRepository + Redis unread counter. */
 @Injectable()

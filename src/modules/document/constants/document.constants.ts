@@ -10,6 +10,14 @@ export const DOCUMENT_CONSTANTS = {
   PREVIEW_MAX_LENGTH: 20_000,
 } as const;
 
-export const SAVE_DEBOUNCE_MS = DOCUMENT_CONSTANTS.SAVE_DEBOUNCE_MS;
-export const IDLE_UNLOAD_MS = DOCUMENT_CONSTANTS.IDLE_UNLOAD_MS;
-export const PREVIEW_MAX_LENGTH = DOCUMENT_CONSTANTS.PREVIEW_MAX_LENGTH;
+/** Metadata-only column selection to omit heavy binary yjsState and previewText. */
+export const DOCUMENT_META_SELECT = {
+  id: true,
+  workspaceId: true,
+  title: true,
+  parentCardId: true,
+  createdBy: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;

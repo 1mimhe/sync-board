@@ -10,6 +10,8 @@ import {
   ROUTING_KEYS,
 } from '../../../common/rabbitmq/rabbitmq.constants';
 import type { DomainMessage } from '../../../common/rabbitmq/interfaces/domain-message.interface';
+import type { ConsumeContext } from '../../../common/rabbitmq/interfaces/consume-context.interface';
+import { computeBackoff } from '../../../common/utils/retry.util';
 import { consumeOnce } from '../../../common/rabbitmq/idempotency.util';
 import { RedisService } from '../../../common/redis/redis.service';
 import type { EmailSendPayload } from '../interfaces/mail.interfaces';
@@ -18,34 +20,7 @@ import {
   EMAIL_MAX_RETRIES,
   EMAIL_RETRY_BASE_MS,
 } from '../constants/mail.constants';
-
-/** Raw consume context passed through by the RabbitMQ subscriber. */
-interface ConsumeContext {
-  headers?: Record<string, unknown>;
-  routingKey?: string;
-}
-
-/**
- * Guards the send gate: malformed messages can never trigger a send.
- *
- * @param payload - Incoming email payload
- * @returns True when the payload carries template, recipient, and data
- */
-function isValidPayload(
-  payload: EmailSendPayload | undefined,
-): payload is EmailSendPayload {
-  return (
-    !!payload &&
-    typeof payload.template === 'string' &&
-    payload.template.length > 0 &&
-    typeof payload.to === 'string' &&
-    payload.to.length > 0 &&
-    typeof payload.subject === 'string' &&
-    payload.subject.length > 0 &&
-    typeof payload.data === 'object' &&
-    payload.data !== null
-  );
-}
+import { isValidEmailPayload as isValidPayload } from '../utils/mail-payload.util';
 
 /**
  * Consumes queued transactional email exactly-once and sends via SMTP.
@@ -129,7 +104,7 @@ export class EmailConsumer {
       await this.releaseIdempotencyKey(msg.messageId);
       const retryCount = retryCountFrom(raw?.headers);
       if (retryCount < EMAIL_MAX_RETRIES && this.publisher) {
-        const delayMs = EMAIL_RETRY_BASE_MS * 2 ** retryCount;
+        const delayMs = computeBackoff(retryCount, EMAIL_RETRY_BASE_MS);
         await this.publisher.publishRetry(
           EXCHANGES.EMAIL,
           raw?.routingKey ?? ROUTING_KEYS.EMAIL_SEND,

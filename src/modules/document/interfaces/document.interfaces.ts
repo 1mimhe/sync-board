@@ -1,4 +1,5 @@
 import type * as Y from 'yjs';
+import type { DocumentStatus } from '@prisma/client';
 
 /** Live in-memory representation of an open document. */
 export interface ActiveDocument {
@@ -37,3 +38,19 @@ export interface DocAccessContext {
   workspaceId: string;
   userId: string;
 }
+
+/** Metadata-only document representation omitting heavy binary yjsState and previewText. */
+export type DocumentMetadata = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  parentCardId: string | null;
+  createdBy: string;
+  status: DocumentStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type DocumentWithParentCard = DocumentMetadata & {
+  parentCard?: { id: string; title: string } | null;
+};

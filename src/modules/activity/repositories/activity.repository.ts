@@ -1,37 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import { Activity, EntityType, Prisma } from '@prisma/client';
+import { Injectable, Logger } from '@nestjs/common';
+import { Activity, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../common/database/prisma.service';
+import { getReplicaClient } from '../../../common/database/replica.client';
 import { buildCursorPagination } from '../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import {
   decodeActivityCursor,
   encodeActivityCursor,
 } from '../utils/activity-cursor.util';
-
-export type ActivityEntityType = EntityType;
-export type ActivityActionType = string;
-
-export interface RecordActivityInput {
-  workspaceId: string;
-  boardId?: string | null;
-  entityType: EntityType;
-  entityId: string;
-  action: string;
-  actorId: string;
-  payload?: Prisma.InputJsonObject;
-  metadata?: Prisma.InputJsonObject;
-}
-
-export interface ActivityFilters {
-  entityType?: EntityType;
-  entityId?: string;
-  actorId?: string;
-  boardId?: string;
-}
-
-export interface ActivityWithActor extends Activity {
-  actor: { id: string; displayName: string; avatarUrl: string | null };
-}
+import type {
+  ActivityFilters,
+  RecordActivityInput,
+} from '../interfaces/activity.interfaces';
 
 /**
  * Database repository managing the partitioned activity audit log
@@ -39,6 +19,8 @@ export interface ActivityWithActor extends Activity {
  */
 @Injectable()
 export class ActivityRepository {
+  private readonly logger = new Logger(ActivityRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -89,7 +71,12 @@ export class ActivityRepository {
         { createdAt, id: { lt: id } },
       ];
     }
-    const rows = await this.prisma.activity.findMany({
+    const replica = getReplicaClient();
+    const db = replica ?? this.prisma;
+    this.logger.debug(
+      `Activity feed served from ${replica ? 'replica' : 'primary'}`,
+    );
+    const rows = await db.activity.findMany({
       where,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
