@@ -46,11 +46,20 @@ describe('CardField controllers', () => {
   });
 
   it('should set and list values', async () => {
-    fieldService.setValue.mockResolvedValue({ id: 'v-1' } as any);
+    fieldService.setValue.mockResolvedValue({
+      id: 'v-1',
+      fieldId: 'f-1',
+      cardId: 'c-1',
+      value: 'x',
+    } as any);
     await expect(
       valueController.setValue('ws-1', 'b-1', 'c-1', 'f-1', { value: 'x' }),
-    ).resolves.toEqual({ id: 'v-1' });
-    fieldService.listValues.mockResolvedValue([{ id: 'v-1' }] as any);
+    ).resolves.toEqual(
+      expect.objectContaining({ id: 'v-1', fieldId: 'f-1', value: 'x' }),
+    );
+    fieldService.listValues.mockResolvedValue([
+      { id: 'v-1', field: { id: 'f-1' } },
+    ] as any);
     await expect(
       valueController.listValues('ws-1', 'b-1', 'c-1'),
     ).resolves.toHaveLength(1);

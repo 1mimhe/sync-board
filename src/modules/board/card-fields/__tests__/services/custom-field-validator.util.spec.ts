@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { validateFieldValue } from '../../services/custom-field-validator.util';
+import { validateFieldValue } from '../../utils/custom-field-validator.util';
 
 describe('custom-field-validator.util', () => {
   it('should pass null and undefined', () => {

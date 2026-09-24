@@ -8,7 +8,7 @@ import { BoardRepository } from '../../../core/repositories/board.repository';
 import { LexorankService } from '../../../lexorank/lexorank.service';
 import { CardService } from '../../../card/services/card.service';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
-import { CHECKLIST_EVENTS } from '../../events/checklist.events';
+import { CHECKLIST_EVENTS } from '../../events/checklist-events.constants';
 
 describe('ChecklistService', () => {
   let service: ChecklistService;

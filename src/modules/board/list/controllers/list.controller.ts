@@ -19,6 +19,7 @@ import {
   ApiNoContentResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ListService } from '../services/list.service';
 import {
@@ -33,6 +34,10 @@ import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.deco
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
+import {
+  WORKSPACE_ADMIN_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for managing board lists (create, rename, LexoRank reorder, archive).
@@ -47,7 +52,7 @@ export class ListController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a new list on board' })
   @ApiParam({
     name: 'workspaceId',
@@ -86,7 +91,7 @@ export class ListController {
    * Updates a list's title.
    */
   @Patch(':listId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Update list title' })
   @ApiParam({
     name: 'workspaceId',
@@ -132,7 +137,7 @@ export class ListController {
    * Reorders a list using LexoRank.
    */
   @Patch(':listId/move')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Reorder list using LexoRank' })
   @ApiParam({
     name: 'workspaceId',
@@ -179,7 +184,7 @@ export class ListController {
    */
   @Delete(':listId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Archive a list' })
   @ApiParam({
     name: 'workspaceId',
@@ -214,7 +219,7 @@ export class ListController {
    * Restores an archived list.
    */
   @Patch(':listId/unarchive')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Unarchive a list' })
   @ApiParam({
     name: 'workspaceId',
@@ -255,8 +260,10 @@ export class ListController {
    * Lists archived lists in a board (paginated).
    */
   @Get('archived')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'List archived lists in board (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -296,7 +303,7 @@ export class ListController {
    */
   @Delete(':listId/permanent')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Permanently delete a list (direct delete)' })
   @ApiParam({
     name: 'workspaceId',

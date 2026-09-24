@@ -3,12 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Board } from '@prisma/client';
 import { BoardRepository } from '../repositories/board.repository';
 import { LabelRepository } from '../../label/repositories/label.repository';
-import {
-  CreateBoardDto,
-  UpdateBoardDto,
-  BoardContentQueryDto,
-  CursorPaginationQueryDto,
-} from '../dto';
+import { CreateBoardDto, UpdateBoardDto, BoardContentQueryDto } from '../dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import {
   EntityNotFoundException,
   BusinessRuleException,

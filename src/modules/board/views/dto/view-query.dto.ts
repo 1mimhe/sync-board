@@ -23,7 +23,7 @@ export class CalendarViewQueryDto {
   from?: string;
 
   @ApiPropertyOptional({
-    description: 'Alias for start date (ISO 8601)',
+    description: 'Start date (ISO 8601)',
   })
   @IsOptional()
   @IsDateString()
@@ -38,7 +38,7 @@ export class CalendarViewQueryDto {
   to?: string;
 
   @ApiPropertyOptional({
-    description: 'Alias for end date (ISO 8601)',
+    description: 'End date (ISO 8601)',
   })
   @IsOptional()
   @IsDateString()

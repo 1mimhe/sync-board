@@ -3,16 +3,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CardCommentRepository } from '../repositories/comment.repository';
 import { CardRepository } from '../../card/repositories/card.repository';
 import { BoardRepository } from '../../core/repositories/board.repository';
-import {
-  CreateCommentDto,
-  UpdateCommentDto,
-  CursorPaginationQueryDto,
-} from '../dto';
+import { CreateCommentDto, UpdateCommentDto } from '../dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import { buildCursorPagination } from '../../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import {
@@ -22,7 +19,7 @@ import {
 } from '../events/comment.events';
 import { COMMENT_EVENTS } from '../events/comment-events.constants';
 import type { CardCommentWithAuthor } from '../../core/interfaces/board.interfaces';
-import { parseMentionedEmails } from './mention-parser.util';
+import { parseMentionedEmails } from '../utils/mention-parser.util';
 
 /**
  * Service handling business logic for card comments (creation, pagination, author-only editing, soft deletion).

@@ -2,8 +2,9 @@ import type { CardStatus } from '@prisma/client';
 import { COMPLETE_STATUSES } from '../card.constants';
 
 /**
- * Guards status transitions. Phase 5.5 uses free flow (any distinct status is
- * allowed, including reopening closed cards); same-status writes are no-ops.
+ * Checks whether a status change should proceed.
+ * Status flow is free: any distinct status is allowed, including reopening
+ * closed cards; same-status writes are no-ops.
  *
  * @param from - Current status
  * @param to - Requested status
@@ -17,7 +18,7 @@ export function isStatusTransitionAllowed(
 }
 
 /**
- * Derives legacy isComplete from status (single source of truth is status).
+ * Derives completion from status.
  *
  * @param status - Card status
  * @returns True for done and closed, false otherwise

@@ -1,15 +1,6 @@
 import type { CardChecklist } from '@prisma/client';
 
 /**
- * Internal event names for checklist domain side effects.
- */
-export const CHECKLIST_EVENTS = {
-  created: 'checklist.created',
-  updated: 'checklist.updated',
-  deleted: 'checklist.deleted',
-} as const;
-
-/**
  * Emitted after a new checklist is created on a card.
  */
 export class ChecklistCreatedEvent {

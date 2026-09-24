@@ -58,7 +58,7 @@ export class ListRepository {
   }
 
   /**
-   * Alias for findByIdIncludingDeleted — kept for backward compatibility.
+   * Finds a list by ID including archived and deleted lists, optionally scoped to a board.
    *
    * @param id - List UUID
    * @param boardId - Optional board UUID filter

@@ -47,7 +47,7 @@ describe('CardAttachmentController (file proxy)', () => {
     jest.clearAllMocks();
   });
 
-  it('delegates listing to FileService and maps to the legacy shape', async () => {
+  it('delegates listing to FileService and maps to CardAttachmentResponseDto', async () => {
     fileService.listForEntity.mockResolvedValue([fileRow()]);
 
     const result = await controller.list('ws-1', 'board-1', 'card-1', user);

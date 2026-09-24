@@ -3,7 +3,7 @@ import type { Card, CardStatus, CardPriority } from '@prisma/client';
 import { CardViewRepository } from '../repositories/card-view.repository';
 import { BoardRepository } from '../../core/repositories/board.repository';
 import { BusinessRuleException } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import type {
   CalendarViewQueryDto,
@@ -12,8 +12,6 @@ import type {
 } from '../dto/view-query.dto';
 import type { CardWithDetails } from '../../core/interfaces/board.interfaces';
 import type { CardTableFilters } from '../interfaces/card-view.interfaces';
-
-export type { CardTableFilters } from '../interfaces/card-view.interfaces';
 
 /**
  * Service handling read-only board view queries (calendar, timeline, table).

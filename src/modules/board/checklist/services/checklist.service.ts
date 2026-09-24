@@ -16,13 +16,13 @@ import {
   AppException,
   EntityNotFoundException,
 } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import {
-  CHECKLIST_EVENTS,
   ChecklistCreatedEvent,
   ChecklistUpdatedEvent,
   ChecklistDeletedEvent,
 } from '../events/checklist.events';
+import { CHECKLIST_EVENTS } from '../events/checklist-events.constants';
 import type {
   ChecklistWithItems,
   ItemWithChecklist,

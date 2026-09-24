@@ -6,7 +6,7 @@ import { CardRepository } from '../../card/repositories/card.repository';
 import { BoardRepository } from '../../core/repositories/board.repository';
 import { UpdateEstimateDto, LogTimeDto } from '../dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import {
   CardTimeLoggedEvent,
   CardUpdatedEvent,

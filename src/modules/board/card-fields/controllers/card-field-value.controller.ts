@@ -13,10 +13,21 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
-import type { CardFieldValue, CardFieldDef } from '@prisma/client';
 import { CardFieldService } from '../services/card-field.service';
 import { SetFieldValueDto } from '../dto/field-def.dto';
+import {
+  CardFieldValueResponseDto,
+  CardFieldValueWithDefResponseDto,
+} from '../dto/field-response.dto';
+import {
+  toCardFieldValueResponseDto,
+  toCardFieldValueWithDefResponseDto,
+} from '../mappers/field.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for card field values.
@@ -30,7 +41,7 @@ export class CardFieldValueController {
    * Sets a field value on a card (idempotent upsert).
    */
   @Put(':fieldId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Set a custom field value on a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -56,7 +67,10 @@ export class CardFieldValueController {
     format: 'uuid',
     description: 'Field Definition UUID',
   })
-  @ApiOkResponse({ description: 'Field value set' })
+  @ApiOkResponse({
+    description: 'Field value set',
+    type: CardFieldValueResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid value for field type' })
   @ApiResponse({
     status: 404,
@@ -68,21 +82,22 @@ export class CardFieldValueController {
     @Param('cardId', ParseUUIDPipe) cardId: string,
     @Param('fieldId', ParseUUIDPipe) fieldId: string,
     @Body() dto: SetFieldValueDto,
-  ): Promise<CardFieldValue> {
-    return this.fieldService.setValue(
+  ): Promise<CardFieldValueResponseDto> {
+    const value = await this.fieldService.setValue(
       boardId,
       workspaceId,
       cardId,
       fieldId,
       dto,
     );
+    return toCardFieldValueResponseDto(value);
   }
 
   /**
    * Lists all field values for a card.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List all custom field values for a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -102,13 +117,21 @@ export class CardFieldValueController {
     format: 'uuid',
     description: 'Card UUID',
   })
-  @ApiOkResponse({ description: 'Field values retrieved' })
+  @ApiOkResponse({
+    description: 'Field values retrieved',
+    type: [CardFieldValueWithDefResponseDto],
+  })
   @ApiResponse({ status: 404, description: 'Card not found' })
   async listValues(
     @Param('workspaceId', ParseUUIDPipe) workspaceId: string,
     @Param('boardId', ParseUUIDPipe) boardId: string,
     @Param('cardId', ParseUUIDPipe) cardId: string,
-  ): Promise<(CardFieldValue & { field: CardFieldDef })[]> {
-    return this.fieldService.listValues(boardId, workspaceId, cardId);
+  ): Promise<CardFieldValueWithDefResponseDto[]> {
+    const values = await this.fieldService.listValues(
+      boardId,
+      workspaceId,
+      cardId,
+    );
+    return values.map(toCardFieldValueWithDefResponseDto);
   }
 }

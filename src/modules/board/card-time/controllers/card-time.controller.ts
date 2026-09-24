@@ -17,6 +17,7 @@ import {
   ApiCreatedResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CardTimeService } from '../services/card-time.service';
 import { TimeTrackingResponseDto } from '../../card/dto/card-response.dto';
@@ -26,7 +27,11 @@ import { CardResponseDto } from '../../card/dto/card-response.dto';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
-import { CursorPaginationQueryDto } from '../../core/dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for card time tracking.
@@ -40,7 +45,7 @@ export class CardTimeController {
    * Sets the time estimate for a card.
    */
   @Patch('estimate')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Set time estimate for a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -84,7 +89,7 @@ export class CardTimeController {
    */
   @Post('time')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Log time spent on a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -127,10 +132,12 @@ export class CardTimeController {
    * Gets time tracking summary for a card.
    */
   @Get('time')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
     summary: 'Get time tracking summary (estimate, logged, remaining, entries)',
   })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,

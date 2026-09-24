@@ -104,11 +104,6 @@ export function toLabelResponseDto(label: Label): LabelResponseDto {
 }
 
 /**
- * Backward compatibility alias for toLabelResponseDto.
- */
-export const toBoardLabelResponseDto = toLabelResponseDto;
-
-/**
  * Maps a Prisma Card model to CardResponseDto.
  *
  * @param card - Card database entity
@@ -178,7 +173,7 @@ export function toCardWithDetailsResponseDto(
       user: toCommentAuthorDto(assignee.user),
     })),
     labels: card.labels.map((item): CardLabelItemDto => ({
-      label: toBoardLabelResponseDto(item.label),
+      label: toLabelResponseDto(item.label),
     })),
     attachments: [],
     subcards: (card as any).subcards
@@ -217,7 +212,7 @@ export function toBoardWithContentResponseDto(
     ...toBoardResponseDto(board),
     isStarred: board.isStarred,
     lists: board.lists.map(toListWithCardsResponseDto),
-    labels: board.labels.map(toBoardLabelResponseDto),
+    labels: board.labels.map(toLabelResponseDto),
     pagination: toBoardContentPaginationDto(board.pagination),
   };
 }

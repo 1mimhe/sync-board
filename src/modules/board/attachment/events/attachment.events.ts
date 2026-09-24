@@ -1,11 +1,4 @@
-/**
- * Minimal attachment shape carried on attachment events (the interim
- * card-attachments table is replaced by S3-backed files).
- */
-export interface AttachmentEventTarget {
-  id: string;
-  cardId: string;
-}
+import type { AttachmentEventTarget } from '../interfaces/attachment.interfaces';
 
 /** Event emitted after an attachment is added to a card. */
 export class AttachmentCreatedEvent {
