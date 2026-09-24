@@ -2,7 +2,7 @@ import type { DocumentSnapshot } from '@prisma/client';
 import type {
   DocumentMetadata,
   DocumentWithParentCard,
-} from '../repositories/document.repository';
+} from '../interfaces/document.interfaces';
 import { DocumentResponseDto } from '../dto/document-response.dto';
 import { SnapshotResponseDto } from '../dto/snapshot-response.dto';
 

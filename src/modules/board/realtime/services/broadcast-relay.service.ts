@@ -7,7 +7,7 @@ import { LIST_EVENTS } from '../../list/events/list-events.constants';
 import { CARD_EVENTS } from '../../card/events/card-events.constants';
 import { COMMENT_EVENTS } from '../../comment/events/comment-events.constants';
 import { ATTACHMENT_EVENTS } from '../../attachment/events/attachment-events.constants';
-import { CHECKLIST_EVENTS } from '../../checklist/events/checklist.events';
+import { CHECKLIST_EVENTS } from '../../checklist/events/checklist-events.constants';
 import type {
   BoardCreatedEvent,
   BoardUpdatedEvent,

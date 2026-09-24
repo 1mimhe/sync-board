@@ -20,6 +20,7 @@ import {
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { Workspace, WorkspaceMember } from '@prisma/client';
 import { WorkspaceService } from '../services/workspace.service';
@@ -37,8 +38,8 @@ import {
   WorkspaceMemberResponseDto,
   MemberWithUserResponseDto,
   WorkspaceInvitationResponseDto,
-  CursorPaginationQueryDto,
 } from '../dto';
+import { CursorPaginationQueryDto } from '../../../common/dto/cursor-pagination-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from '../../../common/guards/email-verified.guard';
 import { SkipEmailVerification } from '../../../common/decorators/skip-email-verification.decorator';
@@ -51,6 +52,11 @@ import {
   MemberWithUser,
   WorkspaceInvitationWithInviter,
 } from '../interfaces/workspace.interfaces';
+import {
+  WORKSPACE_ADMIN_ROLES,
+  WORKSPACE_OWNER_ROLES,
+  WORKSPACE_READ_ROLES,
+} from '../../../common/guards/rbac.constants';
 
 @ApiTags('Workspaces')
 @Controller('workspaces')
@@ -88,6 +94,8 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List workspaces for current user (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiOkResponse({
     type: [WorkspaceWithRoleResponseDto],
     description: 'Paginated list of workspaces: { items, pagination }',
@@ -143,7 +151,7 @@ export class WorkspaceController {
   }
 
   @Get(':workspaceId')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get workspace details by ID' })
   @ApiOkResponse({
     type: WorkspaceWithRoleResponseDto,
@@ -158,7 +166,7 @@ export class WorkspaceController {
   }
 
   @Patch(':workspaceId')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Update workspace information' })
   @ApiOkResponse({
     type: WorkspaceResponseDto,
@@ -172,7 +180,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId')
-  @WorkspaceAuth('owner')
+  @WorkspaceAuth(...WORKSPACE_OWNER_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Archive a workspace (owner only)' })
   @ApiNoContentResponse({ description: 'Workspace archived' })
@@ -183,7 +191,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/leave')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Leave a workspace (self-remove)' })
   @ApiNoContentResponse({ description: 'Successfully left workspace' })
@@ -199,7 +207,7 @@ export class WorkspaceController {
   }
 
   @Post(':workspaceId/transfer-ownership')
-  @WorkspaceAuth('owner')
+  @WorkspaceAuth(...WORKSPACE_OWNER_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Transfer workspace ownership to another member' })
   @ApiOkResponse({
@@ -219,7 +227,7 @@ export class WorkspaceController {
   }
 
   @Get(':workspaceId/members')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List workspace members with user details' })
   @ApiOkResponse({
     type: [MemberWithUserResponseDto],
@@ -232,7 +240,7 @@ export class WorkspaceController {
   }
 
   @Patch(':workspaceId/members/:memberId')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Update member role' })
   @ApiOkResponse({
     type: WorkspaceMemberResponseDto,
@@ -254,7 +262,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/members/:memberId')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove member from workspace' })
   @ApiNoContentResponse({ description: 'Member removed' })
@@ -268,7 +276,7 @@ export class WorkspaceController {
   }
 
   @Post(':workspaceId/invitations')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send an invitation to join the workspace' })
   @ApiCreatedResponse({
@@ -288,7 +296,7 @@ export class WorkspaceController {
   }
 
   @Get(':workspaceId/invitations')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'List pending workspace invitations' })
   @ApiOkResponse({
     type: [WorkspaceInvitationResponseDto],
@@ -301,7 +309,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/invitations/:invitationId')
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Revoke a pending workspace invitation' })
   @ApiNoContentResponse({ description: 'Invitation revoked' })

@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Document } from '@prisma/client';
-import {
-  DocumentRepository,
-  type DocumentMetadata,
-  type DocumentWithParentCard,
-} from '../repositories/document.repository';
+import { DocumentRepository } from '../repositories/document.repository';
+import type {
+  DocumentMetadata,
+  DocumentWithParentCard,
+} from '../interfaces/document.interfaces';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import { buildCursorPagination } from '../../../common/utils/pagination.util';
 import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';

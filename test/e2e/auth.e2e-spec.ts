@@ -1,7 +1,6 @@
 /**
  * Auth module e2e — HTTP via supertest against the real AppModule.
  *
- * Covers: test-cases-auth.md
  *   §1 Registration (happy 1.1, validation 1.2, duplicate 1.3)
  *   §2 Login (2.1, 2.2, 2.3)
  *   §3 Token refresh + rotation + reuse detection (3.1)

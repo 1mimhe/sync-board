@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { PresenceService } from '../../services/presence.service';
 import { RedisService } from '../../../../../common/redis/redis.service';
-import { COLLABORATOR_COLORS } from '../../events/ws-events.constants';
+import { COLLABORATOR_COLORS } from '../../../../../common/utils/collaborator-color.util';
 import type { PresenceEntry } from '../../../../../common/interfaces/ws.interface';
 
 describe('PresenceService', () => {

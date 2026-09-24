@@ -2,7 +2,7 @@ import {
   toCommentAuthorDto,
   toBoardResponseDto,
   toListResponseDto,
-  toBoardLabelResponseDto,
+  toLabelResponseDto,
   toCardResponseDto,
   toCardWithDetailsResponseDto,
   toListWithCardsResponseDto,
@@ -73,8 +73,8 @@ describe('BoardMapper Functions', () => {
     });
   });
 
-  describe('toBoardLabelResponseDto', () => {
-    it('should map label entity to BoardLabelResponseDto', () => {
+  describe('toLabelResponseDto', () => {
+    it('should map label entity to LabelResponseDto', () => {
       const label: any = {
         id: 'lbl-1',
         workspaceId: 'ws-1',
@@ -83,7 +83,7 @@ describe('BoardMapper Functions', () => {
         createdAt: now,
       };
 
-      expect(toBoardLabelResponseDto(label)).toEqual(label);
+      expect(toLabelResponseDto(label)).toEqual(label);
     });
   });
 
@@ -343,5 +343,4 @@ describe('BoardMapper Functions', () => {
       });
     });
   });
-
 });

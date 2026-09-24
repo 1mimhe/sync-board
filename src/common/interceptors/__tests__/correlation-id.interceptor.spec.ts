@@ -77,4 +77,20 @@ describe('CorrelationIdInterceptor', () => {
       done();
     });
   });
+
+  it('should pass through non-HTTP contexts untouched (RabbitMQ handlers)', (done) => {
+    const rabbitContext = {
+      getType: () => 'rabbitmq',
+      switchToHttp: () => {
+        throw new Error('must not touch HTTP in rabbit context');
+      },
+    } as unknown as ExecutionContext;
+
+    interceptor.intercept(rabbitContext, mockHandler).subscribe((result) => {
+      expect(result).toBe('response');
+      expect(mockRequest.correlationId).toBeUndefined();
+      expect(mockHandler.handle).toHaveBeenCalledTimes(1);
+      done();
+    });
+  });
 });

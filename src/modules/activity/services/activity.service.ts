@@ -2,10 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { EntityNotFoundException } from '../../../common/exceptions/app.exception';
 import { AuthService } from '../../auth/services/auth.service';
 import type { Activity } from '@prisma/client';
-import {
-  ActivityRepository,
-  ActivityWithActor,
-} from '../repositories/activity.repository';
+import { ActivityRepository } from '../repositories/activity.repository';
+import type { ActivityWithActor } from '../interfaces/activity.interfaces';
 import { BoardService } from '../../board/core/services/board.service';
 import type { ActivityFeedQueryDto } from '../dto/activity-feed-query.dto';
 import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';

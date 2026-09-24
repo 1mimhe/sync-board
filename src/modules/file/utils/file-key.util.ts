@@ -1,8 +1,6 @@
 import { randomUUID } from 'crypto';
-import {
-  FILE_NAME_MAX_LENGTH,
-  type FileEntityType,
-} from '../constants/file.constants';
+import { FILE_NAME_MAX_LENGTH } from '../constants/file.constants';
+import type { FileEntityType } from '../interfaces/file.interfaces';
 
 /**
  * Sanitizes a user-supplied file name for safe S3 key embedding.

@@ -29,6 +29,10 @@ import {
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing workspace-scoped REST endpoints for managing labels.
@@ -43,7 +47,7 @@ export class WorkspaceLabelController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a label in the workspace' })
   @ApiParam({
     name: 'workspaceId',
@@ -73,7 +77,7 @@ export class WorkspaceLabelController {
    * Lists all labels created within the workspace.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List all labels in the workspace' })
   @ApiParam({
     name: 'workspaceId',
@@ -96,7 +100,7 @@ export class WorkspaceLabelController {
    * Retrieves all active cards tagged with a workspace label.
    */
   @Get(':labelId/cards')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get all active cards tagged with this label' })
   @ApiParam({
     name: 'workspaceId',
@@ -130,7 +134,7 @@ export class WorkspaceLabelController {
    * Updates a workspace label's name or color.
    */
   @Patch(':labelId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Update a workspace label' })
   @ApiParam({
     name: 'workspaceId',
@@ -170,7 +174,7 @@ export class WorkspaceLabelController {
    */
   @Delete(':labelId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Delete a workspace label' })
   @ApiParam({
     name: 'workspaceId',

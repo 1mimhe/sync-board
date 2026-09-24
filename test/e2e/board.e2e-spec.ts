@@ -2,7 +2,6 @@
  * Board module e2e — boards, lists, cards, labels, checklists, comments,
  * attachments, starring, and the per-board activity feed.
  *
- * Covers: test-cases-board.md
  *   Board CRUD + star + archive/unarchive (404 on archived board probes)
  *   Lists CRUD + reorder + archive
  *   Cards CRUD + move (LexoRank) + assignees + labels
@@ -568,8 +567,8 @@ describe('Board module (e2e)', () => {
     });
   });
 
-  describe('Attachments (link type)', () => {
-    it('creates, lists, renames and deletes a link attachment', async () => {
+  describe('Attachments (file proxy)', () => {
+    it('direct writes return 404; GET lists files in CardAttachment shape', async () => {
       const attachmentsUrl = `${boardUrl()}/cards/${bundle.cardId}/attachments`;
 
       const create = await req(server())
@@ -580,31 +579,16 @@ describe('Board module (e2e)', () => {
           url: 'https://example.com/spec',
           name: 'Spec Doc',
         });
-      const attachment = expectData<{ id: string; url: string; name: string }>(
-        create,
-        201,
-      );
-      expect(attachment.url).toBe('https://example.com/spec');
+      expect(create.status).toBe(404);
 
       const list = await req(server())
         .get(attachmentsUrl)
         .set(auth(bundle.viewer));
-      expect(
-        expectData<Array<{ id: string }>>(list, 200).map((a) => a.id),
-      ).toContain(attachment.id);
-
-      const rename = await req(server())
-        .patch(`${attachmentsUrl}/${attachment.id}`)
-        .set(auth(bundle.member))
-        .send({ name: 'Spec Doc v2' });
-      expect(expectData<{ name: string }>(rename, 200).name).toBe(
-        'Spec Doc v2',
-      );
-
-      const del = await req(server())
-        .delete(`${attachmentsUrl}/${attachment.id}`)
-        .set(auth(bundle.member));
-      expect(del.status).toBe(204);
+      const items = expectData<Array<{ id: string; url: string }>>(list, 200);
+      expect(Array.isArray(items)).toBe(true);
+      for (const item of items) {
+        expect(item.url).toBe('');
+      }
     });
   });
 

@@ -7,13 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { WorkspaceRole } from '@prisma/client';
 import { RequestWithWorkspaceMember } from '../interfaces/request-with-workspace-member.interface';
-
-const ROLE_WEIGHTS: Record<WorkspaceRole, number> = {
-  owner: 4,
-  admin: 3,
-  member: 2,
-  viewer: 1,
-};
+import { ROLES_METADATA_KEY, ROLE_WEIGHTS } from './rbac.constants';
 
 /**
  * Guard that enforces Role-Based Access Control (RBAC) on workspace actions.
@@ -25,7 +19,7 @@ export class RbacGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<WorkspaceRole[]>(
-      'roles',
+      ROLES_METADATA_KEY,
       [context.getHandler(), context.getClass()],
     );
 

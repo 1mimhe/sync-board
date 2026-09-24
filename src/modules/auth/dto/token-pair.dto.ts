@@ -17,8 +17,3 @@ export class TokenResponseDto {
   })
   expiresIn!: number;
 }
-
-/**
- * Alias for TokenResponseDto for backward compatibility across imports.
- */
-export class TokenPairDto extends TokenResponseDto {}

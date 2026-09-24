@@ -5,7 +5,7 @@ import { expectData, extractRefreshCookie, req, type ApiUser } from './http';
 import { waitForMailToken } from './mailhog';
 
 /**
- * Data factories with run-scoped isolation (e2e-test-generation.md §2):
+ * Data factories with run-scoped isolation:
  * every spec creates its own users/workspaces with unique `e2e-<runId>` emails;
  * no reliance on pre-seeded data. Cleanup is optional (throwaway DB).
  */

@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { Notification } from '@prisma/client';
 
 /** Response DTO for a single notification. */
 export class NotificationResponseDto {
@@ -27,10 +26,16 @@ export class NotificationResponseDto {
   @ApiPropertyOptional({ description: 'Related entity UUID', nullable: true })
   entityId!: string | null;
 
-  @ApiPropertyOptional({ description: 'Related board UUID when board-scoped', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Related board UUID when board-scoped',
+    nullable: true,
+  })
   boardId?: string | null;
 
-  @ApiPropertyOptional({ description: 'Related card UUID when card-scoped', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Related card UUID when card-scoped',
+    nullable: true,
+  })
   cardId?: string | null;
 
   @ApiProperty({ description: 'Read flag' })
@@ -40,9 +45,12 @@ export class NotificationResponseDto {
   createdAt!: Date;
 }
 
-/** Pagination metadata shape for Swagger documentation. */
+/** Pagination metadata shape. */
 export class NotificationPaginationMetaDto {
-  @ApiPropertyOptional({ description: 'Cursor for fetching next page', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Cursor for fetching next page',
+    nullable: true,
+  })
   cursor!: string | null;
 
   @ApiProperty({ description: 'Whether additional pages are available' })
@@ -54,26 +62,9 @@ export class PaginatedNotificationResponseDto {
   @ApiProperty({ type: [NotificationResponseDto], description: 'Page items' })
   items!: NotificationResponseDto[];
 
-  @ApiProperty({ type: NotificationPaginationMetaDto, description: 'Pagination metadata' })
+  @ApiProperty({
+    type: NotificationPaginationMetaDto,
+    description: 'Pagination metadata',
+  })
   pagination!: NotificationPaginationMetaDto;
-}
-
-/** Maps a Prisma Notification row to its response DTO. */
-export function toNotificationResponseDto(
-  n: Notification,
-): NotificationResponseDto {
-  return {
-    id: n.id,
-    userId: n.userId,
-    workspaceId: n.workspaceId,
-    type: n.type,
-    title: n.title,
-    body: n.body,
-    entityType: n.entityType,
-    entityId: n.entityId,
-    boardId: n.boardId ?? null,
-    cardId: n.cardId ?? null,
-    isRead: n.isRead,
-    createdAt: n.createdAt,
-  };
 }

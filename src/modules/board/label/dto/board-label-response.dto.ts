@@ -41,8 +41,3 @@ export class LabelResponseDto {
   })
   createdAt?: Date;
 }
-
-/**
- * Backward compatibility alias for LabelResponseDto.
- */
-export { LabelResponseDto as BoardLabelResponseDto };

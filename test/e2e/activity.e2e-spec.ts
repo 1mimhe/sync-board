@@ -1,10 +1,5 @@
 /**
- * Activity / Audit Log module e2e — HTTP via supertest against the real AppModule.
- *
- * Covers: test-cases-activity.md
- *   §1 Recording (board-level feed — also covered in board.e2e-spec.ts)
- *   §2 Workspace-scoped feed (2.1–2.7) against the unified Activity model
- *      (workspace-scoped, monthly-partitioned, JSONB payload).
+ * Activity / Audit Log module e2e â€” HTTP via supertest against the real AppModule.
  *
  * Endpoints:
  *   GET /api/workspaces/:workspaceId/activity (workspace feed, composite cursor)
@@ -67,12 +62,7 @@ describe('Activity module (e2e)', () => {
   });
 
   // =========================================================================
-  // §1 Recording — board-level feed also covered by board.e2e-spec.ts
-  // "Activity feed" describe ? records card creation
-  // =========================================================================
-
-  // =========================================================================
-  describe('§2 Workspace-scoped Feed', () => {
+  describe('Workspace-scoped Feed', () => {
     beforeAll(async () => {
       // Seed: 25 card creations to produce activity rows
       for (let i = 0; i < 25; i++) {

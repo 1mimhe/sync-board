@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import {
-  ActivityRepository,
-  type RecordActivityInput,
-} from '../repositories/activity.repository';
+import { ActivityRepository } from '../repositories/activity.repository';
+import type { RecordActivityInput } from '../interfaces/activity.interfaces';
 import { DocumentService } from '../../document/services/document.service';
 import type {
   DocumentCreatedEvent,

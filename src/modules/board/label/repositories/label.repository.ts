@@ -167,8 +167,3 @@ export class LabelRepository {
     });
   }
 }
-
-/**
- * Backward compatibility alias for LabelRepository.
- */
-export { LabelRepository as BoardLabelRepository };

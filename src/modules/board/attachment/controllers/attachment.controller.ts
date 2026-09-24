@@ -7,22 +7,22 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { CardAttachmentResponseDto } from '../dto/card-attachment-response.dto';
-import { toLegacyCardAttachmentResponseDto } from '../../../file/mappers/file.mapper';
+import { toCardAttachmentResponseDto } from '../../../file/mappers/file.mapper';
 import { FileService } from '../../../file/services/file.service';
 import { BoardRepository } from '../../core/repositories/board.repository';
 import { CardRepository } from '../../card/repositories/card.repository';
 import {
   assertBoardInWorkspace,
   assertCardInBoard,
-} from '../../shared/board-access.util';
+} from '../../utils/board-access.util';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import { WORKSPACE_READ_ROLES } from '../../../../common/guards/rbac.constants';
 
 /**
- * Read-only proxy over S3-backed files, preserving the legacy
- * card-attachments listing route for existing clients.
- * Create/update/delete moved to `/workspaces/:workspaceId/files/*`.
+ * Controller exposing card-scoped attachment listing.
+ * Direct file management is handled under `/workspaces/:workspaceId/files/*`.
  */
 @ApiTags('Card Attachments')
 @Controller('workspaces/:workspaceId/boards/:boardId/cards/:cardId/attachments')
@@ -34,15 +34,13 @@ export class CardAttachmentController {
   ) {}
 
   /**
-   * Lists migrated file attachments on a card in the legacy shape.
-   * Bytes are served via `GET /workspaces/:workspaceId/files/:fileId/download`,
-   * so `url` is intentionally empty.
+   * Lists file attachments on a card.
+   * Bytes are served via `GET /workspaces/:workspaceId/files/:fileId/download`.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
-    summary:
-      'List card attachments (legacy shape; create/update moved to /files/*)',
+    summary: 'List card attachments',
   })
   @ApiParam({
     name: 'workspaceId',
@@ -81,6 +79,6 @@ export class CardAttachmentController {
       user.sub,
       workspaceId,
     );
-    return files.map((file) => toLegacyCardAttachmentResponseDto(file, cardId));
+    return files.map((file) => toCardAttachmentResponseDto(file, cardId));
   }
 }

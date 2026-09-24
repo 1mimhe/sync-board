@@ -1,20 +1,5 @@
 /**
- * Document collaboration WebSocket e2e — socket.io-client against in-process app.
- *
- * Covers: test-cases-realtime-ws.md §4 (Document Collaboration)
- *   §4.1 doc:join returns full state
- *   §4.2 update relay verbatim
- *   §4.3 convergence (sv+diffs)
- *   §4.4 awareness relay (peers only)
- *   §4.5 editor lifecycle (joined/left)
- *   §4.6 doc:saved event after debounce
- *   §4.7 outsider doc:join ? DOCUMENT_ACCESS_DENIED
- *   §4.8 rate limits
- *
- * ? BLOCKED — Phase 5 pending.
- * `src/modules/document/document.module.ts` is an empty stub.
- * Remove `.skip` from each `describe.skip` block once the module lands.
- * Cross-check event names against the final DocumentGateway constants before activating.
+ * Document collaboration WebSocket e2e â€” socket.io-client against in-process app.
  */
 import { io } from 'socket.io-client';
 import { createTestApp, type TestApp } from '../helpers/app';
@@ -31,7 +16,7 @@ import {
 import { expectData, req } from '../helpers/http';
 
 /**
- * Document WS event names (Phase 5 target — update when DocumentGateway lands).
+ * Document WS event names.
  * These are intentionally consts here so they can be updated in one place.
  */
 const DOC_EVENTS = {
@@ -40,8 +25,8 @@ const DOC_EVENTS = {
   UPDATE: 'doc:update',
   AWARENESS: 'doc:awareness',
   SAVED: 'doc:saved',
-  EDITOR_JOINED: 'editor:joined',
-  EDITOR_LEFT: 'editor:left',
+  EDITOR_JOINED: 'doc:editor-joined',
+  EDITOR_LEFT: 'doc:editor-left',
   ACCESS_DENIED: 'DOCUMENT_ACCESS_DENIED',
 } as const;
 
@@ -84,27 +69,27 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('§4.1 doc:join returns full initial state', () => {
+  describe('doc:join returns full initial state', () => {
     it('joining a document receives initialState bytes', async () => {
       const sock = await connect(app.url, owner.accessToken);
       const joined = collect(sock, DOC_EVENTS.JOINED);
-      sock.emit(DOC_EVENTS.JOIN, { docId });
+      sock.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       const evts = await joined.waitForCount(1);
       // initialState should be a Uint8Array / Buffer passed as binary or base64
-      expect(evts[0]).toHaveProperty('docId', docId);
+      expect(evts[0]).toHaveProperty('documentId', docId);
       joined.dispose();
       await closeSocket(sock);
     });
   });
 
   // =========================================================================
-  describe.skip('§4.2 update relay verbatim', () => {
+  describe('update relay verbatim', () => {
     it('A sends binary update frame ? B receives identical bytes', async () => {
       const sockA = await connect(app.url, owner.accessToken);
       const sockB = await connect(app.url, member.accessToken);
 
-      sockA.emit(DOC_EVENTS.JOIN, { docId });
-      sockB.emit(DOC_EVENTS.JOIN, { docId });
+      sockA.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
+      sockB.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       await Promise.all([
         onceEvent(sockA, DOC_EVENTS.JOINED),
         onceEvent(sockB, DOC_EVENTS.JOINED),
@@ -112,11 +97,11 @@ describe('Documents collaboration (ws)', () => {
 
       const relay = collect(sockB, DOC_EVENTS.UPDATE);
       const update = new Uint8Array([1, 2, 3, 4]).buffer;
-      sockA.emit(DOC_EVENTS.UPDATE, { docId, update });
+      sockA.emit(DOC_EVENTS.UPDATE, { documentId: docId, update });
 
       const evts = await relay.waitForCount(1, 3000);
       // Bytes must match
-      expect(evts[0]).toHaveProperty('docId', docId);
+      expect(evts[0]).toHaveProperty('documentId', docId);
       relay.dispose();
 
       await closeSocket(sockA);
@@ -125,13 +110,13 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('§4.4 awareness relay (peers only, not sender)', () => {
+  describe('awareness relay (peers only, not sender)', () => {
     it('A emits awareness ? B gets it; A does NOT receive own frame', async () => {
       const sockA = await connect(app.url, owner.accessToken);
       const sockB = await connect(app.url, member.accessToken);
 
-      sockA.emit(DOC_EVENTS.JOIN, { docId });
-      sockB.emit(DOC_EVENTS.JOIN, { docId });
+      sockA.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
+      sockB.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       await Promise.all([
         onceEvent(sockA, DOC_EVENTS.JOINED),
         onceEvent(sockB, DOC_EVENTS.JOINED),
@@ -141,12 +126,12 @@ describe('Documents collaboration (ws)', () => {
       const echoA = collect(sockA, DOC_EVENTS.AWARENESS);
 
       sockA.emit(DOC_EVENTS.AWARENESS, {
-        docId,
-        state: { cursor: { anchor: 0 } },
+        documentId: docId,
+        data: { cursor: { anchor: 0 } },
       });
 
       const evts = await receiverB.waitForCount(1, 3000);
-      expect(evts[0]).toHaveProperty('docId', docId);
+      expect(evts[0]).toHaveProperty('documentId', docId);
 
       await new Promise((r) => setTimeout(r, 300));
       expect(echoA.events).toHaveLength(0);
@@ -159,15 +144,15 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('§4.5 editor lifecycle: joined/left frames', () => {
+  describe('editor lifecycle: joined/left frames', () => {
     it('B joins ? A receives editor:joined; B disconnects ? A receives editor:left', async () => {
       const sockA = await connect(app.url, owner.accessToken);
-      sockA.emit(DOC_EVENTS.JOIN, { docId });
+      sockA.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       await onceEvent(sockA, DOC_EVENTS.JOINED);
 
       const joined = collect(sockA, DOC_EVENTS.EDITOR_JOINED);
       const sockB = await connect(app.url, member.accessToken);
-      sockB.emit(DOC_EVENTS.JOIN, { docId });
+      sockB.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       await onceEvent(sockB, DOC_EVENTS.JOINED);
 
       const joinedEvts = await joined.waitForCount(1);
@@ -185,11 +170,11 @@ describe('Documents collaboration (ws)', () => {
   });
 
   // =========================================================================
-  describe.skip('§4.7 outsider doc:join ? DOCUMENT_ACCESS_DENIED', () => {
+  describe('outsider doc:join â†’ DOCUMENT_ACCESS_DENIED', () => {
     it('outsider receives an error frame DOCUMENT_ACCESS_DENIED', async () => {
       const sock = await connect(app.url, outsider.accessToken);
       const errors = collect(sock, 'error');
-      sock.emit(DOC_EVENTS.JOIN, { docId });
+      sock.emit(DOC_EVENTS.JOIN, { documentId: docId, workspaceId });
       const evts = await errors
         .waitForCount(1, 5000)
         .catch(() => errors.events);

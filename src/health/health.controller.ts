@@ -15,6 +15,12 @@ import {
 import { PrismaHealthIndicator } from './prisma-health.indicator';
 import { RedisHealthIndicator } from './redis-health.indicator';
 import { RabbitMQHealthIndicator } from './rabbitmq-health.indicator';
+import {
+  DISK_CHECK_PATH,
+  DISK_THRESHOLD_PERCENT,
+  MEMORY_HEAP_LIMIT_BYTES,
+  MEMORY_RSS_LIMIT_BYTES,
+} from './health.constants';
 
 /**
  * Liveness & readiness probe for load balancers and orchestrators.
@@ -40,13 +46,19 @@ export class HealthController {
     schema: {
       example: {
         status: 'ok',
-        info: { database: { status: 'up' }, redis: { status: 'up' } },
+        info: {
+          database: { status: 'up' },
+          redis: { status: 'up' },
+          rabbitmq: { status: 'up' },
+        },
         error: {},
         details: {
           database: { status: 'up' },
           redis: { status: 'up' },
+          rabbitmq: { status: 'up' },
           memory_heap: { status: 'up' },
-          disk: { status: 'up' },
+          memory_rss: { status: 'up' },
+          storage: { status: 'up' },
         },
       },
     },
@@ -60,11 +72,12 @@ export class HealthController {
       () => this.prisma.pingCheck('database'),
       () => this.redis.pingCheck('redis'),
       () => this.rabbitmq.pingCheck('rabbitmq'),
-      () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024), // 300 MB
+      () => this.memory.checkHeap('memory_heap', MEMORY_HEAP_LIMIT_BYTES),
+      () => this.memory.checkRSS('memory_rss', MEMORY_RSS_LIMIT_BYTES),
       () =>
-        this.disk.checkStorage('disk', {
-          thresholdPercent: 0.9,
-          path: process.cwd(),
+        this.disk.checkStorage('storage', {
+          thresholdPercent: DISK_THRESHOLD_PERCENT,
+          path: DISK_CHECK_PATH,
         }),
     ]);
   }
@@ -79,7 +92,7 @@ export class HealthController {
   })
   checkLiveness(): Promise<HealthCheckResult> {
     return this.health.check([
-      () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
+      () => this.memory.checkHeap('memory_heap', MEMORY_HEAP_LIMIT_BYTES),
     ]);
   }
 
@@ -95,6 +108,7 @@ export class HealthController {
     return this.health.check([
       () => this.prisma.pingCheck('database'),
       () => this.redis.pingCheck('redis'),
+      () => this.rabbitmq.pingCheck('rabbitmq'),
     ]);
   }
 }

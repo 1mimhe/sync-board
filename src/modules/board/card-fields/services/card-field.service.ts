@@ -10,8 +10,8 @@ import {
   SetFieldValueDto,
 } from '../dto/field-def.dto';
 import { EntityNotFoundException } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
-import { validateFieldValue } from './custom-field-validator.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
+import { validateFieldValue } from '../utils/custom-field-validator.util';
 
 /**
  * Service handling workspace custom field definitions and per-card values.

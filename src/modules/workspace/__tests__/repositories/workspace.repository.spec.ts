@@ -42,7 +42,9 @@ describe('WorkspaceRepository', () => {
         },
       };
 
-      prisma.$transaction.mockImplementation((cb: Function) => cb(mockTx));
+      prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
+        cb(mockTx),
+      );
 
       const result = await repository.createWorkspaceWithOwner(
         { name: 'Test WS', slug: 'test-ws' },

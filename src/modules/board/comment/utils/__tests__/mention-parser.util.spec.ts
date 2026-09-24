@@ -1,4 +1,4 @@
-import { parseMentionedEmails } from '../../services/mention-parser.util';
+import { parseMentionedEmails } from '../mention-parser.util';
 
 describe('mention-parser.util', () => {
   it('should extract unique lowercase emails', () => {

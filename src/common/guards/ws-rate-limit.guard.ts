@@ -3,8 +3,8 @@ import { Reflector } from '@nestjs/core';
 import { WsException } from '@nestjs/websockets';
 import type { Socket } from 'socket.io';
 import { WsRateLimiterService } from '../../modules/board/realtime/services/ws-rate-limiter.service';
-import { WS_RATE_LIMIT_KEY } from '../decorators/ws-rate-limit.decorator';
-import type { WsRateLimitOptions } from '../decorators/ws-rate-limit.decorator';
+import { WS_RATE_LIMIT_KEY } from '../constants/ws-rate-limit.constants';
+import type { WsRateLimitOptions } from '../decorators/ws-rate-limit.interface';
 import type { AuthenticatedSocketData } from '../interfaces/ws.interface';
 
 /**

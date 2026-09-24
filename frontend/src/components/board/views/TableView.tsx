@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { CardWithDetails, Card, CardStatus, CardPriority, WorkspaceMember } from '../../../types'
+import { CARD_PRIORITY_META, CARD_STATUS_META } from '../../../constants'
 import { boardViewApi, cardApi } from '../../../api/endpoints'
 import { CardModal } from '../../card/CardModal'
 import { Avatar } from '../../common/Avatar'
@@ -17,21 +18,10 @@ export interface TableViewProps {
   boardId: string
   members: WorkspaceMember[]
   onBoardUpdated: () => void
-}
-
-const PRIORITY_BADGES: Record<CardPriority, { color: string; label: string }> = {
-  lowest: { color: '#71717a', label: 'Lowest' },
-  low: { color: '#3b82f6', label: 'Low' },
-  medium: { color: '#f59e0b', label: 'Medium' },
-  high: { color: '#f97316', label: 'High' },
-  urgent: { color: '#ef4444', label: 'Urgent' },
-}
-
-const STATUS_BADGES: Record<CardStatus, { label: string; bg: string; color: string }> = {
-  not_started: { label: 'To Do', bg: 'rgba(113, 113, 122, 0.15)', color: '#a1a1aa' },
-  active: { label: 'Active', bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' },
-  done: { label: 'Done', bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399' },
-  closed: { label: 'Closed', bg: 'rgba(124, 58, 237, 0.15)', color: '#c084fc' },
+  /** Set when a card:* WS event arrives while this read-only view is active. */
+  hasUpdates?: boolean
+  /** Reload the view (clears the Updated badge). */
+  onRefresh?: () => void
 }
 
 function formatMinutes(mins: number): string {
@@ -48,6 +38,8 @@ export function TableView({
   boardId,
   members,
   onBoardUpdated,
+  hasUpdates,
+  onRefresh,
 }: TableViewProps) {
   const [cards, setCards] = useState<CardWithDetails[]>([])
   const [loading, setLoading] = useState(false)
@@ -57,6 +49,7 @@ export function TableView({
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<CardStatus | ''>('')
   const [filterPriority, setFilterPriority] = useState<CardPriority | ''>('')
+  const [filterAssigneeId, setFilterAssigneeId] = useState('')
   const [sortBy, setSortBy] = useState<'title' | 'dueDate' | 'priority' | 'status' | 'createdAt'>('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -66,6 +59,7 @@ export function TableView({
       search: search.trim() || undefined,
       status: filterStatus || undefined,
       priority: filterPriority || undefined,
+      assigneeId: filterAssigneeId || undefined,
       sortBy,
       sortOrder,
       limit: 100,
@@ -74,7 +68,7 @@ export function TableView({
       setCards(res.data.items || [])
     }
     setLoading(false)
-  }, [workspaceId, boardId, search, filterStatus, filterPriority, sortBy, sortOrder])
+  }, [workspaceId, boardId, search, filterStatus, filterPriority, filterAssigneeId, sortBy, sortOrder])
 
   useEffect(() => {
     loadTableData()
@@ -104,6 +98,34 @@ export function TableView({
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {hasUpdates && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            borderRadius: 10,
+            padding: '8px 12px',
+            fontSize: 12.5,
+            color: '#fbbf24',
+          }}
+        >
+          <span>Updated — refresh to see latest cards (read-only view, no live patch).</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              onRefresh?.()
+              void loadTableData()
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
       {/* Table Filter Toolbar */}
       <div
         style={{
@@ -130,29 +152,46 @@ export function TableView({
 
         {/* Status Filter */}
         <select
+          aria-label="Filter by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as CardStatus | '')}
           style={{ fontSize: 12.5, padding: '4px 8px', background: 'var(--bg3)', color: 'var(--text)' }}
         >
           <option value="">All Statuses</option>
-          <option value="not_started">To Do</option>
-          <option value="active">Active</option>
-          <option value="done">Done</option>
-          <option value="closed">Closed</option>
+          <option value="not_started">{CARD_STATUS_META.not_started.label}</option>
+          <option value="active">{CARD_STATUS_META.active.label}</option>
+          <option value="done">{CARD_STATUS_META.done.label}</option>
+          <option value="closed">{CARD_STATUS_META.closed.label}</option>
         </select>
 
         {/* Priority Filter */}
         <select
+          aria-label="Filter by priority"
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value as CardPriority | '')}
           style={{ fontSize: 12.5, padding: '4px 8px', background: 'var(--bg3)', color: 'var(--text)' }}
         >
           <option value="">All Priorities</option>
-          <option value="urgent">Urgent</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-          <option value="lowest">Lowest</option>
+          <option value="urgent">{CARD_PRIORITY_META.urgent.label}</option>
+          <option value="high">{CARD_PRIORITY_META.high.label}</option>
+          <option value="medium">{CARD_PRIORITY_META.medium.label}</option>
+          <option value="low">{CARD_PRIORITY_META.low.label}</option>
+          <option value="lowest">{CARD_PRIORITY_META.lowest.label}</option>
+        </select>
+
+        {/* Assignee Filter */}
+        <select
+          aria-label="Filter by assignee"
+          value={filterAssigneeId}
+          onChange={(e) => setFilterAssigneeId(e.target.value)}
+          style={{ fontSize: 12.5, padding: '4px 8px', background: 'var(--bg3)', color: 'var(--text)', maxWidth: 160 }}
+        >
+          <option value="">All assignees</option>
+          {members.map((m) => (
+            <option key={m.userId} value={m.userId}>
+              {m.user.displayName}
+            </option>
+          ))}
         </select>
 
         <span style={{ fontSize: 12, color: 'var(--muted2)', marginLeft: 'auto' }}>
@@ -228,8 +267,8 @@ export function TableView({
             ) : (
               cards.map((card) => {
                 const isDone = card.isComplete || card.isCompleted
-                const priorityBadge = card.priority ? PRIORITY_BADGES[card.priority] : null
-                const statusBadge = card.status ? STATUS_BADGES[card.status] : null
+                const priorityMeta = card.priority ? CARD_PRIORITY_META[card.priority] : null
+                const statusMeta = card.status ? CARD_STATUS_META[card.status] : null
                 const isOverdue = card.dueDate && new Date(card.dueDate) < new Date() && !isDone
                 const subcardsCount = card.subcards?.length || 0
                 const doneSubcards = card.subcards?.filter((s) => s.isComplete || s.isCompleted).length || 0
@@ -306,18 +345,19 @@ export function TableView({
 
                     {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
-                      {statusBadge ? (
+                      {statusMeta ? (
                         <span
+                          title={statusMeta.label}
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
                             padding: '2px 8px',
                             borderRadius: 6,
-                            background: statusBadge.bg,
-                            color: statusBadge.color,
+                            background: `${statusMeta.color}26`,
+                            color: statusMeta.color,
                           }}
                         >
-                          {statusBadge.label}
+                          {statusMeta.label}
                         </span>
                       ) : (
                         '—'
@@ -326,19 +366,20 @@ export function TableView({
 
                     {/* Priority */}
                     <td style={{ padding: '10px 14px' }}>
-                      {priorityBadge ? (
+                      {priorityMeta ? (
                         <span
+                          title={priorityMeta.label}
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            color: priorityBadge.color,
+                            color: priorityMeta.color,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 4,
                           }}
                         >
                           <IconFlag size={12} />
-                          {priorityBadge.label}
+                          {priorityMeta.label}
                         </span>
                       ) : (
                         '—'

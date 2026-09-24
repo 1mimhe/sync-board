@@ -35,6 +35,7 @@ import {
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import { WORKSPACE_WRITE_ROLES } from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for managing card checklists and their items.
@@ -49,7 +50,7 @@ export class ChecklistController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a checklist on a card' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -81,7 +82,7 @@ export class ChecklistController {
    * Lists all checklists on a card with ordered items.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'List checklists on a card' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -108,7 +109,7 @@ export class ChecklistController {
    * Renames a checklist.
    */
   @Patch(':checklistId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Rename a checklist' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -143,7 +144,7 @@ export class ChecklistController {
    */
   @Delete(':checklistId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Delete a checklist' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -172,7 +173,7 @@ export class ChecklistController {
    */
   @Post(':checklistId/items')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Add an item to a checklist' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -207,7 +208,7 @@ export class ChecklistController {
    * Updates a checklist item (edit content and/or toggle done).
    */
   @Patch(':checklistId/items/:itemId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Update a checklist item' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -245,7 +246,7 @@ export class ChecklistController {
    */
   @Delete(':checklistId/items/:itemId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Remove an item from a checklist' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })
@@ -277,7 +278,7 @@ export class ChecklistController {
    */
   @Post(':checklistId/items/:itemId/promote')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Promote a checklist item to a subcard' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'boardId', type: String, format: 'uuid' })

@@ -129,7 +129,7 @@ describe('configValidationSchema', () => {
     expect(error).toBeUndefined();
   });
 
-  it('should accept async/S3 overrides for Phase 6A (incl. RABBITMQ_ENABLE=false)', () => {
+  it('should accept async/S3 overrides (incl. RABBITMQ_ENABLE=false)', () => {
     const { error, value } = configValidationSchema.validate({
       ...validConfig,
       RABBITMQ_ENABLE: false,

@@ -109,8 +109,3 @@ export const WS_RATE_LIMITS = {
     silent: true,
   },
 } as const;
-
-export type WsRateLimitCategory =
-  (typeof WS_RATE_LIMITS)[keyof typeof WS_RATE_LIMITS]['category'];
-
-export { COLLABORATOR_COLORS } from '../../../../common/utils/collaborator-color.util';

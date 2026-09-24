@@ -31,6 +31,15 @@ import type {
   Document,
   DocumentSnapshot,
   ActivityLog,
+  ActivityEventItem,
+  ActivityFeedQuery,
+  Notification,
+  NotificationsQuery,
+  FileAttachment,
+  PresignedUploadRequest,
+  PresignedUploadResponse,
+  ConfirmUploadResponse,
+  FileDownloadResponse,
   PaginatedResult,
   Pagination,
   HealthStatusResponse,
@@ -681,8 +690,10 @@ export const labelApi = {
       body: JSON.stringify(dto),
     }),
 
-  listForBoard: (workspaceId: string, _boardId?: string) =>
-    apiFetch<Label[]>(`/workspaces/${workspaceId}/labels`),
+  listForBoard: (workspaceId: string, boardId?: string) =>
+    boardId
+      ? apiFetch<Label[]>(`/workspaces/${workspaceId}/boards/${boardId}/labels`)
+      : apiFetch<Label[]>(`/workspaces/${workspaceId}/labels`),
 
   listForWorkspace: (workspaceId: string, _scope?: 'all' | 'workspace') =>
     apiFetch<Label[]>(`/workspaces/${workspaceId}/labels`),
@@ -750,7 +761,7 @@ export const commentApi = {
     commentId: string,
   ) =>
     apiFetch<{ parent: CardComment; replies: CardComment[] }>(
-      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments/${commentId}/thread`,
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments/${commentId}/replies`,
     ),
 
   update: (
@@ -781,57 +792,12 @@ export const commentApi = {
 }
 
 // ── Attachment Endpoints ──────────────────────────────────────────────────────
+// Attachment listing proxy; create/update/delete handled by filesApi.
 
 export const attachmentApi = {
-  create: (
-    workspaceId: string,
-    boardId: string,
-    cardId: string,
-    dto: {
-      type: 'file' | 'image' | 'link'
-      url: string
-      name: string
-      size?: number
-      mimeType?: string
-    },
-  ) =>
-    apiFetch<CardAttachment>(
-      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/attachments`,
-      {
-        method: 'POST',
-        body: JSON.stringify(dto),
-      },
-    ),
-
   list: (workspaceId: string, boardId: string, cardId: string) =>
     apiFetch<CardAttachment[]>(
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/attachments`,
-    ),
-
-  update: (
-    workspaceId: string,
-    boardId: string,
-    cardId: string,
-    attachmentId: string,
-    dto: { name?: string; url?: string },
-  ) =>
-    apiFetch<CardAttachment>(
-      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/attachments/${attachmentId}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(dto),
-      },
-    ),
-
-  delete: (
-    workspaceId: string,
-    boardId: string,
-    cardId: string,
-    attachmentId: string,
-  ) =>
-    apiFetch<void>(
-      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/attachments/${attachmentId}`,
-      { method: 'DELETE' },
     ),
 }
 
@@ -1059,8 +1025,6 @@ export const boardViewApi = {
     const params = new URLSearchParams({
       from: query.startDate,
       to: query.endDate,
-      startDate: query.startDate,
-      endDate: query.endDate,
     })
     if (query.cursor) params.set('cursor', query.cursor)
     if (query.limit) params.set('limit', String(query.limit))
@@ -1093,6 +1057,7 @@ export const boardViewApi = {
     if (query.limit) params.set('limit', String(query.limit))
     if (query.status) params.set('status', query.status)
     if (query.priority) params.set('priority', query.priority)
+    if (query.assigneeId) params.set('assigneeId', query.assigneeId)
     if (query.search) params.set('search', query.search)
     if (query.sortBy) params.set('sortBy', query.sortBy)
     if (query.sortOrder) params.set('sortOrder', query.sortOrder)
@@ -1102,6 +1067,138 @@ export const boardViewApi = {
     )
   },
 }
+
+// ── Board-scoped Labels (LabelController) ─────────────────────────────────────
+
+export const boardLabelApi = {
+  create: (
+    workspaceId: string,
+    boardId: string,
+    dto: { name?: string; color: string },
+  ) =>
+    apiFetch<Label>(`/workspaces/${workspaceId}/boards/${boardId}/labels`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
+
+  list: (workspaceId: string, boardId: string) =>
+    apiFetch<Label[]>(`/workspaces/${workspaceId}/boards/${boardId}/labels`),
+
+  update: (
+    workspaceId: string,
+    boardId: string,
+    labelId: string,
+    dto: { name?: string; color?: string },
+  ) =>
+    apiFetch<Label>(
+      `/workspaces/${workspaceId}/boards/${boardId}/labels/${labelId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  remove: (workspaceId: string, boardId: string, labelId: string) =>
+    apiFetch<void>(
+      `/workspaces/${workspaceId}/boards/${boardId}/labels/${labelId}`,
+      { method: 'DELETE' },
+    ),
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export const notificationsApi = {
+  list: (query: NotificationsQuery = {}) => {
+    const params = new URLSearchParams()
+    if (query.cursor) params.set('cursor', query.cursor)
+    if (query.limit) params.set('limit', String(query.limit))
+    if (query.unreadOnly) params.set('unreadOnly', 'true')
+    const q = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<PaginatedResult<Notification>>(`/notifications${q}`)
+  },
+
+  unreadCount: () => apiFetch<{ count: number }>(`/notifications/unread-count`),
+
+  markRead: (id: string) =>
+    apiFetch<Notification>(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    }),
+
+  markAllRead: () =>
+    apiFetch<void>(`/notifications/read-all`, {
+      method: 'POST',
+    }),
+}
+
+// ── Activity Feeds ────────────────────────────────────────────────────────────
+
+function buildActivityQuery(query: ActivityFeedQuery = {}) {
+  const params = new URLSearchParams()
+  if (query.cursor) params.set('cursor', query.cursor)
+  if (query.limit) params.set('limit', String(query.limit))
+  if (query.entityType) params.set('entityType', query.entityType)
+  if (query.entityId) params.set('entityId', query.entityId)
+  if (query.actorId) params.set('actorId', query.actorId)
+  if (query.boardId) params.set('boardId', query.boardId)
+  const q = params.toString() ? `?${params.toString()}` : ''
+  return q
+}
+
+export const activityApi = {
+  workspaceFeed: (workspaceId: string, query: ActivityFeedQuery = {}) =>
+    apiFetch<PaginatedResult<ActivityEventItem>>(
+      `/workspaces/${workspaceId}/activity${buildActivityQuery(query)}`,
+    ),
+
+  boardFeed: (
+    workspaceId: string,
+    boardId: string,
+    query: ActivityFeedQuery = {},
+  ) =>
+    apiFetch<PaginatedResult<ActivityEventItem>>(
+      `/workspaces/${workspaceId}/boards/${boardId}/activity${buildActivityQuery(query)}`,
+    ),
+}
+
+// ── Files — 2-phase S3 presigned uploads ──────────────────────────────────────
+
+export const filesApi = {
+  requestUpload: (workspaceId: string, dto: PresignedUploadRequest) =>
+    apiFetch<PresignedUploadResponse>(
+      `/workspaces/${workspaceId}/files/presigned-upload`,
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+    ),
+
+  // Raw fetch against uploadUrl (different host, no envelope, no auth header).
+  uploadBytes: (uploadUrl: string, file: File | Blob, mimeType: string) =>
+    fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mimeType },
+      body: file,
+    }),
+
+  confirm: (workspaceId: string, fileId: string) =>
+    apiFetch<ConfirmUploadResponse>(
+      `/workspaces/${workspaceId}/files/${fileId}/confirm`,
+      { method: 'POST' },
+    ),
+
+  downloadUrl: (workspaceId: string, fileId: string) =>
+    apiFetch<FileDownloadResponse>(
+      `/workspaces/${workspaceId}/files/${fileId}/download`,
+    ),
+
+  remove: (workspaceId: string, fileId: string) =>
+    apiFetch<void>(`/workspaces/${workspaceId}/files/${fileId}`, {
+      method: 'DELETE',
+    }),
+}
+
+// Back-compat alias for file attachment reads.
+export type { FileAttachment }
 
 // ── Health Endpoint ───────────────────────────────────────────────────────────
 

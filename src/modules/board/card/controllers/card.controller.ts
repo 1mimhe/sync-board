@@ -19,6 +19,7 @@ import {
   ApiNoContentResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CardService } from '../services/card.service';
 import {
@@ -40,8 +41,13 @@ import {
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
-import { CursorPaginationQueryDto } from '../../core/dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
+import {
+  WORKSPACE_ADMIN_ROLES,
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for managing cards, card assignments, and card label attachments.
@@ -56,7 +62,7 @@ export class CardController {
    */
   @Post('lists/:listId/cards')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a new card in a list' })
   @ApiParam({
     name: 'workspaceId',
@@ -103,8 +109,10 @@ export class CardController {
    * Lists archived cards in a board (paginated, owner/admin/member).
    */
   @Get('cards/archived')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'List archived cards in board (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -141,7 +149,7 @@ export class CardController {
    * Retrieves full details for a card.
    */
   @Get('cards/:cardId')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get detailed card information' })
   @ApiParam({
     name: 'workspaceId',
@@ -183,7 +191,7 @@ export class CardController {
    * Updates card fields (title, description, due date, completion, cover image).
    */
   @Patch('cards/:cardId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({
     summary:
       'Update card details (title, description, due date, completion status, cover image)',
@@ -232,7 +240,7 @@ export class CardController {
    * Changes a card's priority stage.
    */
   @Patch('cards/:cardId/priority')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Change card priority stage' })
   @ApiParam({
     name: 'workspaceId',
@@ -275,7 +283,7 @@ export class CardController {
    * Moves a card through the status workflow (derives isComplete).
    */
   @Patch('cards/:cardId/status')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Change card status (derives isComplete)' })
   @ApiParam({
     name: 'workspaceId',
@@ -319,7 +327,7 @@ export class CardController {
    */
   @Post('cards/:cardId/subcards')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a subcard under a parent card' })
   @ApiParam({
     name: 'workspaceId',
@@ -367,7 +375,7 @@ export class CardController {
    */
   @Post('cards/:cardId/subcards/attach')
   @HttpCode(HttpStatus.OK)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Attach an existing card as a subcard' })
   @ApiParam({
     name: 'workspaceId',
@@ -414,7 +422,7 @@ export class CardController {
    * Returns a parent with active subcards and rollup totals.
    */
   @Get('cards/:cardId/with-subcards')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get parent card with subcards and rollup' })
   @ApiParam({
     name: 'workspaceId',
@@ -457,7 +465,7 @@ export class CardController {
    */
   @Delete('cards/:cardId/parent')
   @HttpCode(HttpStatus.OK)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Detach a subcard from its parent' })
   @ApiParam({
     name: 'workspaceId',
@@ -498,7 +506,7 @@ export class CardController {
    * Moves or reorders a card using LexoRank.
    */
   @Patch('cards/:cardId/move')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({
     summary:
       'Move/reorder card within list or across lists on the same board using LexoRank',
@@ -549,7 +557,7 @@ export class CardController {
    */
   @Delete('cards/:cardId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Archive a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -584,7 +592,7 @@ export class CardController {
    * Restores an archived card.
    */
   @Patch('cards/:cardId/unarchive')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Unarchive a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -628,7 +636,7 @@ export class CardController {
    */
   @Delete('cards/:cardId/permanent')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Permanently delete a card (direct delete)' })
   @ApiParam({
     name: 'workspaceId',
@@ -669,7 +677,7 @@ export class CardController {
    */
   @Post('cards/:cardId/assignees/:targetUserId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Assign a user to card' })
   @ApiParam({
     name: 'workspaceId',
@@ -717,7 +725,7 @@ export class CardController {
    */
   @Delete('cards/:cardId/assignees/:targetUserId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Remove an assigned user from card' })
   @ApiParam({
     name: 'workspaceId',
@@ -765,7 +773,7 @@ export class CardController {
    */
   @Post('cards/:cardId/labels/:labelId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Attach a board label to card' })
   @ApiParam({
     name: 'workspaceId',
@@ -806,7 +814,7 @@ export class CardController {
    */
   @Delete('cards/:cardId/labels/:labelId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Detach a board label from card' })
   @ApiParam({
     name: 'workspaceId',

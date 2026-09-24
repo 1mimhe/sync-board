@@ -5,4 +5,3 @@ export * from './search-documents.dto';
 export * from './document-response.dto';
 export * from './snapshot-response.dto';
 export * from './ws-doc-messages.dto';
-export { CursorPaginationQueryDto } from '../../../common/dto/cursor-pagination-query.dto';

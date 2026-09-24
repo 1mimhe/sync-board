@@ -1,6 +1,6 @@
 import type { Activity, Prisma } from '@prisma/client';
 import type { ActivityResponseDto } from '../dto/activity-response.dto';
-import type { ActivityWithActor } from '../repositories/activity.repository';
+import type { ActivityWithActor } from '../interfaces/activity.interfaces';
 
 function asObject(value: Prisma.JsonValue): Prisma.JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

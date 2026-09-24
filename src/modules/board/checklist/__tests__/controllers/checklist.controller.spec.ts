@@ -1,6 +1,10 @@
 import { ChecklistController } from '../../controllers/checklist.controller';
 import { ChecklistService } from '../../services/checklist.service';
 import type { JwtPayload } from '../../../../auth/interfaces/jwt-payload.interface';
+import {
+  ROLES_METADATA_KEY,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../../common/guards/rbac.constants';
 
 describe('ChecklistController', () => {
   let controller: ChecklistController;
@@ -269,10 +273,8 @@ describe('ChecklistController', () => {
         }
 
         // All checklist routes allow owner/admin/member — viewer writes are rejected
-        expect(Reflect.getMetadata('roles', method)).toEqual([
-          'owner',
-          'admin',
-          'member',
+        expect(Reflect.getMetadata(ROLES_METADATA_KEY, method)).toEqual([
+          ...WORKSPACE_WRITE_ROLES,
         ]);
       },
     );

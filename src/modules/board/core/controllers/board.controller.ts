@@ -19,6 +19,7 @@ import {
   ApiNoContentResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { BoardService } from '../services/board.service';
 import {
@@ -27,8 +28,8 @@ import {
   BoardResponseDto,
   BoardWithContentResponseDto,
   BoardContentQueryDto,
-  CursorPaginationQueryDto,
 } from '../dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import {
   toBoardResponseDto,
   toBoardWithContentResponseDto,
@@ -37,6 +38,11 @@ import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.deco
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
+import {
+  WORKSPACE_ADMIN_ROLES,
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for managing workspace boards, board-level labels,
@@ -52,7 +58,7 @@ export class BoardController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Create a new board in workspace' })
   @ApiParam({
     name: 'workspaceId',
@@ -79,8 +85,10 @@ export class BoardController {
    * Lists boards in a workspace for the authenticated user (cursor-paginated).
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List boards in workspace (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -112,8 +120,10 @@ export class BoardController {
    * Lists archived boards in a workspace (paginated).
    */
   @Get('archived')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'List archived boards in workspace (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -142,11 +152,14 @@ export class BoardController {
    * Retrieves a single board along with its nested lists, cards, and labels.
    */
   @Get(':boardId')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
     summary:
       'Get board with nested lists and cards (lists and per-list cards are paginated)',
   })
+  @ApiQuery({ name: 'listPage', required: false, type: Number })
+  @ApiQuery({ name: 'listPageSize', required: false, type: Number })
+  @ApiQuery({ name: 'cardPageSize', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -183,7 +196,7 @@ export class BoardController {
    * Updates board title, description, or background color.
    */
   @Patch(':boardId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({
     summary: 'Update board title, description, or background color',
   })
@@ -224,7 +237,7 @@ export class BoardController {
    */
   @Delete(':boardId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Archive a board' })
   @ApiParam({
     name: 'workspaceId',
@@ -252,7 +265,7 @@ export class BoardController {
    * Restores an archived board.
    */
   @Patch(':boardId/unarchive')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Unarchive a board' })
   @ApiParam({
     name: 'workspaceId',
@@ -288,7 +301,7 @@ export class BoardController {
    */
   @Delete(':boardId/permanent')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin')
+  @WorkspaceAuth(...WORKSPACE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Permanently delete a board (direct delete)' })
   @ApiParam({
     name: 'workspaceId',
@@ -317,7 +330,7 @@ export class BoardController {
    */
   @Post(':boardId/star')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Star board for current user' })
   @ApiParam({
     name: 'workspaceId',
@@ -345,7 +358,7 @@ export class BoardController {
    */
   @Delete(':boardId/star')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Unstar board for current user' })
   @ApiParam({
     name: 'workspaceId',

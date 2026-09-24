@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/auth.store'
 import { authApi } from '../../api/endpoints'
+import { useToast } from '../../stores/toast.store'
 import { Avatar } from './Avatar'
 import { ProfileModal } from '../auth/ProfileModal'
+import { NotificationBell } from '../notifications/NotificationBell'
 import {
   IconWorkspace,
   IconLogout,
@@ -14,6 +16,7 @@ import {
 export function Header() {
   const navigate = useNavigate()
   const { user, setUser, clearAuth } = useAuth()
+  const { addToast } = useToast()
   const [showProfileModal, setShowProfileModal] = useState(false)
 
   useEffect(() => {
@@ -30,7 +33,8 @@ export function Header() {
     try {
       await authApi.logout()
     } catch (err) {
-      console.warn('Logout network call failed:', err)
+      addToast('Logout request failed — clearing local session', 'info')
+      void err
     } finally {
       clearAuth()
       navigate('/login')
@@ -85,6 +89,8 @@ export function Header() {
 
         {/* Right Nav & User Profile Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <NotificationBell />
+
           <Link
             to="/health"
             className="btn btn-ghost btn-sm"

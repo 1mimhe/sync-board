@@ -19,6 +19,7 @@ import {
   ApiNoContentResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CardCommentService } from '../services/comment.service';
 import {
@@ -26,12 +27,16 @@ import {
   UpdateCommentDto,
   CardCommentResponseDto,
   PaginatedCommentsResponseDto,
-  CursorPaginationQueryDto,
 } from '../dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import { toCardCommentResponseDto } from '../../core/mappers/board.mapper';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for managing card comments.
@@ -46,7 +51,7 @@ export class CardCommentController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Add a comment to a card' })
   @ApiParam({
     name: 'workspaceId',
@@ -93,8 +98,10 @@ export class CardCommentController {
    * Lists comments on a card with pagination.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'List comments on a card (paginated)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -140,7 +147,7 @@ export class CardCommentController {
    * Updates an existing comment's text.
    */
   @Patch(':commentId')
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Update own comment content' })
   @ApiParam({
     name: 'workspaceId',
@@ -195,7 +202,7 @@ export class CardCommentController {
    * Lists a comment thread (parent plus direct replies, unpaginated).
    */
   @Get(':commentId/replies')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
     summary: 'List a comment thread (parent + replies, unpaginated)',
   })
@@ -254,7 +261,7 @@ export class CardCommentController {
    */
   @Delete(':commentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Delete own comment' })
   @ApiParam({
     name: 'workspaceId',

@@ -9,7 +9,7 @@ import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import {
   ListCreatedEvent,
   ListUpdatedEvent,
@@ -20,7 +20,7 @@ import {
 } from '../events/list.events';
 import { LIST_EVENTS } from '../events/list-events.constants';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
-import { CursorPaginationQueryDto } from '../../core/dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 
 /**
  * Service handling business logic for board lists (creation, renaming, LexoRank reordering, archiving).

@@ -30,9 +30,9 @@ export class CreateDocumentDto {
   @IsUUID('4')
   parentCardId?: string;
 
-  /** Alias for parentCardId */
+  /** Alternative card UUID field */
   @ApiPropertyOptional({
-    description: 'Alias for parentCardId',
+    description: 'Card UUID to link the document to',
     format: 'uuid',
   })
   @IsOptional()

@@ -16,6 +16,12 @@ import { Request, Response } from 'express';
 @Injectable()
 export class CorrelationIdInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    // RabbitMQ handlers run through global interceptors with a non-HTTP
+    // context — pass them through untouched (correlation flows via headers).
+    // Defaults to HTTP when getType is omitted on mocked test contexts.
+    if ((context.getType?.() ?? 'http') !== 'http') {
+      return next.handle();
+    }
     const http = context.switchToHttp();
     const request = http.getRequest<
       Request & { correlationId?: string; id?: string }

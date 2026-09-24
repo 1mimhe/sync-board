@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import {
-  ActivityRepository,
-  type RecordActivityInput,
-} from '../repositories/activity.repository';
+import { ActivityRepository } from '../repositories/activity.repository';
+import type { RecordActivityInput } from '../interfaces/activity.interfaces';
 import { BoardService } from '../../board/core/services/board.service';
 import type {
   CommentCreatedEvent,

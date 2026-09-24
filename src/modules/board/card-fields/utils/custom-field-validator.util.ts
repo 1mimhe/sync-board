@@ -1,15 +1,13 @@
 import { BadRequestException } from '@nestjs/common';
 import type { CardFieldType } from '@prisma/client';
-
-const UUID_V4_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { isUuidV4 } from '../../../../common/utils/validation.util';
 
 /**
  * Validates a raw field value against its definition.
  *
  * Null/undefined clears the value and always passes; `required` is surfaced
  * at read time, never by blocking writes. Select options accept the canonical
- * `{ options: string[] }` wrapper (flat arrays tolerated for legacy rows).
+ * `{ options: string[] }` wrapper (flat arrays also tolerated).
  *
  * @param fieldType - Definition type discriminator
  * @param options - Raw definition options JSON
@@ -48,7 +46,7 @@ export function validateFieldValue(
       break;
     }
     case 'user':
-      if (typeof value !== 'string' || !UUID_V4_RE.test(value))
+      if (!isUuidV4(value))
         throw new BadRequestException('User field expects a user UUID');
       break;
   }

@@ -6,9 +6,9 @@ import { S3Service } from './s3.service';
 import {
   ALLOWED_MIME_TYPES,
   SUPPORTED_ENTITY_TYPES,
-  type FileEntityType,
 } from '../constants/file.constants';
 import type {
+  FileEntityType,
   PresignedUploadResult,
   RequestUploadInput,
 } from '../interfaces/file.interfaces';

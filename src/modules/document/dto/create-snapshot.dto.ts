@@ -21,9 +21,9 @@ export class CreateSnapshotDto {
   @Length(0, 200)
   name?: string;
 
-  /** Optional human-readable snapshot name (alias for name) */
+  /** Optional snapshot name alternative field */
   @ApiPropertyOptional({
-    description: 'Optional snapshot name alias',
+    description: 'Optional snapshot name',
     example: 'Before big rewrite',
     maxLength: 200,
   })

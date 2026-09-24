@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../../../common/redis/redis.service';
-import {
-  PRESENCE_CONFIG,
-  COLLABORATOR_COLORS,
-} from '../events/ws-events.constants';
+import { COLLABORATOR_COLORS } from '../../../../common/utils/collaborator-color.util';
+import { PRESENCE_CONFIG } from '../events/ws-events.constants';
 import type {
   PresenceEntry,
   PresenceUser,
@@ -194,9 +192,9 @@ export class PresenceService {
   /**
    * Scans and prunes presence entries that missed heartbeats across all active boards.
    * Uses two batched Redis pipelines to eliminate N+1 network round trips:
-   * - Phase 1: Checks all active boards for stale sockets in one pipeline.
-   * - Phase 2: Batch-fetches metadata and prunes stale sockets (HMGET, ZREM, HDEL, ZCARD) in one pipeline.
-   * - Phase 3: Prunes empty boards from the active boards tracking set in a single SREM.
+   * - Step 1: Checks all active boards for stale sockets in one pipeline.
+   * - Step 2: Batch-fetches metadata and prunes stale sockets (HMGET, ZREM, HDEL, ZCARD) in one pipeline.
+   * - Step 3: Prunes empty boards from the active boards tracking set in a single SREM.
    *
    * @returns List of [boardId, expiredEntry] tuples for broadcasting disconnect events
    */
@@ -214,7 +212,7 @@ export class PresenceService {
 
       const staleThreshold = Date.now() - PRESENCE_CONFIG.STALE_THRESHOLD_MS;
 
-      // Phase 1: Check ALL active boards for stale sockets in one pipeline
+      // Step 1: Check ALL active boards for stale sockets in one pipeline
       const checkPipeline = this.redis.pipeline();
       for (const boardId of activeBoardIds) {
         checkPipeline.zrangebyscore(
@@ -242,7 +240,7 @@ export class PresenceService {
         return results;
       }
 
-      // Phase 2: Batch-fetch metadata + delete stale entries in one pipeline
+      // Step 2: Batch-fetch metadata + delete stale entries in one pipeline
       // Each board contributes exactly 4 commands: hmget, zrem, hdel, zcard (stride = 4)
       const prunePipeline = this.redis.pipeline();
       for (const { boardId, staleSocketIds } of boardsWithStale) {
@@ -285,7 +283,7 @@ export class PresenceService {
         }
       }
 
-      // Phase 3: Remove empty boards from the tracking set in a single SREM
+      // Step 3: Remove empty boards from the tracking set in a single SREM
       if (emptyBoardIds.length > 0) {
         await this.redis.srem(
           PRESENCE_CONFIG.ACTIVE_BOARDS_KEY,

@@ -1,55 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Nack, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { isUUID } from 'class-validator';
 import type { EntityType, Notification } from '@prisma/client';
-import {
-  RabbitPublisherService,
-  retryCountFrom,
-} from '../../../common/rabbitmq/publisher.service';
+import { RabbitPublisherService } from '../../../common/rabbitmq/publisher.service';
+import { retryCountFrom } from '../../../common/rabbitmq/idempotency.util';
 import {
   EXCHANGES,
   QUEUES,
   ROUTING_KEYS,
 } from '../../../common/rabbitmq/rabbitmq.constants';
 import type { DomainMessage } from '../../../common/rabbitmq/interfaces/domain-message.interface';
+import type { ConsumeContext } from '../../../common/rabbitmq/interfaces/consume-context.interface';
+import { computeBackoff } from '../../../common/utils/retry.util';
 import { consumeOnce } from '../../../common/rabbitmq/idempotency.util';
 import { RedisService } from '../../../common/redis/redis.service';
-import type { NotificationMessagePayload } from '../notification.messages';
+import type { NotificationMessagePayload } from '../interfaces/notification-message.interface';
+import { isValidNotificationPayload as isValidPayload } from '../utils/notification-payload.util';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { NotificationPushGateway } from '../notification-push.gateway';
-import { UNREAD_COUNT_TTL_SECONDS } from '../notification.constants';
+import {
+  NOTIFICATION_MAX_RETRIES,
+  NOTIFICATION_RETRY_BASE_MS,
+  UNREAD_COUNT_TTL_SECONDS,
+} from '../constants';
 import { unreadCountKey } from '../utils/notification-cache.util';
-
-/** Max persist attempts before a message is dead-lettered. */
-const MAX_RETRIES = 3;
-/** Base backoff: delays run 1s, 2s, 4s (base * 2^retryCount). */
-const RETRY_BASE_MS = 1000;
-
-/** Raw consume context passed through by the RabbitMQ subscriber. */
-interface ConsumeContext {
-  headers?: Record<string, unknown>;
-  routingKey?: string;
-}
-
-/**
- * Guards the exactly-once gate: malformed messages can never be persisted.
- *
- * @param payload - Incoming notification payload
- * @returns True when the payload carries every required field
- */
-function isValidPayload(
-  payload: NotificationMessagePayload | undefined,
-): payload is NotificationMessagePayload {
-  return (
-    !!payload &&
-    isUUID(payload.userId ?? '', '4') &&
-    isUUID(payload.workspaceId ?? '', '4') &&
-    typeof payload.type === 'string' &&
-    payload.type.length > 0 &&
-    typeof payload.title === 'string' &&
-    payload.title.length > 0
-  );
-}
 
 /**
  * Persists notification messages exactly-once (DB unique gate) and pushes
@@ -152,8 +125,8 @@ export class NotificationConsumerListener {
     } catch (error) {
       await this.releaseIdempotencyKey(msg.messageId);
       const retryCount = retryCountFrom(raw?.headers);
-      if (retryCount < MAX_RETRIES) {
-        const delayMs = RETRY_BASE_MS * 2 ** retryCount;
+      if (retryCount < NOTIFICATION_MAX_RETRIES) {
+        const delayMs = computeBackoff(retryCount, NOTIFICATION_RETRY_BASE_MS);
         await this.publisher.publishRetry(
           EXCHANGES.NOTIFICATION,
           raw?.routingKey ?? ROUTING_KEYS.NOTIFICATION_ALL,

@@ -1,15 +1,16 @@
-import React, { useState } from 'react'
-import type { CardAttachment } from '../../types'
-import { attachmentApi } from '../../api/endpoints'
-import { useToast } from '../../stores/toast.store'
-import { IconPaperclip, IconLink, IconTrash } from '../common/Icons'
+import { useState } from 'react';
+import type { CardAttachment } from '../../types';
+import { attachmentApi, filesApi } from '../../api/endpoints';
+import { useToast } from '../../stores/toast.store';
+import { FileUploadButton } from '../files/FileUploadButton';
+import { IconPaperclip, IconTrash } from '../common/Icons';
 
 export interface AttachmentSectionProps {
-  workspaceId: string
-  boardId: string
-  cardId: string
-  attachments: CardAttachment[]
-  onUpdated: () => void
+  workspaceId: string;
+  boardId: string;
+  cardId: string;
+  attachments: CardAttachment[];
+  onUpdated: () => void;
 }
 
 export function AttachmentSection({
@@ -19,106 +20,75 @@ export function AttachmentSection({
   attachments,
   onUpdated,
 }: AttachmentSectionProps) {
-  const { addToast } = useToast()
-  const [url, setUrl] = useState('')
-  const [name, setName] = useState('')
-  const [type, setType] = useState<'link' | 'image' | 'file'>('link')
-  const [isAdding, setIsAdding] = useState(false)
+  const { addToast } = useToast();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleAddAttachment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!url.trim()) return
-
-    const effectiveName = name.trim() || url.trim().replace(/^https?:\/\//, '').split('/')[0]
-
-    setIsAdding(true)
-    const res = await attachmentApi.create(workspaceId, boardId, cardId, {
-      url: url.trim(),
-      name: effectiveName,
-      type,
-    })
-    setIsAdding(false)
-
+  const handleDelete = async (fileId: string) => {
+    const res = await filesApi.remove(workspaceId, fileId);
     if (res.success) {
-      setUrl('')
-      setName('')
-      addToast('Attachment added', 'success')
-      onUpdated()
+      addToast('Attachment removed', 'info');
+      onUpdated();
     } else {
-      addToast(res.error?.message || 'Failed to add attachment', 'error')
+      addToast(res.error?.message || 'Failed to remove attachment', 'error');
     }
-  }
+  };
 
-  const handleDelete = async (attachmentId: string) => {
-    const res = await attachmentApi.delete(workspaceId, boardId, cardId, attachmentId)
-    if (res.success) {
-      onUpdated()
+  const handleDownload = async (att: CardAttachment) => {
+    setDownloadingId(att.id);
+    const res = await filesApi.downloadUrl(workspaceId, att.id);
+    setDownloadingId(null);
+    if (res.success && res.data) {
+      window.open(res.data.downloadUrl, '_blank', 'noreferrer');
+    } else {
+      addToast(res.error?.message || 'Failed to get download URL', 'error');
     }
-  }
+  };
+
+  const handleRefreshList = async () => {
+    // Revalidate via parent reload; also touch the proxy route so errors surface early.
+    const res = await attachmentApi.list(workspaceId, boardId, cardId);
+    if (!res.success) {
+      addToast(res.error?.message || 'Failed to refresh attachments', 'error');
+    }
+    onUpdated();
+  };
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      {/* Add Attachment Form */}
-      <form
-        onSubmit={handleAddAttachment}
+      <div
         style={{
           padding: 14,
           background: 'var(--bg3)',
           borderRadius: 12,
           border: '1px solid var(--border)',
-          display: 'grid',
-          gap: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
         }}
       >
         <div style={{ fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <IconPaperclip size={16} /> Add Attachment or Web Link
+          <IconPaperclip size={16} /> S3 file attachments (2-phase upload)
         </div>
+        <FileUploadButton
+          workspaceId={workspaceId}
+          entityType="card"
+          entityId={cardId}
+          onDone={() => void handleRefreshList()}
+        />
+      </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/spec.pdf"
-            style={{ flex: 1, minWidth: 200, fontSize: 13 }}
-            required
-          />
-
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Display Name (optional)"
-            style={{ width: 180, fontSize: 13 }}
-          />
-
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as any)}
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-              padding: '6px 12px',
-              borderRadius: 8,
-              fontSize: 12.5,
-              fontWeight: 700,
-            }}
-          >
-            <option value="link">Link</option>
-            <option value="image">Image</option>
-            <option value="file">File</option>
-          </select>
-
-          <button className="btn btn-primary btn-sm" type="submit" disabled={isAdding}>
-            {isAdding ? 'Attaching…' : 'Attach'}
-          </button>
-        </div>
-      </form>
-
-      {/* Attachments List */}
       <div style={{ display: 'grid', gap: 8 }}>
         {attachments.map((att) => {
-          const isImage = att.type === 'image' || att.url.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i)
+          const isImage =
+            att.type === 'image' ||
+            (att.mimeType ?? '').startsWith('image/') ||
+            (att.url ? /\.jpe?g|\.gif|\.png|\.webp|\.svg$/i.test(att.url) : false);
+          const sizeLabel =
+            typeof att.size === 'number' && att.size > 0
+              ? ` • ${(att.size / 1024).toFixed(1)} KB`
+              : '';
 
           return (
             <div
@@ -135,13 +105,13 @@ export function AttachmentSection({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                {isImage ? (
+                {isImage && att.url ? (
                   <img
                     src={att.url}
                     alt={att.name}
                     style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }}
                     onError={(e) => {
-                      ;(e.target as HTMLElement).style.display = 'none'
+                      (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
                 ) : (
@@ -156,62 +126,63 @@ export function AttachmentSection({
                       color: 'var(--muted)',
                     }}
                   >
-                    <IconLink size={18} />
+                    <IconPaperclip size={18} />
                   </div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <a
-                    href={att.url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <span
                     style={{
                       fontWeight: 700,
                       fontSize: 13,
                       color: '#fff',
-                      textDecoration: 'underline',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       display: 'block',
                     }}
+                    title={att.name}
                   >
                     {att.name}
-                  </a>
+                  </span>
                   <span style={{ fontSize: 11, color: 'var(--muted2)' }}>
-                    {att.type} • Attached {new Date(att.createdAt).toLocaleDateString()}
+                    {att.type}
+                    {att.mimeType ? ` • ${att.mimeType}` : ''}
+                    {sizeLabel} • {new Date(att.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <a
-                  href={att.url}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
                   className="btn btn-ghost btn-sm"
+                  disabled={downloadingId === att.id}
+                  onClick={() => void handleDownload(att)}
+                  title="Download via presigned S3 URL"
                 >
-                  Open ↗
-                </a>
+                  {downloadingId === att.id ? 'Loading…' : 'Download'}
+                </button>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
                   style={{ color: '#f87171', padding: 6 }}
-                  onClick={() => handleDelete(att.id)}
+                  onClick={() => void handleDelete(att.id)}
                   title="Remove attachment"
+                  aria-label={`Remove attachment ${att.name}`}
                 >
                   <IconTrash size={14} />
                 </button>
               </div>
             </div>
-          )
+          );
         })}
 
         {attachments.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--muted2)', fontSize: 13, padding: 12 }}>
-            No attachments on this card yet.
+            No attachments on this card yet. Upload a file above (max 25 MiB).
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

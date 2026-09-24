@@ -1,3 +1,5 @@
+import { RETRY_DEFAULTS } from '../../../common/utils/retry.util';
+
 /**
  * Allowed upload MIME types (server is source of truth; client mirrors for UX only).
  */
@@ -18,9 +20,6 @@ export const ALLOWED_MIME_TYPES = new Set([
 /** Supported attachment hosts (DB CHECK constraint mirrors this). */
 export const SUPPORTED_ENTITY_TYPES = ['card', 'document'] as const;
 
-/** Entity types that can host a file attachment. */
-export type FileEntityType = (typeof SUPPORTED_ENTITY_TYPES)[number];
-
 /** Max presigned-URL key build attempts (uuid collision guard). */
 export const FILE_KEY_UUID_SEGMENT_LENGTH = 8;
 
@@ -34,7 +33,7 @@ export const STALE_UPLOAD_TTL_HOURS = 24;
 export const STALE_UPLOAD_CRON = '0 * * * *';
 
 /** Max persist attempts before a file message is dead-lettered (parity with notifications). */
-export const FILE_MAX_RETRIES = 3;
+export const FILE_MAX_RETRIES = RETRY_DEFAULTS.maxRetries;
 
 /** Base backoff for file retries: 1s, 2s, 4s. */
-export const FILE_RETRY_BASE_MS = 1000;
+export const FILE_RETRY_BASE_MS = RETRY_DEFAULTS.baseMs;

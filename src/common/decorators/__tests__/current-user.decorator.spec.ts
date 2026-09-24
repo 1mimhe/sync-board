@@ -2,7 +2,10 @@ import { ExecutionContext } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { CurrentUser } from '../current-user.decorator';
 
-function getParamDecoratorFactory(decorator: Function, data?: any) {
+function getParamDecoratorFactory(
+  decorator: (...args: unknown[]) => ParameterDecorator,
+  data?: any,
+) {
   class TestTarget {
     public test(@decorator(data) _param: any) {}
   }

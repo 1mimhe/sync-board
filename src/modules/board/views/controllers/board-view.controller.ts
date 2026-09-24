@@ -5,6 +5,7 @@ import {
   ApiOkResponse,
   ApiResponse,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CardViewService } from '../services/card-view.service';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../../core/mappers/board.mapper';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
 import { WorkspaceAuth } from '../../../workspace/decorators/workspace-auth.decorator';
+import { WORKSPACE_READ_ROLES } from '../../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing read-only board views (calendar, timeline, table).
@@ -35,8 +37,10 @@ export class BoardViewController {
    * Calendar view - cards with dueDate in range.
    */
   @Get('calendar')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get calendar view of cards by due date' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -71,8 +75,10 @@ export class BoardViewController {
    * Timeline view - cards ordered by createdAt.
    */
   @Get('timeline')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get timeline view of cards by creation date' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,
@@ -103,8 +109,10 @@ export class BoardViewController {
    * Table view - flat list with filters.
    */
   @Get('table')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get table view of cards with filters' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiParam({
     name: 'workspaceId',
     type: String,

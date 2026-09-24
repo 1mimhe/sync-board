@@ -1,9 +1,9 @@
 import {
   isStatusTransitionAllowed,
   isCompleteFromStatus,
-} from '../../services/card-status-machine';
+} from '../../utils/card-status.util';
 
-describe('card-status-machine', () => {
+describe('card-status.util', () => {
   describe('isStatusTransitionAllowed', () => {
     it('should allow distinct statuses', () => {
       expect(isStatusTransitionAllowed('active', 'done')).toBe(true);

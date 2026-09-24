@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { RabbitPublisherService, retryCountFrom } from '../publisher.service';
+import { RabbitPublisherService } from '../publisher.service';
+import { retryCountFrom } from '../idempotency.util';
 
-describe('RabbitPublisherService (Phase 6A)', () => {
+describe('RabbitPublisherService', () => {
   let service: RabbitPublisherService;
   let amqp: DeepMockProxy<AmqpConnection>;
 

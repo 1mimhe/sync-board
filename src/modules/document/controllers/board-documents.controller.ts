@@ -9,6 +9,7 @@ import { DocumentService } from '../services/document.service';
 import { DocumentResponseDto } from '../dto';
 import { toDocumentResponseDto } from '../mappers/document.mapper';
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
+import { WORKSPACE_READ_ROLES } from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing the list of documents associated with a board
@@ -23,7 +24,7 @@ export class BoardDocumentsController {
    * Lists all active documents linked to cards in a board, newest activity first.
    */
   @Get()
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({
     summary: 'List documents for a board, including all attached card docs',
   })

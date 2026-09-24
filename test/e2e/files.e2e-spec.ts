@@ -1,15 +1,6 @@
 /**
- * Files & Attachments (S3) module e2e — HTTP via supertest against the real AppModule.
+ * Files & Attachments (S3) module e2e â€” HTTP via supertest against the real AppModule.
  *
- * Covers: test-cases-files.md
- *   §1 Presigned Upload — phase 1 (1.1–1.6)
- *   §2 Confirm — phase 2 (2.1–2.3)
- *   §3 Download (3.1–3.3)
- *   §4 Management & Listing (4.1–4.4)
- *
- * ? BLOCKED — Phase 6 pending.
- * `src/modules/file/file.module.ts` is an empty stub.
- * Remove `.skip` from each `describe.skip` block once the module lands.
  * NOTE: link-type card attachments are already covered in board.e2e-spec.ts.
  *       These tests target the S3-backed presigned-upload flow.
  */
@@ -37,7 +28,7 @@ describe('Files (S3) module (e2e)', () => {
 
   const server = () => app.app.getHttpServer();
   const auth = (u: TestUser) => ({ Authorization: `Bearer ${u.accessToken}` });
-  const filesUrl = () => `/api/files`;
+  const filesUrl = () => `/api/workspaces/${workspaceId}/files`;
   const presignedUrl = () => `${filesUrl()}/presigned-upload`;
 
   beforeAll(async () => {
@@ -77,7 +68,7 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§1 Presigned Upload — phase 1', () => {
+  describe('Presigned Upload', () => {
     it('1.1 happy request ? 200 {fileId, uploadUrl, s3Key, expiresIn}; DB row status=pending', async () => {
       const res = await req(server())
         .post(presignedUrl())
@@ -94,13 +85,13 @@ describe('Files (S3) module (e2e)', () => {
         uploadUrl: string;
         s3Key: string;
         expiresIn: number;
-      }>(res, 200);
+      }>(res, 201);
       expect(data.uploadUrl).toContain('http');
       expect(data.expiresIn).toBeLessThanOrEqual(3600);
       expect(data.s3Key).toContain(cardId);
     });
 
-    it('1.2 MIME allowlist: .exe ? 422 UNSUPPORTED_FILE_TYPE', async () => {
+    it('1.2 MIME allowlist: .exe ? 422 MIME_NOT_ALLOWED', async () => {
       const res = await req(server())
         .post(presignedUrl())
         .set(auth(owner))
@@ -111,7 +102,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      expectError(res, 422, 'UNSUPPORTED_FILE_TYPE');
+      expectError(res, 422, 'MIME_NOT_ALLOWED');
     });
 
     it('1.3 size cap: > 25MB ? 422 FILE_TOO_LARGE', async () => {
@@ -158,7 +149,7 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§2 Confirm — phase 2', () => {
+  describe('Confirm Upload', () => {
     it('2.1 POST /files/:id/confirm ? status completed; row returned with metadata', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
@@ -170,7 +161,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      const { fileId } = expectData<{ fileId: string }>(presigned, 200);
+      const { fileId } = expectData<{ fileId: string }>(presigned, 201);
 
       const confirm = await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
@@ -190,7 +181,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      const { fileId } = expectData<{ fileId: string }>(presigned, 200);
+      const { fileId } = expectData<{ fileId: string }>(presigned, 201);
       await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
         .set(auth(owner));
@@ -202,7 +193,7 @@ describe('Files (S3) module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§3 Download', () => {
+  describe('Download', () => {
     it('3.1 completed file ? 200 {downloadUrl}; URL expires = 1h', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
@@ -214,7 +205,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      const { fileId } = expectData<{ fileId: string }>(presigned, 200);
+      const { fileId } = expectData<{ fileId: string }>(presigned, 201);
       await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
         .set(auth(owner));
@@ -226,16 +217,16 @@ describe('Files (S3) module (e2e)', () => {
       expect(data.downloadUrl).toContain('http');
     });
 
-    it('3.3 archived/deleted file ? 404 FILE_NOT_FOUND', async () => {
+    it('3.3 archived/deleted file ? 404 FILEATTACHMENT_NOT_FOUND', async () => {
       const res = await req(server())
         .get(`${filesUrl()}/00000000-0000-4000-8000-000000000000/download`)
         .set(auth(owner));
-      expectError(res, 404, 'FILE_NOT_FOUND');
+      expectError(res, 404, 'FILEATTACHMENT_NOT_FOUND');
     });
   });
 
   // =========================================================================
-  describe.skip('§4 Management & Listing', () => {
+  describe('Management & Listing', () => {
     it('4.2 uploader soft-archives: subsequent download ? 404', async () => {
       const presigned = await req(server())
         .post(presignedUrl())
@@ -247,7 +238,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      const { fileId } = expectData<{ fileId: string }>(presigned, 200);
+      const { fileId } = expectData<{ fileId: string }>(presigned, 201);
       await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
         .set(auth(owner));
@@ -272,7 +263,7 @@ describe('Files (S3) module (e2e)', () => {
           entityType: 'card',
           entityId: cardId,
         });
-      const { fileId } = expectData<{ fileId: string }>(presigned, 200);
+      const { fileId } = expectData<{ fileId: string }>(presigned, 201);
       await req(server())
         .post(`${filesUrl()}/${fileId}/confirm`)
         .set(auth(owner));

@@ -4,8 +4,7 @@ import type { Response } from 'supertest';
 
 /**
  * Typed HTTP helpers for e2e specs.
- *
- * Conventions (e2e-test-generation.md §3.1):
+ * Conventions:
  *  - Every success response is enveloped: { success: true, data, meta }
  *  - Every error response is enveloped: { success: false, error: { code, ... } }
  *  - Specs ALWAYS assert the envelope and the exact error `code`.
@@ -76,7 +75,7 @@ export function cookieValue(setCookie: string, name: string): string {
   return match![1];
 }
 
-/** Assert attributes of the refresh-token cookie contract (test-cases-auth §13.1). */
+/** Assert attributes of the refresh-token cookie contract. */
 export function expectRefreshCookieContract(res: Response): void {
   const setCookie = extractRefreshCookie(res);
   expect(setCookie).toContain('HttpOnly');

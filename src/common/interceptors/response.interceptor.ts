@@ -23,6 +23,12 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     context: ExecutionContext,
     next: CallHandler<T>,
   ): Observable<ApiResponse<T>> {
+    // RabbitMQ handlers run through global interceptors with a non-HTTP
+    // context — their return values (void/Nack) must not be enveloped.
+    // Defaults to HTTP when getType is omitted on mocked test contexts.
+    if ((context.getType?.() ?? 'http') !== 'http') {
+      return next.handle() as Observable<ApiResponse<T>>;
+    }
     const request = context
       .switchToHttp()
       .getRequest<Request & { correlationId?: string; id?: string }>();

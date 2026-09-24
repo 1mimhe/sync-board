@@ -34,7 +34,7 @@ export class MembershipService {
   ) {}
 
   /**
-   * Shared workspace-existence guard (moved from the former monolithic service).
+   * Asserts that the workspace exists and is active.
    * @throws EntityNotFoundException if workspace not found or archived
    */
   async requireWorkspace(workspaceId: string): Promise<void> {

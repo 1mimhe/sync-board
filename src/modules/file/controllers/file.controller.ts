@@ -33,6 +33,10 @@ import {
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing the 2-phase S3 upload flow for workspace files.
@@ -47,7 +51,7 @@ export class FileController {
    */
   @Post('presigned-upload')
   @HttpCode(HttpStatus.CREATED)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Request a presigned upload URL' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiCreatedResponse({
@@ -78,7 +82,7 @@ export class FileController {
    */
   @Post(':fileId/confirm')
   @HttpCode(HttpStatus.OK)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Confirm an upload as completed' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'fileId', type: String, format: 'uuid' })
@@ -99,7 +103,7 @@ export class FileController {
    * Returns a presigned GET URL for downloading file bytes.
    */
   @Get(':fileId/download')
-  @WorkspaceAuth('owner', 'admin', 'member', 'viewer')
+  @WorkspaceAuth(...WORKSPACE_READ_ROLES)
   @ApiOperation({ summary: 'Get a presigned download URL' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'fileId', type: String, format: 'uuid' })
@@ -124,7 +128,7 @@ export class FileController {
    */
   @Delete(':fileId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @WorkspaceAuth('owner', 'admin', 'member')
+  @WorkspaceAuth(...WORKSPACE_WRITE_ROLES)
   @ApiOperation({ summary: 'Archive a file' })
   @ApiParam({ name: 'workspaceId', type: String, format: 'uuid' })
   @ApiParam({ name: 'fileId', type: String, format: 'uuid' })

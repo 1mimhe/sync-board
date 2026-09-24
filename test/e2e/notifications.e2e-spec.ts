@@ -1,13 +1,5 @@
 /**
- * Notifications module e2e — HTTP via supertest against the real AppModule.
- *
- * Covers: test-cases-notifications.md
- *   §3 REST API (3.1–3.8)
- *
- * ? BLOCKED — Phase 6 pending.
- * `src/modules/notification/notification.module.ts` is an empty stub.
- * Remove `.skip` from each `describe.skip` block once the module lands.
- * Also add §5 WS notification-push rows to board-realtime.ws-spec.ts when ready.
+ * Notifications module e2e â€” HTTP via supertest against the real AppModule.
  */
 import { createTestApp, type TestApp } from '../helpers/app';
 import { expectData, expectError, req } from '../helpers/http';
@@ -69,7 +61,7 @@ describe('Notifications module (e2e)', () => {
   });
 
   // =========================================================================
-  describe.skip('§3 REST API', () => {
+  describe('REST API', () => {
     it('3.1 GET /notifications ? cursor walk: 30 seeded ? page 20 hasMore; page 2 completes', async () => {
       // Seed notifications by assigning recipient to cards 30 times
       for (let i = 0; i < 30; i++) {
@@ -87,6 +79,24 @@ describe('Notifications module (e2e)', () => {
           )
           .set(auth(actor));
       }
+
+      // Assignment fan-out is queued (RabbitMQ â†’ consumer â†’ DB):
+      // poll until all 30 notifications land before walking pages.
+      let total = 0;
+      const deadline = Date.now() + 20_000;
+      while (Date.now() < deadline) {
+        const probe = expectData<{ items: unknown[] }>(
+          await req(server())
+            .get(notifUrl())
+            .query({ limit: 50 })
+            .set(auth(recipient)),
+          200,
+        );
+        total = probe.items.length;
+        if (total >= 30) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      expect(total).toBeGreaterThanOrEqual(30);
 
       const p1 = expectData<{
         items: Array<{ id: string; isRead: boolean }>;

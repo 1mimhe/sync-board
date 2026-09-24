@@ -33,10 +33,24 @@ async function bootstrap() {
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
-  // Configure OpenAPI / Swagger documentation
+  // Configure OpenAPI / Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SyncBoard API')
-    .setDescription('Real-time collaborative task & document platform')
+    .setDescription(
+      [
+        'Real-time collaborative task & document platform.',
+        '',
+        '## Response envelope',
+        'Every success response is wrapped as',
+        '`{ "success": true, "data": <payload>, "meta": { "timestamp": "...", "requestId": "..." } }`.',
+        'Paginated endpoints return `{ "items": [...], "pagination": { "cursor": "<id>" | null, "hasMore": false } }`',
+        'inside `data`. Errors use `{ "success": false, "error": { "code": "...", "message": "...", "statusCode": 0 } }`.',
+        '',
+        '## Auth cookies',
+        'Auth endpoints deliver the refresh token via an HttpOnly `SameSite=Strict` cookie scoped to `/api/auth` —',
+        'it never appears in JSON bodies.',
+      ].join('\n'),
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

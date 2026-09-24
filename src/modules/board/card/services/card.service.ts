@@ -18,7 +18,7 @@ import {
   EntityNotFoundException,
   BusinessRuleException,
 } from '../../../../common/exceptions/app.exception';
-import { assertBoardInWorkspace } from '../../shared/board-access.util';
+import { assertBoardInWorkspace } from '../../utils/board-access.util';
 import {
   CardCreatedEvent,
   CardMovedEvent,
@@ -35,11 +35,11 @@ import {
 import { CARD_EVENTS } from '../events/card-events.constants';
 import type { CardWithDetails } from '../../core/interfaces/board.interfaces';
 import type { PaginatedResult } from '../../../../common/interfaces/pagination.interface';
-import { CursorPaginationQueryDto } from '../../core/dto';
+import { CursorPaginationQueryDto } from '../../../../common/dto/cursor-pagination-query.dto';
 import {
   isCompleteFromStatus,
   isStatusTransitionAllowed,
-} from './card-status-machine';
+} from '../utils/card-status.util';
 
 /**
  * Service encapsulating business logic for card operations, ordering, assignments, and labels.
@@ -338,7 +338,7 @@ export class CardService {
 
   /**
    * Moves a card through not_started -> active -> done -> closed.
-   * Derives legacy isComplete from status; emits `card.status_changed`.
+   * Derives isComplete from status; emits `card.status_changed`.
    *
    * @param boardId - Board UUID
    * @param workspaceId - Workspace UUID

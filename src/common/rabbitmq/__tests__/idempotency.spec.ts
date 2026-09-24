@@ -1,7 +1,7 @@
 import { consumeOnce } from '../idempotency.util';
 import type { RedisService } from '../../redis/redis.service';
 
-describe('consumeOnce (Phase 6A)', () => {
+describe('consumeOnce', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
