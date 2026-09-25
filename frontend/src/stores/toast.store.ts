@@ -4,7 +4,14 @@ import type { ToastMessage } from '../types'
 interface ToastState {
   toasts: ToastMessage[]
   addToast: (
-    message: string,
+    messageOrPayload:
+      | string
+      | {
+          message: string
+          type?: 'success' | 'error' | 'info' | 'warning'
+          title?: string
+          duration?: number
+        },
     type?: 'success' | 'error' | 'info' | 'warning',
     options?: { title?: string; duration?: number },
   ) => void
@@ -16,15 +23,28 @@ let toastCounter = 0
 export const useToast = create<ToastState>((set) => ({
   toasts: [],
 
-  addToast: (message, type = 'info', options = {}) => {
+  addToast: (messageOrPayload, explicitType = 'info', explicitOptions = {}) => {
+    let message = ''
+    let type: 'success' | 'error' | 'info' | 'warning' = explicitType
+    let title: string | undefined = explicitOptions.title
+    let duration = explicitOptions.duration ?? 4000
+
+    if (typeof messageOrPayload === 'object' && messageOrPayload !== null) {
+      message = messageOrPayload.message
+      if (messageOrPayload.type) type = messageOrPayload.type
+      if (messageOrPayload.title !== undefined) title = messageOrPayload.title
+      if (messageOrPayload.duration !== undefined) duration = messageOrPayload.duration
+    } else {
+      message = String(messageOrPayload ?? '')
+    }
+
     const id = `toast-${Date.now()}-${++toastCounter}`
-    const duration = options.duration ?? 4000
 
     const newToast: ToastMessage = {
       id,
       message,
       type,
-      title: options.title,
+      title,
       duration,
     }
 
