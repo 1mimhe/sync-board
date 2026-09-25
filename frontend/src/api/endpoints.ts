@@ -764,6 +764,16 @@ export const commentApi = {
       `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments/${commentId}/replies`,
     ),
 
+  listReplies: (
+    workspaceId: string,
+    boardId: string,
+    cardId: string,
+    commentId: string,
+  ) =>
+    apiFetch<{ parent: CardComment; replies: CardComment[] }>(
+      `/workspaces/${workspaceId}/boards/${boardId}/cards/${cardId}/comments/${commentId}/replies`,
+    ),
+
   update: (
     workspaceId: string,
     boardId: string,
