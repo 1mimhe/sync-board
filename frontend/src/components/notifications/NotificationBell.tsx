@@ -1,31 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Socket } from 'socket.io-client';
 import type { Notification } from '../../types';
 import { notificationsApi } from '../../api/endpoints';
 import { createAuthedSocket } from '../../socket/socket';
 import { useToast } from '../../stores/toast.store';
-
-function resolveNotificationRoute(n: Notification): string {
-  const entityType = n.entityType ?? '';
-  const entityId = n.entityId ?? '';
-  const boardId = n.boardId ?? null;
-  const cardId = n.cardId ?? (entityType === 'card' ? entityId : null);
-
-  if ((entityType === 'card' || entityType === 'comment') && cardId) {
-    // Board id may be absent; fall back to inbox when we cannot deep-link.
-    if (boardId && n.workspaceId) {
-      const base = `/workspaces/${n.workspaceId}/boards/${boardId}/cards/${cardId}`;
-      if (entityType === 'comment' && entityId) return `${base}?comment=${entityId}`;
-      return base;
-    }
-    return '/notifications';
-  }
-  if (entityType === 'workspace' && n.workspaceId) {
-    return `/workspaces/${n.workspaceId}`;
-  }
-  return '/notifications';
-}
+import { resolveNotificationRoute } from '../../utils';
+import { IconBell } from '../common/Icons';
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -34,57 +15,81 @@ export function NotificationBell() {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
-  const fetchCount = async () => {
+  const openRef = useRef(open);
+  openRef.current = open;
+  const unreadOnlyRef = useRef(unreadOnly);
+  unreadOnlyRef.current = unreadOnly;
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchCount = useCallback(async () => {
     const res = await notificationsApi.unreadCount();
     if (res.success && res.data) setCount(res.data.count);
-  };
+  }, []);
 
-  const fetchRecent = async () => {
+  const fetchRecent = useCallback(async (onlyUnread = unreadOnly) => {
     setLoading(true);
-    const res = await notificationsApi.list({ limit: 10 });
+    const res = await notificationsApi.list({ limit: 10, unreadOnly: onlyUnread || undefined });
     setLoading(false);
     if (res.success && res.data) setItems(res.data.items);
-  };
+  }, [unreadOnly]);
 
   useEffect(() => {
     void fetchCount();
-  }, []);
+  }, [fetchCount]);
 
   useEffect(() => {
     if (!open) return;
-    void fetchRecent();
-  }, [open ]);
+    void fetchRecent(unreadOnly);
+  }, [open, unreadOnly, fetchRecent]);
 
+  // Click-outside and Escape listener to close popup
   useEffect(() => {
-    const socket = createAuthedSocket();
-    socketRef.current = socket;
+    if (!open) return;
+    const handleDown = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent && e.key === 'Escape') {
+        setOpen(false);
+      } else if (e instanceof MouseEvent && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleDown);
+    document.addEventListener('keydown', handleDown);
+    return () => {
+      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('keydown', handleDown);
+    };
+  }, [open]);
+
+  // Single persistent socket hook per notification spec
+  useEffect(() => {
+    const socket: Socket = createAuthedSocket();
 
     socket.on('notification:new', (n: Notification) => {
-      setItems((prev) => (prev.some((x) => x.id === n.id) ? prev : [n, ...prev].slice(0, 10)));
+      setItems((prev) => {
+        if (prev.some((x) => x.id === n.id)) return prev;
+        if (unreadOnlyRef.current && n.isRead) return prev;
+        return [n, ...prev].slice(0, 10);
+      });
       addToast(n.title || 'New notification', 'info');
-      // Count frame arrives separately; refetch proactively as well.
       void fetchCount();
     });
 
-    // Server sends { unreadCount: -1 } as a STALE hint — never render it.
+    // Server sends { unreadCount: -1 } as a STALE hint — always refetch unread-count
     socket.on('notification:count', () => {
       void fetchCount();
     });
 
-    const onReconnect = () => {
+    socket.on('connect', () => {
       void fetchCount();
-      if (open) void fetchRecent();
-    };
-    socket.on('connect', onReconnect);
+      if (openRef.current) void fetchRecent(unreadOnlyRef.current);
+    });
 
     return () => {
       socket.disconnect();
-      socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open ]);
+  }, [fetchCount, fetchRecent, addToast]);
 
   const handleOpenItem = async (n: Notification) => {
     if (!n.isRead) {
@@ -98,8 +103,22 @@ export function NotificationBell() {
     navigate(resolveNotificationRoute(n));
   };
 
+  const handleMarkAllRead = async () => {
+    const res = await notificationsApi.markAllRead();
+    if (res.success) {
+      setItems((prev) => prev.map((x) => ({ ...x, isRead: true })));
+      setCount(0);
+      addToast('All notifications marked as read', 'success');
+      if (unreadOnly) {
+        setItems([]);
+      }
+    } else {
+      addToast(res.error?.message || 'Failed to mark all as read', 'error');
+    }
+  };
+
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         type="button"
         className="btn btn-ghost btn-sm"
@@ -108,9 +127,9 @@ export function NotificationBell() {
         title="Notifications"
         aria-expanded={open}
         aria-haspopup="listbox"
-        style={{ position: 'relative' }}
+        style={{ position: 'relative', padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        <span aria-hidden="true" style={{ fontSize: 16 }}>🔔</span>
+        <IconBell size={18} />
         {count > 0 && (
           <span
             style={{
@@ -142,42 +161,71 @@ export function NotificationBell() {
             position: 'absolute',
             right: 0,
             top: 40,
-            width: 360,
-            maxHeight: 440,
+            width: 380,
+            maxWidth: 'calc(100vw - 24px)',
+            maxHeight: 'min(460px, 80vh)',
             overflowY: 'auto',
             background: 'var(--bg2)',
             border: '1px solid var(--border)',
             borderRadius: 12,
             boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
             zIndex: 500,
-            padding: 8,
+            padding: 10,
             display: 'grid',
-            gap: 6,
+            gap: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px', borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
             <strong style={{ fontSize: 13 }}>Notifications</strong>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setOpen(false);
-                navigate('/notifications');
-              }}
-            >
-              View all
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => void handleMarkAllRead()}
+                style={{ fontSize: 11.5, padding: '2px 6px' }}
+                aria-label="Mark all notifications read"
+              >
+                Mark all read
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/notifications');
+                }}
+                style={{ fontSize: 11.5, padding: '2px 6px' }}
+                aria-label="View all notifications in inbox"
+              >
+                View all
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', fontSize: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={unreadOnly}
+                onChange={(e) => setUnreadOnly(e.target.checked)}
+                aria-label="Filter unread notifications only"
+              />
+              Unread only
+            </label>
+            <span style={{ color: 'var(--muted2)', fontSize: 11 }}>
+              {count} unread
+            </span>
           </div>
 
           {loading && items.length === 0 && (
-            <div style={{ padding: 16, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
               Loading…
             </div>
           )}
 
           {!loading && items.length === 0 && (
-            <div style={{ padding: 16, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              No notifications yet.
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+              {unreadOnly ? 'No unread notifications.' : 'No notifications yet.'}
             </div>
           )}
 
@@ -199,10 +247,24 @@ export function NotificationBell() {
                 gap: 4,
               }}
               title={n.title}
+              aria-label={n.title}
             >
-              <span style={{ fontSize: 13, fontWeight: n.isRead ? 500 : 800, color: 'var(--text)' }}>
-                {n.title}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: n.isRead ? 500 : 800, color: 'var(--text)' }}>
+                  {n.title}
+                </span>
+                {!n.isRead && (
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      background: 'var(--violet)',
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+              </div>
               {n.body && (
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>{n.body}</span>
               )}

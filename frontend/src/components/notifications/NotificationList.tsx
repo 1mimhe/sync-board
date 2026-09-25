@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Notification } from '../../types';
 import { notificationsApi } from '../../api/endpoints';
 import { useToast } from '../../stores/toast.store';
+import { resolveNotificationRoute } from '../../utils';
 
 export function NotificationList() {
   const navigate = useNavigate();
@@ -52,13 +53,11 @@ export function NotificationList() {
         setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
       }
     }
-    if (n.entityType === 'workspace' && n.workspaceId) {
-      navigate(`/workspaces/${n.workspaceId}`);
-    } else if (n.boardId && n.cardId && n.workspaceId) {
-      navigate(`/workspaces/${n.workspaceId}/boards/${n.boardId}`);
+    const target = resolveNotificationRoute(n);
+    if (target === '/notifications') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Inbox fallback — never blank.
-      window.scrollTo({ top: 0 });
+      navigate(target);
     }
   };
 
