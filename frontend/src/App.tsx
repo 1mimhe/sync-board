@@ -8,6 +8,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { useAuth } from './stores/auth.store'
+import { useUiStore } from './stores/ui.store'
 import { authApi } from './api/endpoints'
 import { refreshAccessToken } from './api/client'
 import { Header } from './components/common/Header'
@@ -166,6 +167,11 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   const location = useLocation()
+  const { mobileSidebarOpen, setMobileSidebarOpen } = useUiStore()
+
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [location.pathname, location.search, setMobileSidebarOpen])
 
   if (!isAuthenticated) {
     return (
@@ -193,19 +199,17 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         <EmailVerificationBanner />
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'auto 1fr',
-          minHeight: 0,
-          height: '100%',
-        }}
-      >
-        <Sidebar />
+      <div className="app-main-layout">
+        {mobileSidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+        <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
         <main
-          className="scroll"
+          className="scroll app-main-content"
           style={{
-            padding: 24,
             display: 'flex',
             flexDirection: 'column',
             gap: 20,
@@ -306,6 +310,14 @@ export default function App() {
           />
           <Route
             path="/workspaces/:wid/boards/:bid"
+            element={
+              <ProtectedLayout>
+                <BoardPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/workspaces/:wid/boards/:bid/cards/:cardId"
             element={
               <ProtectedLayout>
                 <BoardPage />
