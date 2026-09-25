@@ -55,6 +55,8 @@ export interface CardModalProps {
   onCardUpdated: () => void
   allBoardCards?: Card[]
   onOpenCard?: (card: Card) => void
+  /** Initial tab when opening modal (e.g. 'comments' when deep-linked with ?comment=) */
+  initialTab?: TabType
 }
 
 type TabType = 'overview' | 'subtasks' | 'checklists' | 'time' | 'comments' | 'attachments' | 'docs'
@@ -89,6 +91,7 @@ export function CardModal({
   onCardUpdated,
   allBoardCards = [],
   onOpenCard,
+  initialTab = 'overview',
 }: CardModalProps) {
   const { addToast } = useToast()
   const [detail, setDetail] = useState<CardWithDetails | null>(null)
@@ -96,7 +99,7 @@ export function CardModal({
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [comments, setComments] = useState<CardComment[]>([])
   const [attachments, setAttachments] = useState<CardAttachment[]>([])
-  const [tab, setTab] = useState<TabType>('overview')
+  const [tab, setTab] = useState<TabType>(initialTab)
 
   // Form states — status is the source of truth; isCompleted is derived.
   const [title, setTitle] = useState(card.title)

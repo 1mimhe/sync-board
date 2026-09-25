@@ -26,8 +26,9 @@ export interface CommentSectionProps {
 
 /**
  * Highlights @mention emails and @names inside comment body with styled chips.
+ * Resolves canonical @email mentions to the member's displayName for a clean UI presentation.
  */
-function renderCommentContent(content: string) {
+function renderCommentContent(content: string, members: WorkspaceMember[] = []) {
   // Matches emails like @user@domain.com or names like @(Alex Rivera) or @Alex
   const regex = /(@[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|@[a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)?)/g
   const parts = content.split(regex)
@@ -36,9 +37,23 @@ function renderCommentContent(content: string) {
     <>
       {parts.map((part, i) => {
         if (part && part.startsWith('@') && part.length > 1) {
+          // If part is an @email, resolve to member display name if available
+          const emailMatch = part.match(/^@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/)
+          let displayText = part
+          let title = part
+          if (emailMatch) {
+            const email = emailMatch[1].toLowerCase()
+            const found = members.find((m) => m.user?.email?.toLowerCase() === email)
+            if (found?.user?.displayName) {
+              displayText = `@${found.user.displayName}`
+              title = `${found.user.displayName} (${email})`
+            }
+          }
+
           return (
             <span
               key={i}
+              title={title}
               style={{
                 color: 'var(--violet2)',
                 background: 'rgba(124, 58, 237, 0.15)',
@@ -51,7 +66,7 @@ function renderCommentContent(content: string) {
                 gap: 2,
               }}
             >
-              {part}
+              {displayText}
             </span>
           )
         }
@@ -59,6 +74,52 @@ function renderCommentContent(content: string) {
       })}
     </>
   )
+}
+
+/**
+ * Normalizes any @DisplayName or @FirstName mentions in text to canonical @email format
+ * before sending to backend, guaranteeing parseMentionedEmails extracts recipients and triggers notifications.
+ */
+function normalizeMentions(text: string, members: WorkspaceMember[]): string {
+  let result = text
+  const validMembers = members.filter((m) => m.user && m.user.email)
+
+  // 1. Sort by displayName length descending so longer full names match first
+  const sortedByDisplayName = [...validMembers]
+    .filter((m) => m.user?.displayName)
+    .sort((a, b) => (b.user!.displayName!.length) - (a.user!.displayName!.length))
+
+  for (const member of sortedByDisplayName) {
+    const name = member.user!.displayName!
+    const email = member.user!.email!
+    if (name.toLowerCase() !== email.toLowerCase()) {
+      const esc = name.replace(/[.*+?^()|[\]\\]/g, '\\$&').replace(/[{}]/g, '\\$&')
+      const re = new RegExp(`@${esc}(?=[\\s,.:;!?)]|$)`, 'gi')
+      result = result.replace(re, `@${email}`)
+    }
+  }
+
+  // 2. Match unique first names (e.g. @Alex -> @alex@syncboard.dev)
+  const firstNameCounts: Record<string, number> = {}
+  for (const member of sortedByDisplayName) {
+    const fn = member.user!.displayName!.trim().split(/\s+/)[0]
+    if (fn.length >= 3) {
+      const lower = fn.toLowerCase()
+      firstNameCounts[lower] = (firstNameCounts[lower] || 0) + 1
+    }
+  }
+
+  for (const member of sortedByDisplayName) {
+    const fn = member.user!.displayName!.trim().split(/\s+/)[0]
+    const lower = fn.toLowerCase()
+    if (fn.length >= 3 && firstNameCounts[lower] === 1) {
+      const esc = fn.replace(/[.*+?^()|[\]\\]/g, '\\$&').replace(/[{}]/g, '\\$&')
+      const re = new RegExp(`@${esc}(?=[\\s,.:;!?)]|$)`, 'gi')
+      result = result.replace(re, `@${member.user!.email}`)
+    }
+  }
+
+  return result
 }
 
 export function CommentSection({
@@ -113,7 +174,7 @@ export function CommentSection({
 
     // Check if cursor is right after an '@' symbol
     const textBeforeCursor = text.slice(0, cursorPos)
-    const match = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/)
+    const match = textBeforeCursor.match(/@([a-zA-Z0-9._%+-]*)$/)
 
     if (match && members.length > 0) {
       setMentionState({
@@ -128,8 +189,8 @@ export function CommentSection({
 
   const handleSelectMention = (member: WorkspaceMember) => {
     if (!mentionState) return
-    const mentionName = member.user?.displayName || member.user?.email || 'user'
-    const insertion = `@${mentionName} `
+    const email = member.user?.email || member.user?.displayName || 'user'
+    const insertion = `@${email} `
 
     if (mentionState.target === 'main') {
       const before = content.slice(0, mentionState.cursorIndex - 1 - mentionState.query.length)
@@ -164,8 +225,9 @@ export function CommentSection({
     if (!trimmed) return
 
     setIsSubmitting(true)
+    const normalized = normalizeMentions(trimmed, members)
     const res = await commentApi.create(workspaceId, boardId, cardId, {
-      content: trimmed,
+      content: normalized,
     })
     setIsSubmitting(false)
 
@@ -184,8 +246,9 @@ export function CommentSection({
     if (!trimmed) return
 
     setIsSubmittingReply(true)
+    const normalized = normalizeMentions(trimmed, members)
     const res = await commentApi.create(workspaceId, boardId, cardId, {
-      content: trimmed,
+      content: normalized,
       parentCommentId,
     })
     setIsSubmittingReply(false)
@@ -206,8 +269,9 @@ export function CommentSection({
   const handleSaveEdit = async (commentId: string) => {
     const trimmed = editContent.trim()
     if (!trimmed) return
+    const normalized = normalizeMentions(trimmed, members)
     const res = await commentApi.update(workspaceId, boardId, cardId, commentId, {
-      content: trimmed,
+      content: normalized,
     })
     if (res.success) {
       setEditingId(null)
@@ -217,6 +281,7 @@ export function CommentSection({
       addToast(res.error?.message || 'Failed to update comment', 'error')
     }
   }
+
 
   const handleDeleteComment = async (commentId: string) => {
     const res = await commentApi.delete(workspaceId, boardId, cardId, commentId)
@@ -273,7 +338,7 @@ export function CommentSection({
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 11, color: 'var(--muted2)' }}>
-                Tip: Type <strong>@name</strong> to mention a team member
+                Tip: Type <strong>@</strong> to mention a team member
               </span>
               <button
                 className="btn btn-primary btn-sm"
@@ -414,7 +479,7 @@ export function CommentSection({
                       </div>
                     ) : (
                       <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                        {renderCommentContent(comment.content)}
+                        {renderCommentContent(comment.content, members)}
                       </div>
                     )}
                   </div>
@@ -546,7 +611,7 @@ export function CommentSection({
                               </div>
                             ) : (
                               <div style={{ fontSize: 12.5, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                                {renderCommentContent(reply.content)}
+                                {renderCommentContent(reply.content, members)}
                               </div>
                             )}
                           </div>
