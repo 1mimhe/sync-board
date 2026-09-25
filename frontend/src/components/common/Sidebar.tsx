@@ -16,9 +16,16 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronDown,
+  IconCheck,
+  IconStar,
 } from './Icons'
 
-export function Sidebar() {
+export interface SidebarProps {
+  mobileOpen?: boolean
+  onCloseMobile?: () => void
+}
+
+export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps = {}) {
   const { wid } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -156,6 +163,7 @@ export function Sidebar() {
 
   return (
     <aside
+      className={`app-sidebar ${mobileOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-closed'}`}
       style={{
         width: isCollapsed ? 68 : 254,
         minWidth: isCollapsed ? 68 : 254,
@@ -411,7 +419,7 @@ export function Sidebar() {
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                         {w.name}
                       </span>
-                      {isCurrent && <span style={{ fontSize: 11 }}>✓</span>}
+                      {isCurrent && <IconCheck size={14} style={{ color: 'var(--violet2)' }} />}
                     </button>
                   )
                 })}
@@ -456,6 +464,7 @@ export function Sidebar() {
               <Link
                 key={item.tab}
                 to={item.to}
+                onClick={() => onCloseMobile?.()}
                 className="btn"
                 style={{
                   display: 'flex',
@@ -499,6 +508,7 @@ export function Sidebar() {
                   <span>Recent Boards</span>
                   <Link
                     to={`/workspaces/${activeWid}?tab=boards`}
+                    onClick={() => onCloseMobile?.()}
                     style={{ fontSize: 11, color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
                   >
                     View all
@@ -511,6 +521,7 @@ export function Sidebar() {
                       <Link
                         key={b.id}
                         to={`/workspaces/${activeWid}/boards/${b.id}`}
+                        onClick={() => onCloseMobile?.()}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -546,7 +557,7 @@ export function Sidebar() {
                         >
                           {b.title}
                         </span>
-                        {b.isStarred && <span style={{ fontSize: 10, color: '#f59e0b' }}>★</span>}
+                        {b.isStarred && <IconStar size={12} filled={true} style={{ color: '#f59e0b', flexShrink: 0 }} />}
                       </Link>
                     )
                   })}
