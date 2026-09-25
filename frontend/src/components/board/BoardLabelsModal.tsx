@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import type { BoardLabel } from '../../types'
-import { labelApi } from '../../api/endpoints'
+import { boardLabelApi } from '../../api/endpoints'
 import { useToast } from '../../stores/toast.store'
 import { Modal } from '../common/Modal'
 import { ConfirmDialog } from '../common/ConfirmDialog'
@@ -55,7 +55,7 @@ export function BoardLabelsModal({
     if (!name.trim()) return
 
     setIsCreating(true)
-    const res = await labelApi.createWorkspaceLabel(workspaceId, {
+    const res = await boardLabelApi.create(workspaceId, boardId, {
       name: name.trim(),
       color,
     })
@@ -76,7 +76,7 @@ export function BoardLabelsModal({
     if (!editingLabel || !editName.trim()) return
 
     setIsSavingEdit(true)
-    const res = await labelApi.updateLabel(workspaceId, boardId, editingLabel.id, {
+    const res = await boardLabelApi.update(workspaceId, boardId, editingLabel.id, {
       name: editName.trim(),
       color: editColor,
     })
@@ -97,7 +97,7 @@ export function BoardLabelsModal({
 
   const confirmDeleteLabel = async () => {
     if (!labelToDelete) return
-    const res = await labelApi.deleteLabel(workspaceId, boardId, labelToDelete.id)
+    const res = await boardLabelApi.remove(workspaceId, boardId, labelToDelete.id)
     if (res.success) {
       addToast('Label deleted', 'info')
       if (editingLabel?.id === labelToDelete.id) setEditingLabel(null)

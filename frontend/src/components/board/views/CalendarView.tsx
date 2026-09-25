@@ -16,6 +16,10 @@ export interface CalendarViewProps {
   boardId: string
   members: WorkspaceMember[]
   onBoardUpdated: () => void
+  /** Set when a card:* WS event arrives while this read-only view is active. */
+  hasUpdates?: boolean
+  /** Reload the view (clears the Updated badge). */
+  onRefresh?: () => void
 }
 
 export function CalendarView({
@@ -23,6 +27,8 @@ export function CalendarView({
   boardId,
   members,
   onBoardUpdated,
+  hasUpdates,
+  onRefresh,
 }: CalendarViewProps) {
   const { addToast } = useToast()
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -53,18 +59,20 @@ export function CalendarView({
 
   const startDate = new Date(year, month, 1 - startDayOfWeek)
   const endDate = new Date(year, month, totalDays + (6 - lastDayOfMonth.getDay()))
+  const startDateIso = startDate.toISOString()
+  const endDateIso = endDate.toISOString()
 
   const loadCalendarData = useCallback(async () => {
     setLoading(true)
     const res = await boardViewApi.calendar(workspaceId, boardId, {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      startDate: startDateIso,
+      endDate: endDateIso,
     })
     if (res.success && res.data) {
       setCards(res.data.items || [])
     }
     setLoading(false)
-  }, [workspaceId, boardId, startDate.toISOString(), endDate.toISOString()])
+  }, [workspaceId, boardId, startDateIso, endDateIso])
 
   const openScheduleModal = async (day: Date) => {
     setScheduleDay(day)
@@ -174,6 +182,34 @@ export function CalendarView({
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {hasUpdates && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            borderRadius: 10,
+            padding: '8px 12px',
+            fontSize: 12.5,
+            color: '#fbbf24',
+          }}
+        >
+          <span>Updated — refresh to see latest cards (read-only view, no live patch).</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              onRefresh?.()
+              void loadCalendarData()
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
       {/* Calendar Header / Navigation */}
       <div
         style={{
