@@ -1,182 +1,199 @@
-# SyncBoard Frontend 🚀
+# SyncBoard Frontend
 
-> Modern, blazing-fast real-time collaborative workspace, Kanban board, and document management client built with **React 19**, **TypeScript**, and **Vite**.
+> Modern real-time collaborative workspace client built with **React 19**, **TypeScript**, and **Vite**.
+
+SyncBoard Frontend is a responsive Single Page Application (SPA) designed as an interactive workbench for the SyncBoard backend engine. It combines high-velocity Kanban task management, multi-projection views (Table, Calendar, Timeline), CRDT-based collaborative rich-text documentation, and multi-tenant workspace administration.
 
 > [!NOTE]
-> **Vibe-Coded Frontend for Testing**: This is a vibe-coded client designed for simpler manual testing, rapid feature verification, and interactive exploration of SyncBoard's backend API and WebSocket real-time engine.
+> **Vibe-Coded Client**: This frontend is a vibe-coded client built primarily for interactive testing, feature verification, and visual exploration of SyncBoard's backend capabilities and real-time engine.
 
 ---
 
 ## 📸 Screenshots & Visual Tour
 
-> [!TIP]
-> **To add screenshots**: Take 16:9 high-resolution screenshots of the running application and save them to `frontend/public/screenshots/` matching the filenames below. Markdown preview and GitHub will automatically render them.
+Save 16:9 high-resolution screenshots to [`frontend/public/screenshots/`](file:///m:/Coding/Github/sync-board/frontend/public/screenshots) matching the filenames below to render them in GitHub and markdown previews.
 
 ### 1. Workspaces Dashboard
-_Browse, search, and manage your personal and team workspaces with slug-based routing._
+*Overview of personal and team workspaces with slug-based routing and creation controls.*
 
 ![Workspaces Dashboard](public/screenshots/01-workspaces-dashboard.png)
-<!-- Screenshot guide: Navigate to http://localhost:5173/workspaces with 2+ workspaces created -->
+<!-- Capture: http://localhost:5173/workspaces with 2+ active workspaces -->
 
 ---
 
-### 2. Real-Time Kanban Board
-_Drag-and-drop lists and cards powered by LexoRank with real-time multiplayer updates._
+### 2. Workspace Overview & Boards Grid
+*Central workspace hub displaying starred boards, active project boards with custom color themes, and quick creation controls.*
 
-![Kanban Board View](public/screenshots/02-kanban-board.png)
-<!-- Screenshot guide: Open a board with To Do, In Progress, and Done lists populated with cards -->
-
----
-
-### 3. Card Detail & Checklists
-_Inspect assignees, colored labels, due dates, checklists, attachments, comments, and linked documents._
-
-![Card Detail Modal](public/screenshots/03-card-detail-modal.png)
-<!-- Screenshot guide: Click any card to open the CardModal with populated checklists and comments -->
+![Workspace Boards Grid](public/screenshots/02-workspace-boards.png)
+<!-- Capture: http://localhost:5173/workspaces/:slug with Starred Boards and All Boards grid -->
 
 ---
 
-### 4. Collaborative Document Editor
-_Live multiplayer markdown documentation with real-time awareness and snapshot history._
+### 3. Real-Time Kanban Board
+*Interactive drag-and-drop lists and cards powered by LexoRank with live multiplayer presence.*
 
-![Document Editor](public/screenshots/04-document-editor.png)
-<!-- Screenshot guide: Open a workspace document in /workspaces/:wid/docs/:did with headings and code blocks -->
-
----
-
-### 5. Workspace Members & Role-Based Access Control
-_Manage workspace members, transfer ownership, assign roles (`owner`, `admin`, `member`, `viewer`), and handle pending email invitations._
-
-![Workspace Members](public/screenshots/05-workspace-members.png)
-<!-- Screenshot guide: Open Workspace Settings modal -> Members / Invitations tab -->
+![Kanban Board View](public/screenshots/03-kanban-board.png)
+<!-- Capture: http://localhost:5173/workspaces/:slug/boards/:boardId with populated lists and cards -->
 
 ---
 
-### 6. Real-Time Activity Drawer
-_Full audit trail of workspace and board modifications streaming over WebSockets in real time._
+### 4. Multi-Projection Board Views (Table, Calendar, Timeline)
+*Instant projection switching between Kanban, spreadsheet Table, monthly Calendar, and chronological Timeline.*
 
-![Activity Drawer](public/screenshots/06-activity-drawer.png)
-<!-- Screenshot guide: Click the 'Activity' button in the Board header to slide open the ActivityDrawer -->
-
----
-
-### 7. Alternate Board Views (Table, Calendar, Timeline)
-_Switch seamlessly between Kanban, spreadsheet Table view, monthly Calendar, and chronological Timeline._
-
-![Alternate Board Views](public/screenshots/07-board-views.png)
-<!-- Screenshot guide: Use the ViewSwitcher in the Board header to toggle between Board, Table, Calendar, and Timeline -->
+![Alternate Board Views](public/screenshots/04-board-views.png)
+<!-- Capture: Board view switched to Table or Calendar mode via the view switcher -->
 
 ---
 
-### 8. Subtasks, Time Tracking & Custom Fields
-_Break down work into subtasks, log time against estimates, and customize cards with workspace-defined fields._
+### 5. Card Detail & Checklists
+*Modal view showing status, priorities, assignees, labels, due dates, checklists, comments, and attachments.*
 
-![Card Enrichment](public/screenshots/08-card-enrichment.png)
-<!-- Screenshot guide: Open CardModal and navigate through Subtasks, Time Tracking, and Custom Fields -->
+![Card Detail Modal](public/screenshots/05-card-detail-modal.png)
+<!-- Capture: CardModal open with labels, checklists, and active comments -->
 
 ---
 
-## ✨ Features
+### 6. Card Enrichment (Subtasks, Time Tracking & Custom Fields)
+*Granular task decomposition with subcards, estimate tracking, time logs, and workspace-defined fields.*
 
-- **Multi-Tenant Workspaces**:
-  - Slug-based and UUID-based routing (`/workspaces/:slugOrId`).
-  - Granular Role-Based Access Control (RBAC): `owner`, `admin`, `member`, and `viewer`.
-  - Email invitation dispatch with secure token handling and MailHog acceptance.
-  - Workspace-level shared labels, custom field definitions, and customizable settings.
+![Card Enrichment](public/screenshots/06-card-enrichment.png)
+<!-- Capture: CardModal showing Subtasks tab with progress bar or Time Tracking tab -->
 
-- **Multiple Board Projections**:
-  - **Segmented View Switcher**: Instant switching between Kanban Board, Table, Calendar, and Timeline modes.
-  - **Table View**: Spreadsheet-like data grid with live query search, multi-column sorting (Title, Status, Priority, Due Date, Time Logged), status and priority filters, and quick card editing.
-  - **Calendar View**: Monthly calendar grid displaying cards on their due dates with overdue warnings and month navigation.
-  - **Timeline View**: Chronological Gantt-style roadmap with status swimlanes and priority indicators.
+---
 
-- **Real-Time Collaborative Kanban**:
-  - Fluid Drag & Drop for lists and cards using `@hello-pangea/dnd`.
-  - Deterministic LexoRank ordering for zero-conflict reordering at scale.
-  - WebSocket synchronization (`board:join`, `board:leave`, `board:presence`, entity mutations relay).
-  - Multi-user presence badges and live cursor broadcast relay.
-  - Soft-delete (archiving) with two-step restoration or permanent deletion.
+### 7. Collaborative Document Editor
+*Real-time markdown documentation with active editor awareness and snapshot history.*
 
-- **Subcards & Hierarchy-Lite**:
-  - Create new subcards or attach existing cards (depth ≤ 2).
-  - Visual rollup progress bar showing completed vs total subtasks.
-  - Promote checklist items to standalone subcards with a single click.
-  - Detach subcards back to top-level cards.
+![Document Editor](public/screenshots/07-document-editor.png)
+<!-- Capture: http://localhost:5173/workspaces/:slug/docs/:docId with formatted content -->
 
-- **Card Status Machine & Priority Matrix**:
-  - 4-state workflow lifecycle (`not_started`, `active`, `done`, `closed`).
-  - 5-stage priority flags (`lowest`, `low`, `medium`, `high`, `urgent`).
-  - Color-coded flags and status pills rendered across Kanban cards, Table rows, Timeline bars, and CardModal.
+---
 
-- **Time Tracking & Work Logs**:
-  - Set estimated effort in minutes with hour/minute conversions.
-  - Quick time-logging modal with duration and optional notes.
-  - Dynamic completion progress bar and chronological work log history with user attribution.
+### 8. Live Notification Center
+*Interactive notification popover with real-time unread badges, deep links to entities, and bulk read actions.*
 
-- **Custom Fields Engine**:
-  - Workspace-level custom field definitions supporting multiple data types (`text`, `number`, `date`, `select`, `user`).
-  - Dedicated "Custom Fields" management tab in Workspace Settings.
-  - Auto-persisting custom field values directly within each card.
+![Notification Center](public/screenshots/08-notification-center.png)
+<!-- Capture: NotificationBell popover open showing unread invitations and card assignments -->
 
-- **Threaded Discussions & @Mentions**:
-  - 1-level threaded comment replies with inline reply inputs.
-  - Interactive `@email` mention chips and automatic email highlight rendering.
+---
 
-- **Comprehensive Card Details**:
-  - Title, description, due date tracking, and completion toggles.
-  - Workspace and board label assignment with color indicators.
-  - Member assignees with user avatar tooltips.
-  - Checklists with interactive progress indicators.
-  - File attachments and URL link bookmarks.
-  - Linked workspace documents directly accessible from the card modal.
+### 9. Real-Time Activity Drawer
+*Audit trail of workspace and board actions streaming live over WebSockets.*
 
-- **Real-Time Markdown Documents**:
-  - Live collaborative document editor powered by Socket.io and Yjs.
-  - Editor presence tracking (viewers, active cursor line/column indicators).
-  - Snapshot version history with instant rollback preview.
-  - Document association with boards and cards.
+![Activity Drawer](public/screenshots/09-activity-drawer.png)
+<!-- Capture: ActivityDrawer opened from the Board header showing live action stream -->
 
-- **Resilient Authentication**:
-  - Dual-token model: short-lived 15m JWT access token + secure HttpOnly refresh cookie.
-  - Automatic silent refresh interceptor with token rotation & reuse protection.
-  - Single-device and "Logout All Devices" session revocation.
-  - Google OAuth single sign-on redirect callback (`/auth/callback`).
-  - Email verification banner with resend throttling and password reset flow.
+---
+
+### 10. Workspace Settings & Members
+*Team member administration, role-based access control (`owner`, `admin`, `member`, `viewer`), and invitations.*
+
+![Workspace Members](public/screenshots/10-workspace-members.png)
+<!-- Capture: WorkspaceSettingsModal open on the Members tab -->
+
+---
+
+## ✨ Key Features
+
+### 🏢 Workspaces & Access Control
+- **Multi-Tenant Scoping**: URL vanity routing using slugs (`/workspaces/:slugOrId`).
+- **Role-Based Permissions**: Granular enforcement for `owner`, `admin`, `member`, and `viewer`.
+- **Team Invitations**: Cryptographic invite token flow with email delivery and acceptance.
+- **Customizable Assets**: Workspace-level label taxonomy and shared custom field definitions.
+
+### 📋 Multi-Projection Board Views
+- **Segmented View Switcher**: Real-time switching between 4 distinct projections without reloading:
+  - **Kanban Board**: Drag-and-drop workflow columns with `@hello-pangea/dnd` and conflict-free LexoRank ordering.
+  - **Table View**: Spreadsheet-style data grid with search, multi-column sorting (Priority, Status, Due Date, Time Logged), and inline editing.
+  - **Calendar View**: Monthly calendar grid plotting cards on scheduled deadlines with overdue highlights.
+  - **Timeline View**: Chronological roadmap with status swimlanes and priority indicators.
+
+### 🃏 Card Details & Task Enrichment
+- **Subcards & Hierarchy**: Multi-level subtask breakdown (depth ≤ 2) with automated rollup completion meters.
+- **Checklist Promotion**: Single-click conversion of checklist items into standalone subcards.
+- **Workflow State Machine**: 4 card lifecycle states (`not_started`, `active`, `done`, `closed`) and 5 priority flags (`lowest` to `urgent`).
+- **Time Tracking**: Estimated effort in minutes, work log history, duration inputs, and visual progress meters.
+- **Custom Fields Engine**: Dynamic workspace field definitions (`text`, `number`, `date`, `select`, `user`) with live persistence.
+- **Threaded Discussions**: Nested comment replies with interactive `@mention` parsing and highlights.
+
+### 📝 Collaborative Documents
+- **Real-Time CRDT Sync**: Multiplayer rich-text document editing powered by Yjs and Socket.IO.
+- **Live Presence**: Collaborative awareness showing active viewer avatars and cursor coordinates.
+- **Snapshot Versioning**: Point-in-time document milestones with one-click historical rollback.
+- **Cross-Linking**: Direct attachment and bi-directional linking between documents and board cards.
+
+### ⚡ Real-Time Engine & Activity Stream
+- **WebSocket Rooms**: Scoped channel subscriptions (`workspace:{id}`, `board:{id}`, `user:{id}`).
+- **Presence Tracking**: Online member indicators and active board viewer badges.
+- **Live Audit Trail**: Slide-out Activity Drawer logging card movements, edits, and member changes in real time.
+- **Notification Inbox**: Real-time notification bell with unread counters and marking actions.
+
+### 🔐 Authentication & Session Security
+- **Dual-Token Lifecycle**: Short-lived 15m JWT access tokens paired with HTTP-only refresh cookies.
+- **Silent Refresh Interceptor**: Transparent token rotation with automatic session extension.
+- **Multi-Device Revocation**: Single-device logout and all-device revocation through Redis blacklisting.
+- **SSO & Verification**: Google OAuth 2.0 flow and email verification soft-gate banner.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Framework** | [React 19](https://react.dev/) |
-| **Language** | [TypeScript](https://www.typescriptlang.org/) (Strict mode) |
-| **Build Tool** | [Vite 8](https://vitejs.dev/) with HMR |
-| **Routing** | [React Router v7](https://reactrouter.com/) |
-| **State Management** | [Zustand v5](https://zustand-demo.pmnd.rs/) (`auth`, `workspace`, `toast`) |
-| **Real-Time Sockets** | [Socket.io Client v4](https://socket.io/) |
-| **CRDT Collaboration** | [Yjs](https://yjs.dev/) |
-| **Drag & Drop** | [@hello-pangea/dnd](https://github.com/hello-pangea/dnd) |
-| **Styling** | Vanilla CSS (`index.css`) design tokens, modern glassmorphism & dark palette |
-| **Linter** | [Oxlint](https://oxc.rs/) |
+| Layer | Technology | Details |
+|---|---|---|
+| **Core Framework** | [React 19](https://react.dev/) | Modern functional components with hooks |
+| **Language** | [TypeScript](https://www.typescriptlang.org/) | Strict mode type safety matching backend DTOs |
+| **Build Tool** | [Vite 8](https://vitejs.dev/) | High-speed ESM development server and Rollup bundler |
+| **Routing** | [React Router v7](https://reactrouter.com/) | Declarative client-side routing |
+| **State Management** | [Zustand v5](https://zustand-demo.pmnd.rs/) | Minimalist reactive stores (`auth`, `workspace`, `toast`, `ui`) |
+| **Real-Time Transport** | [Socket.io Client v4](https://socket.io/) | WebSocket communication with automatic reconnection |
+| **CRDT Collaboration** | [Yjs](https://yjs.dev/) | Conflict-free replicated data types for collaborative documents |
+| **Drag & Drop** | [@hello-pangea/dnd](https://github.com/hello-pangea/dnd) | Accessible drag-and-drop for Kanban lists and cards |
+| **Design System** | Vanilla CSS | Custom CSS properties and tokens in `src/index.css` |
+| **Code Quality** | [Oxlint](https://oxc.rs/) | High-performance Rust-based linter |
+
+---
+
+## 🏗️ Architecture & State Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React 19 UI Layer                        │
+│   (Pages · Modals · Kanban · Table · Calendar · Timeline)   │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │                             │
+        State & Dispatch              Direct Actions
+                ▼                             ▼
+┌──────────────────────────────┐  ┌───────────────────────────┐
+│     Zustand Store Layer      │  │     REST API Client       │
+│  • auth.store                │  │  • apiFetch wrapper       │
+│  • workspace.store           │  │  • Silent token refresh   │
+│  • toast.store               │  │  • HttpOnly cookie pass   │
+│  • ui.store                  │  └─────────────┬─────────────┘
+└───────────────┬──────────────┘                │
+                │                               │ HTTP /api/*
+                ▼                               ▼
+┌──────────────────────────────┐  ┌───────────────────────────┐
+│     Socket.IO Singleton      │  │      NestJS Backend       │
+│  • board:{id} room events    │  │  • REST API Controllers   │
+│  • user:{id} notifications   │◀─┤  • WebSocket Gateways     │
+│  • presence heartbeats       │  │  • Redis Adapter Pub/Sub  │
+└──────────────────────────────┘  └───────────────────────────┘
+```
+
+- **Data Fetching**: Centralized through `src/api/client.ts` (`apiFetch`). Automatically attaches the Bearer access token, handles 401 retries via `/api/auth/refresh`, and unwraps standard `{ success, data, meta }` response envelopes.
+- **Real-Time Synchronization**: `src/socket/socket.ts` manages a single authenticated Socket.IO instance. When viewing a board, components register event listeners (`card:created`, `card:moved`, etc.) that update local React/Zustand state without requiring full page refetches.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+- **Node.js**: `v20.x` or `v22.x` LTS.
+- **Backend**: SyncBoard backend running on `http://localhost:3000` (see root [`README.md`](../README.md)).
 
-- **Node.js**: `v20.x` or `v22.x`+ recommended.
-- **Backend Service**: Ensure the SyncBoard backend API is running on `http://localhost:3000`.
-  ```bash
-  # In the root repository:
-  docker compose up -d       # Starts PostgreSQL, Redis, MailHog
-  npm run start:dev          # Starts backend on port 3000
-  ```
+### Setup & Local Development
 
-### Installation
-
-1. Navigate to the `frontend` directory:
+1. Navigate to the `frontend/` directory:
    ```bash
    cd frontend
    ```
@@ -186,56 +203,29 @@ _Break down work into subtasks, log time against estimates, and customize cards 
    npm install
    ```
 
----
+3. Launch the development server:
+   ```bash
+   npm run dev
+   ```
 
-## 💻 Running the Application
-
-### Development Server
-
-Start Vite development server with Hot Module Replacement (HMR):
-
-```bash
-npm run dev
-```
-
-The app will be available at:
-👉 **[http://localhost:5173](http://localhost:5173)**
+4. Access the web application at:
+   👉 **[http://localhost:5173](http://localhost:5173)**
 
 > [!NOTE]
-> The Vite dev server (`vite.config.ts`) is preconfigured with reverse-proxy rules:
-> - `^/api/.*` ➔ `http://127.0.0.1:3000`
-> - `^/socket.io/.*` ➔ `http://127.0.0.1:3000` (with WebSocket upgrade enabled)
-> No manual CORS configuration is required for local development.
-
-### Production Build
-
-Typecheck and generate the optimized production bundle:
-
-```bash
-npm run build
-```
-
-Preview the production build locally:
-
-```bash
-npm run preview
-```
+> **Built-in Reverse Proxy**:
+> Vite (`vite.config.ts`) proxies `/api` and `/socket.io` requests directly to `http://127.0.0.1:3000` with WebSocket upgrades enabled. No manual CORS configuration is necessary in development.
 
 ---
 
-## 🧪 Linting & Quality Checks
+## 💻 Available Scripts
 
-Run fast Rust-powered Oxlint across all TypeScript and TSX files:
-
-```bash
-npm run lint
-```
-
-Typecheck without emitting artifacts:
-
-```bash
-npx tsc --noEmit
-```
+| Command | Description |
+|---|---|
+| `npm run dev` | Starts the Vite development server with HMR on port 5173 |
+| `npm run build` | Compiles TypeScript and creates an optimized production bundle in `dist/` |
+| `npm run preview` | Serves the production build locally for verification |
+| `npm run lint` | Runs Oxlint across all TypeScript and TSX files |
+| `npx tsc --noEmit` | Runs strict type checking without emitting build artifacts |
 
 ---
 
@@ -243,97 +233,43 @@ npx tsc --noEmit
 
 ```text
 frontend/
-├── public/                     # Static assets (favicons, SVG icon sprites)
+├── public/
 │   ├── favicon.svg
-│   └── icons.svg
+│   ├── icons.svg                     # SVG sprite containing unified application icons
+│   └── screenshots/                  # Visual tour screenshot assets
 ├── src/
-│   ├── api/                    # HTTP client and REST endpoint declarations
-│   │   ├── client.ts           # Fetch wrapper with interceptors & auto-refresh
-│   │   └── endpoints.ts        # Typed API calls for Auth, Workspace, Board, Card, Doc
-│   ├── components/             # Reusable UI component slices
-│   │   ├── auth/               # EmailVerificationBanner, ProfileModal, FloatingLogout
-│   │   ├── board/              # BoardCanvas, BoardHeader, ActivityDrawer, Modals
-│   │   ├── card/               # CardModal, ChecklistSection, CommentSection, Pickers
-│   │   ├── common/             # Header, Sidebar, Modal, ConfirmDialog, Avatar, Toast
-│   │   ├── document/           # DocumentEditor, MarkdownViewer, SnapshotHistory
-│   │   └── workspace/          # WorkspaceSettingsModal, MembersTab, InvitationsTab
-│   ├── pages/                  # Page routes
-│   │   ├── AuthCallbackPage.tsx    # OAuth callback token exchange & redirect
-│   │   ├── BoardPage.tsx           # Board view with realtime sockets
-│   │   ├── DocumentPage.tsx        # Document editor view
-│   │   ├── DocumentsListPage.tsx   # Workspace documents directory
-│   │   ├── ForgotPasswordPage.tsx  # Password reset request form
-│   │   ├── HealthPage.tsx          # System health check monitor
-│   │   ├── InvitePage.tsx          # Public invitation acceptance screen
-│   │   ├── LoginPage.tsx           # Email/password + Google login
-│   │   ├── RegisterPage.tsx        # Account registration
-│   │   ├── ResetPasswordPage.tsx   # Password reset with email token
-│   │   ├── VerifyEmailPage.tsx     # Email verification completion
-│   │   ├── WorkspaceDetailPage.tsx # Boards & management overview
-│   │   └── WorkspacesPage.tsx      # User workspace selector
-│   ├── socket/                 # Socket.io connection manager
-│   │   └── socket.ts           # Realtime connection & event listener registry
-│   ├── stores/                 # Zustand state stores
-│   │   ├── auth.store.ts       # User session, JWT tokens, logout handlers
-│   │   ├── toast.store.ts      # Global notifications & toast alerts
-│   │   └── workspace.store.ts  # Active workspace & membership role state
-│   ├── types/                  # Global TypeScript contracts and DTO interfaces
-│   │   └── index.ts
-│   ├── App.tsx                 # Root layout, router setup & AuthBootstrapper
-│   ├── index.css               # Global CSS tokens, resets & utility classes
-│   └── main.tsx                # React DOM root entry point
+│   ├── api/
+│   │   ├── client.ts                 # Fetch wrapper with interceptors & auto-refresh
+│   │   └── endpoints.ts              # Typed API methods grouped by domain
+│   ├── components/
+│   │   ├── auth/                     # EmailVerificationBanner, ProfileModal
+│   │   ├── board/                    # BoardCanvas, BoardHeader, ActivityDrawer, Views
+│   │   │   └── views/                # TableView, CalendarView, TimelineView
+│   │   ├── card/                     # CardModal, ChecklistSection, CommentSection
+│   │   ├── common/                   # Header, Sidebar, Modal, ConfirmDialog, Avatar, Toast
+│   │   ├── document/                 # DocumentEditor, MarkdownViewer, SnapshotHistory
+│   │   └── workspace/                # WorkspaceSettingsModal, MembersTab, InvitationsTab
+│   ├── pages/                        # Page route components
+│   │   ├── BoardPage.tsx             # Main Kanban and alternate projections page
+│   │   ├── DocumentPage.tsx          # Real-time collaborative document view
+│   │   ├── DocumentsListPage.tsx     # Workspace document explorer
+│   │   ├── LoginPage.tsx             # Email and Google OAuth authentication
+│   │   ├── RegisterPage.tsx          # User registration
+│   │   ├── WorkspaceDetailPage.tsx   # Workspace boards and administration
+│   │   └── WorkspacesPage.tsx        # Workspace directory and selector
+│   ├── socket/
+│   │   └── socket.ts                 # Socket.IO client singleton and event relay
+│   ├── stores/                       # Reactive Zustand state stores
+│   │   ├── auth.store.ts             # User identity, access tokens, and login status
+│   │   ├── toast.store.ts            # Toast alerts and notification banners
+│   │   ├── ui.store.ts               # UI state (drawers, active views)
+│   │   └── workspace.store.ts        # Current workspace context and membership
+│   ├── types/                        # TypeScript domain models and API contracts
+│   ├── utils/                        # Pure utility helpers (card, date, formatting)
+│   ├── App.tsx                       # Root router and layout shell
+│   ├── index.css                     # Design tokens, surface colors, and typography
+│   └── main.tsx                      # Application DOM bootstrap
 ├── package.json
 ├── tsconfig.json
-└── vite.config.ts              # Vite proxy & React plugin configuration
+└── vite.config.ts
 ```
-
----
-
-## 🧭 Step-by-Step User Guide
-
-### 1. Account Setup
-1. Open [http://localhost:5173/register](http://localhost:5173/register).
-2. Register an account with your email, display name, and password (min 8 chars, mixed case, number, special char).
-3. If mail verification is enabled, check MailHog at [http://localhost:8025](http://localhost:8025) and click the verification link.
-
-### 2. Creating a Workspace
-1. In the **Workspaces** page, click **+ New Workspace**.
-2. Enter a unique workspace name and slug.
-3. Invite collaborators via their email address and select their initial permission tier.
-
-### 3. Working with Boards & Cards
-1. Inside a workspace, click **Create Board**.
-2. Add workflow lists (e.g. *Backlog*, *In Progress*, *Review*, *Done*).
-3. Add cards. Click any card to set due dates, assign team members, attach checklists, link documents, or leave comments.
-4. Drag cards across lists to watch real-time LexoRank recalculations update instantly for other connected team members.
-
-### 4. Creating Collaborative Documents
-1. Open the **Documents** tab from the sidebar.
-2. Click **+ New Document** to create a rich markdown document.
-3. Multiple users can edit the document concurrently with live presence indicators showing active cursor positions.
-4. Use **Snapshot History** to inspect earlier versions or restore prior milestones.
-
-### 5. Switching Board Projections
-1. At the top of any board, locate the **View Switcher** toolbar (`Board`, `Table`, `Calendar`, `Timeline`).
-2. Click **Table** for a structured spreadsheet view with sorting by Priority, Status, or Logged Time.
-3. Click **Calendar** to view tasks mapped against their scheduled due dates, highlighting overdue deadlines in red.
-4. Click **Timeline** to view horizontal roadmap bars representing card lifecycles.
-5. Click any card in any view to open the full interactive detail modal.
-
-### 6. Subtasks & Checklist Promotion
-1. Open any card modal and select the **Subtasks** tab.
-2. Add a new subtask or attach an existing board card.
-3. Mark subtasks complete to watch the parent card's rollup progress meter automatically update.
-4. In the **Checklists** tab, click **Promote to Subtask** on any checklist item to instantly convert it into a full standalone subcard.
-
-### 7. Time Tracking & Logging Work
-1. Navigate to the **Time Tracking** tab inside a card modal.
-2. Enter an estimated duration (e.g. `240` minutes for 4 hours).
-3. Click **+ Log Work** to record elapsed time along with work notes.
-4. Review the visual progress bar showing logged vs remaining time and browse the complete chronological log audit history.
-
-### 8. Custom Fields Configuration
-1. Navigate to **Workspace Settings** -> **Custom Fields** tab (available to workspace `owner` and `admin`).
-2. Click **+ Add Field** to create fields typed as `text`, `number`, `date`, `select` (with predefined options), or `user`.
-3. Open any board card to view and fill out the custom field values, which automatically save upon editing.
-
