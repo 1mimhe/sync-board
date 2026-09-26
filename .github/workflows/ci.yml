@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
     branches: [master, main, dev]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
