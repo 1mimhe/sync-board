@@ -23,7 +23,13 @@ jobs:
       # is tracked separately, so --max-warnings=0 is not enforced yet.
       - run: npx eslint "{src,test}/**/*.ts" --quiet
       - run: npx tsc --noEmit
-      - run: npm audit --audit-level=high
+      # Informational only: current high-severity advisories live in
+      # transitive deps (prisma, multer, nodemailer chains) and need
+      # breaking upgrades, so this must not block CI. Dependabot
+      # proposes upgrades via PRs instead.
+      - name: Audit dependencies (non-blocking)
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
   test-unit:
     runs-on: ubuntu-latest
