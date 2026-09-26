@@ -84,20 +84,17 @@ export function Header() {
               color: '#ffffff',
             }}
           >
-            <div
+            <img
+              src="/logo.png"
+              alt="SyncBoard Logo"
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 9,
-                background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: '0 0 16px rgba(124, 58, 237, 0.4)',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 10px rgba(124, 58, 237, 0.45))',
                 flexShrink: 0,
               }}
-            >
-              <span style={{ fontSize: 16, color: '#fff' }}>◈</span>
-            </div>
+            />
             <span className="logo-text">SyncBoard</span>
           </Link>
         </div>

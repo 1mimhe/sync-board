@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="SyncBoard Logo" width="110" />
+</p>
+
 # SyncBoard Frontend
 
 > Modern real-time collaborative workspace client built with **React 19**, **TypeScript**, and **Vite**.
@@ -9,87 +13,133 @@ SyncBoard Frontend is a responsive Single Page Application (SPA) designed as an 
 
 ---
 
-## 📸 Screenshots & Visual Tour
+## 📸 Screenshots
 
-Save 16:9 high-resolution screenshots to [`frontend/public/screenshots/`](file:///m:/Coding/Github/sync-board/frontend/public/screenshots) matching the filenames below to render them in GitHub and markdown previews.
+All screenshots are stored in [`public/screenshots/`](file:///m:/Coding/Github/sync-board/frontend/public/screenshots).
 
 ### 1. Workspaces Dashboard
-*Overview of personal and team workspaces with slug-based routing and creation controls.*
+*Central dashboard displaying personal and team workspaces with vanity slug routing, role badges (`Owner`, `Admin`), and fast workspace initialization.*
 
 ![Workspaces Dashboard](public/screenshots/01-workspaces-dashboard.png)
-<!-- Capture: http://localhost:5173/workspaces with 2+ active workspaces -->
 
 ---
 
-### 2. Workspace Overview & Boards Grid
-*Central workspace hub displaying starred boards, active project boards with custom color themes, and quick creation controls.*
+### 2. Workspace Overview & Boards Hub
+*Central workspace hub displaying active project boards, collaborative documents count, label taxonomy, and member counts.*
 
-![Workspace Boards Grid](public/screenshots/02-workspace-boards.png)
-<!-- Capture: http://localhost:5173/workspaces/:slug with Starred Boards and All Boards grid -->
+![Workspace Overview](public/screenshots/02-workspace-overview.png)
 
 ---
 
 ### 3. Real-Time Kanban Board
-*Interactive drag-and-drop lists and cards powered by LexoRank with live multiplayer presence.*
+*Interactive drag-and-drop lists and cards powered by LexoRank with cover images, priority badges, tags, assignees, and live presence.*
 
-![Kanban Board View](public/screenshots/03-kanban-board.png)
-<!-- Capture: http://localhost:5173/workspaces/:slug/boards/:boardId with populated lists and cards -->
-
----
-
-### 4. Multi-Projection Board Views (Table, Calendar, Timeline)
-*Instant projection switching between Kanban, spreadsheet Table, monthly Calendar, and chronological Timeline.*
-
-![Alternate Board Views](public/screenshots/04-board-views.png)
-<!-- Capture: Board view switched to Table or Calendar mode via the view switcher -->
+![Kanban Board View](public/screenshots/03-kanban-board-view.png)
 
 ---
 
-### 5. Card Detail & Checklists
-*Modal view showing status, priorities, assignees, labels, due dates, checklists, comments, and attachments.*
+### 4. Multi-Projection: Sortable Data Table View
+*Spreadsheet-style data grid projection with multi-column sorting, status filters, assignee filters, due date markers, subtask rollup indicators, and inline editing.*
 
-![Card Detail Modal](public/screenshots/05-card-detail-modal.png)
-<!-- Capture: CardModal open with labels, checklists, and active comments -->
-
----
-
-### 6. Card Enrichment (Subtasks, Time Tracking & Custom Fields)
-*Granular task decomposition with subcards, estimate tracking, time logs, and workspace-defined fields.*
-
-![Card Enrichment](public/screenshots/06-card-enrichment.png)
-<!-- Capture: CardModal showing Subtasks tab with progress bar or Time Tracking tab -->
+![Board Table Projection](public/screenshots/04-board-table-projection.png)
 
 ---
 
-### 7. Collaborative Document Editor
-*Real-time markdown documentation with active editor awareness and snapshot history.*
+### 5. Multi-Projection: Monthly Calendar View
+*Monthly calendar projection plotting scheduled tasks by deadline with color-coded status badges and quick date navigation.*
 
-![Document Editor](public/screenshots/07-document-editor.png)
-<!-- Capture: http://localhost:5173/workspaces/:slug/docs/:docId with formatted content -->
-
----
-
-### 8. Live Notification Center
-*Interactive notification popover with real-time unread badges, deep links to entities, and bulk read actions.*
-
-![Notification Center](public/screenshots/08-notification-center.png)
-<!-- Capture: NotificationBell popover open showing unread invitations and card assignments -->
+![Board Calendar Projection](public/screenshots/05-board-calendar-projection.png)
 
 ---
 
-### 9. Real-Time Activity Drawer
-*Audit trail of workspace and board actions streaming live over WebSockets.*
+### 6. Multi-Projection: Chronological Timeline Roadmap
+*Milestone delivery roadmap laying out tasks and dependencies chronologically with priority flags and completion state markers.*
 
-![Activity Drawer](public/screenshots/09-activity-drawer.png)
-<!-- Capture: ActivityDrawer opened from the Board header showing live action stream -->
+![Board Timeline Projection](public/screenshots/06-board-timeline-projection.png)
 
 ---
 
-### 10. Workspace Settings & Members
-*Team member administration, role-based access control (`owner`, `admin`, `member`, `viewer`), and invitations.*
+### 7. Card Detail Modal & Dynamic Custom Fields
+*Rich card view showing descriptions, custom fields (Story Points, Release Version, Environment, Customer Impact, Reviewer), priority levels, due dates, and assignees.*
 
-![Workspace Members](public/screenshots/10-workspace-members.png)
-<!-- Capture: WorkspaceSettingsModal open on the Members tab -->
+![Card Detail Overview](public/screenshots/07-card-detail-overview.png)
+
+---
+
+### 8. Hierarchical Subtasks & Progress Rollup
+*Granular task decomposition supporting subcards (depth $\le 2$) with interactive status markers, priority badges, and automatic progress completion meters.*
+
+![Card Detail Subtasks](public/screenshots/08-card-detail-subtasks.png)
+
+---
+
+### 9. Time Tracking & Work Log History
+*Effort estimation consumption meter (logged time vs. estimate), log work modal, and chronological work history logs per team member.*
+
+![Card Detail Time Tracking](public/screenshots/09-card-detail-time-tracking.png)
+
+---
+
+### 10. Collaborative Document Editor (CRDT & Awareness)
+*Multiplayer Markdown document editor powered by Yjs binary CRDTs, remote presence awareness cursors (`Sarah Chen`), split-screen preview, and debounced 5-second database persistence.*
+
+![Collaborative Document Editor](public/screenshots/10-document-crdt-editor.png)
+
+---
+
+### 11. Real-Time Notification Center
+*Live WebSocket notification popover displaying real-time unread counts, `@mention` alerts, card assignments, comment pings, and status transitions.*
+
+![Notification Center](public/screenshots/11-notification-center.png)
+
+---
+
+### 12. Workspace Team Members & 4-Tier RBAC
+*Multi-tenant role administration allowing workspace owners and administrators to manage members across four roles (`Owner`, `Admin`, `Member`, `Viewer`) and transfer ownership.*
+
+![Workspace Members and RBAC](public/screenshots/12-workspace-members-rbac.png)
+
+---
+
+### 13. Workspace Custom Fields Management
+*Centralized custom metadata schema builder supporting `Number`, `Text`, `Dropdown Select`, `Date`, and `User / Assignee` types enforced across all boards.*
+
+![Workspace Custom Fields](public/screenshots/13-workspace-custom-fields.png)
+
+---
+
+### 14. Workspace Taxonomy & Labels
+*Workspace-wide label taxonomy with customizable color tokens and real-time board card association counts.*
+
+![Workspace Labels](public/screenshots/14-workspace-labels.png)
+
+---
+
+### 15. Collaborative Documents Library
+*Workspace document repository highlighting real-time CRDT sync status and two-way associations to board cards.*
+
+![Collaborative Docs List](public/screenshots/15-collaborative-docs-list.png)
+
+---
+
+### 16. Board Archive & Soft-Delete Recovery
+*Dedicated archive drawer allowing soft-deleted cards and workflow lists to be restored with a single click or permanently purged.*
+
+![Board Archive Modal](public/screenshots/16-board-archive-modal.png)
+
+---
+
+### 17. Board Activity Stream & Partitioned Audit Log
+*Real-time audit log streaming board events (card movements, checklist completions, member assignments, comments, snapshot revisions) stored in monthly partitioned database tables.*
+
+![Board Activity Audit Log](public/screenshots/17-board-activity-audit-log.png)
+
+---
+
+### 18. Authentication & Sign In
+*Sign in interface with email/password authentication, Google OAuth integration, and brand logo.*
+
+![Authentication Sign In](public/screenshots/18-authentication-login.png)
 
 ---
 
@@ -236,7 +286,8 @@ frontend/
 ├── public/
 │   ├── favicon.svg
 │   ├── icons.svg                     # SVG sprite containing unified application icons
-│   └── screenshots/                  # Visual tour screenshot assets
+│   ├── logo.png                      # Application logo
+│   └── screenshots/                  # Application screenshot assets
 ├── src/
 │   ├── api/
 │   │   ├── client.ts                 # Fetch wrapper with interceptors & auto-refresh
