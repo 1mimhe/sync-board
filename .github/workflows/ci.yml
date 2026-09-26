@@ -95,10 +95,12 @@ jobs:
         with: { node-version: '20', cache: 'npm' }
       - run: npm ci
       - run: npx prisma db push
+      # NOTE: psql cannot parse Prisma's `?schema=public` query param,
+      # so strip it via ${DATABASE_URL%%\?*} (keeps the full URL for prisma).
       - name: Apply activity partitions (monthly RANGE)
-        run: psql "$DATABASE_URL" -f prisma/activity-partitions.sql
+        run: psql "${DATABASE_URL%%\?*}" -f prisma/activity-partitions.sql
       - name: Apply custom indexes (partial + GIN)
-        run: psql "$DATABASE_URL" -f prisma/custom-indexes.sql
+        run: psql "${DATABASE_URL%%\?*}" -f prisma/custom-indexes.sql
       - name: Wait for MailHog API
         run: for i in $(seq 1 30); do curl -sf "http://localhost:8025/api/v2/messages?limit=1" && break || sleep 2; done
       - run: npm run test:e2e -- --ci
