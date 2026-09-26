@@ -311,10 +311,11 @@ To provide an intuitive, production-grade interface for testing and interacting 
 
 ### Prerequisites
 
-Ensure you have the following installed locally:
-* **Node.js**: `20.x LTS` or higher
+Depending on your preferred setup:
+* **Docker & Docker Compose**: Docker Engine `24.x+` and Docker Compose `v2.x+` (required for all containerized workflows)
+* **Node.js**: `20.x LTS` or higher (required only if running backend or frontend outside Docker)
 * **npm**: `10.x` or higher
-* **Docker & Docker Compose**: Docker Engine `24.x+` and Docker Compose `v2.x+`
+* **PostgreSQL Client (`psql`)**: (required only if initializing the database manually on your host)
 
 ---
 
@@ -328,79 +329,114 @@ cd sync-board
 # Copy environment template
 cp .env.example .env
 ```
+*(The default `.env` is pre-configured with dev/docker defaults that work out-of-the-box).*
 
 ---
 
-### Step 2: Boot Supporting Infrastructure Containers
+### Choose Your Setup (0 to 100)
 
-Start PostgreSQL, Redis, RabbitMQ, MinIO, and MailHog using Docker Compose:
+SyncBoard supports **three run workflows** tailored to different development needs:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Which way should I run SyncBoard?                                           │
+│                                                                             │
+│ 1. Just want to test/evaluate the platform? ──> Way 1 (Full Docker Stack)   │
+│ 2. Working primarily on the React frontend? ──> Way 2 (Docker App + UI Dev) │
+│ 3. Developing backend & frontend with HMR?  ──> Way 3 (Infra Only + Local)  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Way 1: Full Docker Stack (Zero-Config / One-Command) ⭐️ Recommended
+
+Runs the **entire platform** inside Docker: Postgres, Redis, RabbitMQ, MinIO (with auto-created bucket), MailHog, NestJS backend (with auto-generated RSA keys), React frontend, and Nginx edge reverse proxy. No local Node.js installation required.
 
 ```bash
-# Start all core backing services in the background
-docker compose up -d
+# Start all services with automated migrations, partitions, indexes, and demo data
+docker compose --profile full up -d
 
 # Verify all containers are healthy
 docker compose ps
 ```
 
----
+> [!TIP]
+> Demo data is seeded automatically. To start with an empty database:
+> ```bash
+> RUN_SEED=false docker compose --profile full up -d
+> ```
 
-### Step 3: Install Dependencies & Run Database Migrations
-
-```bash
-# Install backend dependencies
-npm install
-
-# Run database migrations and generate Prisma client
-npx prisma migrate dev
-
-# Seed database with sample workspaces, boards, and demo users
-npm run prisma:seed
-```
+* **Access the App**: [http://localhost](http://localhost) (Nginx edge proxy on port 80)
+* **API Documentation (Swagger)**: [http://localhost/api/docs](http://localhost/api/docs)
+* **Stop the stack**: `docker compose --profile full down`
 
 ---
 
-### Step 4: Launch Backend API Server
+#### Way 2: Backend & Infra in Docker + Local Frontend (Vite HMR)
+
+Runs all databases, queues, and the NestJS backend in Docker. You run only the React Vite dev server on your host machine with instant Hot Module Replacement (HMR).
 
 ```bash
-# Start NestJS backend in development mode (port 3000)
-npm run start:dev
-```
+# 1. Start backing services + automated DB init + NestJS backend
+docker compose --profile app up -d
 
-The backend API is now running at `http://localhost:3000`. You can inspect:
-* **Swagger API Documentation**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
-* **System Health Check**: [http://localhost:3000/api/health](http://localhost:3000/api/health)
-
----
-
-### Step 5: Launch Frontend Web Application
-
-Open a second terminal window to start the companion React client:
-
-```bash
-# Navigate to frontend directory and install dependencies
+# 2. In a new terminal, launch the frontend dev server
 cd frontend
 npm install
-
-# Start Vite development server (port 5173)
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to access the workspace.
+* **Frontend**: [http://localhost:5173](http://localhost:5173) (automatically proxies `/api` and `/socket.io` to backend on `:3000`)
+* **Backend Swagger**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+* **Stop backend**: `docker compose --profile app down`
+
+---
+
+#### Way 3: Infra Only in Docker + Full Local Development (Hot Reload for Both)
+
+Best for active backend development. Only Postgres, Redis, RabbitMQ, MinIO, and MailHog run in Docker; NestJS and React run directly on your host machine with file watchers and IDE debuggers.
+
+```bash
+# 1. Start core backing infrastructure
+docker compose up -d
+docker compose ps
+
+# 2. Install backend dependencies and generate Prisma client
+npm install
+npx prisma generate
+
+# 3. Push database schema, apply custom SQL & seed demo data
+npm run db:push
+psql postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public -f prisma/activity-partitions.sql
+psql postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public -f prisma/custom-indexes.sql
+npm run db:seed
+
+# 4. Start NestJS in watch mode (Terminal 1)
+npm run start:dev
+
+# 5. Start React Vite frontend (Terminal 2)
+cd frontend
+npm install
+npm run dev
+```
+
+* **Frontend**: [http://localhost:5173](http://localhost:5173)
+* **Backend API**: [http://localhost:3000/api](http://localhost:3000/api)
+* **Swagger Docs**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+* **Stop infra**: `docker compose down`
 
 ---
 
 ### Service Port & URL Summary
 
-| Service / Interface | Local URL | Default Credentials / Purpose |
-|---|---|---|
-| **Frontend Web App** | [http://localhost:5173](http://localhost:5173) | Interactive workspace interface |
-| **Backend REST API** | [http://localhost:3000/api](http://localhost:3000/api) | NestJS application endpoints |
-| **Swagger API Docs** | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) | Interactive OpenAPI exploration |
-| **API Health Probe** | [http://localhost:3000/api/health](http://localhost:3000/api/health) | Health status (Postgres, Redis) |
-| **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | `guest` / `guest` |
-| **MinIO Object Console** | [http://localhost:9001](http://localhost:9001) | `minioadmin` / `minioadmin` |
-| **MailHog Web Inbox** | [http://localhost:8025](http://localhost:8025) | Local email capture interface |
+| Service / Interface | URL (Full Stack / Nginx) | URL (Direct / Local) | Credentials / Purpose |
+|---|---|---|---|
+| **Web Application** | [http://localhost](http://localhost) | [http://localhost:5173](http://localhost:5173) | React SPA |
+| **Backend REST API** | [http://localhost/api](http://localhost/api) | [http://localhost:3000/api](http://localhost:3000/api) | NestJS application endpoints |
+| **Swagger API Docs** | [http://localhost/api/docs](http://localhost/api/docs) | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) | Interactive OpenAPI exploration |
+| **API Health Probe** | [http://localhost/api/health](http://localhost/api/health) | [http://localhost:3000/api/health](http://localhost:3000/api/health) | Health status (Postgres, Redis, RabbitMQ) |
+| **RabbitMQ Management** | — | [http://localhost:15672](http://localhost:15672) | `guest` / `guest` |
+| **MinIO Object Console** | — | [http://localhost:9001](http://localhost:9001) | `minioadmin` / `minioadmin` |
+| **MailHog Web Inbox** | — | [http://localhost:8025](http://localhost:8025) | Local email capture interface |
 
 ---
 
@@ -419,15 +455,30 @@ The database seed script initializes the following accounts:
 ### Useful Commands
 
 ```bash
-# Run complete unit test suite with coverage report
-npm run test:cov
+# ── Testing ───────────────────────────────────────────────────────────────
+npm run test           # Run unit tests
+npm run test:cov       # Run unit tests with coverage report
+npm run test:e2e       # Run end-to-end integration tests
 
-# Run linter checks
-npm run lint
+# ── Code Quality ──────────────────────────────────────────────────────────
+npm run lint           # Run ESLint fix
+npm run format         # Run Prettier format
+cd frontend && npm run lint  # Lint frontend code with Oxlint
 
-# Build production bundle for backend
-npm run build
+# ── Database ─────────────────────────────────────────────────────────────
+npm run db:push        # Sync Prisma schema to database
+npm run db:seed        # Seed sample data
+docker compose exec postgres-primary psql -U syncuser -d syncboard  # Postgres CLI
+docker compose exec redis redis-cli                                  # Redis CLI
 
-# Build production bundle for frontend
-cd frontend && npm run build
+# ── Docker Maintenance ───────────────────────────────────────────────────
+docker compose ps                                  # Check container status
+docker compose logs -f app                         # Tail backend logs
+docker compose --profile full up -d --build        # Rebuild and restart
+docker compose --profile full down -v              # Wipe all containers and data volumes
 ```
+
+---
+
+<p align="center">Made with ❤️</p>
+
