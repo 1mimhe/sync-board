@@ -10,6 +10,7 @@
 -- ============================================================
 
 -- Users: Google OAuth provider lookup
+DROP INDEX IF EXISTS idx_users_google_id;
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
 
 -- Workspaces: owner lookup for ACTIVE workspaces only

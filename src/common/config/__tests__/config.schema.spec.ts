@@ -27,7 +27,7 @@ describe('configValidationSchema', () => {
     expect(value.GOOGLE_CALLBACK_URL).toBe(
       'http://localhost:3000/api/auth/google/callback',
     );
-    expect(value.CLIENT_URL).toBe('http://localhost:3001');
+    expect(value.CLIENT_URL).toBeUndefined();
     expect(value.SMTP_HOST).toBe('localhost');
     expect(value.SMTP_PORT).toBe(1025);
     expect(value.SMTP_SECURE).toBe(false);
@@ -106,7 +106,7 @@ describe('configValidationSchema', () => {
     expect(error?.message).toContain('"JWT_PRIVATE_KEY_PATH" is required');
   });
 
-  it('should fail validation in production when JWT_SECRET is provided', () => {
+  it('should pass validation in production when JWT_SECRET is provided alongside key paths (secret is ignored, RS256 wins)', () => {
     const { error } = configValidationSchema.validate({
       ...validConfig,
       NODE_ENV: 'production',
@@ -115,8 +115,18 @@ describe('configValidationSchema', () => {
       JWT_SECRET: 'secret',
     });
 
+    expect(error).toBeUndefined();
+  });
+
+  it('should fail validation in production when JWT_SECRET is provided without key paths', () => {
+    const { error } = configValidationSchema.validate({
+      ...validConfig,
+      NODE_ENV: 'production',
+      JWT_SECRET: 'secret',
+    });
+
     expect(error).toBeDefined();
-    expect(error?.message).toContain('"JWT_SECRET" is not allowed');
+    expect(error?.message).toContain('"JWT_PRIVATE_KEY_PATH" is required');
   });
 
   it('should pass validation in development with only JWT_SECRET', () => {

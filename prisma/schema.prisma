@@ -102,7 +102,6 @@ model User {
   timeEntries          CardTimeEntry[]
   notifications        Notification[]
 
-  @@index([googleId], map: "idx_users_google_id")
   @@map("users")
 }
 
@@ -149,7 +148,6 @@ model Workspace {
   notifications Notification[]
   files       FileAttachment[]
 
-  @@index([ownerId], map: "idx_workspaces_owner")
   @@index([slug], map: "idx_workspaces_slug")
   @@map("workspaces")
 }
@@ -288,7 +286,6 @@ model Card {
   @@index([status], map: "idx_cards_status")
   @@index([priority], map: "idx_cards_priority")
   @@index([listId, status], map: "idx_cards_list_status")
-  @@index([dueDate], map: "idx_cards_due_date")
   @@map("cards")
 }
 
@@ -444,7 +441,6 @@ model Document {
 
   @@index([workspaceId], map: "idx_documents_workspace")
   @@index([workspaceId, status, updatedAt], map: "idx_documents_workspace_status_updated")
-  @@index([parentCardId], map: "idx_documents_parent_card")
   @@map("documents")
 }
 
@@ -532,7 +528,6 @@ model Notification {
   @@unique([messageId, userId])
   @@index([userId, isRead, createdAt, id], map: "idx_notifications_user_unread")
   @@index([userId, createdAt, id], map: "idx_notifications_user_all")
-  @@index([isRead, createdAt], map: "idx_notifications_read_cleanup")
   @@map("notifications")
 }
 

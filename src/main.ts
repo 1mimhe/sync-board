@@ -10,6 +10,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { resolveClientUrl } from './common/utils/client-url.util';
 
 async function bootstrap() {
   // Initialize Nest application with buffered logs until Logger is attached
@@ -59,10 +60,10 @@ async function bootstrap() {
 
   // Security headers & CORS settings
   app.use(helmet());
-  const clientUrl = configService.get<string>(
-    'CLIENT_URL',
-    'http://localhost:3001',
-  );
+  const clientUrl = resolveClientUrl({
+    CLIENT_URL: configService.get<string>('CLIENT_URL'),
+    NODE_ENV: configService.get<string>('NODE_ENV'),
+  });
   const allowedOrigins = clientUrl.includes(',')
     ? clientUrl.split(',').map((url) => url.trim())
     : [clientUrl];

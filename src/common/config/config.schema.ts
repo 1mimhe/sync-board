@@ -10,9 +10,20 @@ export const configValidationSchema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
     .default('info'),
+  // HS256 fallback for local development. In production RS256 key files
+  // take precedence (JwtTokenService ignores the secret when keys exist),
+  // so a leftover JWT_SECRET from .env must not crash boot — forbid it
+  // in production only when no key files are configured.
   JWT_SECRET: Joi.string()
     .optional()
-    .when('NODE_ENV', { is: 'production', then: Joi.forbidden() }),
+    .allow('')
+    .when('JWT_PRIVATE_KEY_PATH', {
+      is: Joi.exist(),
+      then: Joi.string().optional().allow(''),
+      otherwise: Joi.string()
+        .optional()
+        .when('NODE_ENV', { is: 'production', then: Joi.forbidden() }),
+    }),
   JWT_PRIVATE_KEY_PATH: Joi.string().optional().when('NODE_ENV', {
     is: 'production',
     then: Joi.string().required(),
@@ -42,7 +53,10 @@ export const configValidationSchema = Joi.object({
   GOOGLE_CALLBACK_URL: Joi.string()
     .optional()
     .default('http://localhost:3000/api/auth/google/callback'),
-  CLIENT_URL: Joi.string().optional().default('http://localhost:3001'),
+  // No static default here on purpose: client URL is resolved per
+  // environment via resolveClientUrl() (production -> edge proxy on :80,
+  // otherwise the Vite dev server on :5173). Explicit value always wins.
+  CLIENT_URL: Joi.string().optional().allow(''),
   SMTP_HOST: Joi.string().default('localhost'),
   SMTP_PORT: Joi.number().default(1025),
   SMTP_SECURE: Joi.boolean().default(false),
