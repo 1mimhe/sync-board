@@ -1,0 +1,161 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main, dev]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npx prisma generate
+      # --quiet gates on errors only: the warning backlog (mostly `any`)
+      # is tracked separately, so --max-warnings=0 is not enforced yet.
+      - run: npx eslint "{src,test}/**/*.ts" --quiet
+      - run: npx tsc --noEmit
+      - run: npm audit --audit-level=high
+
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test -- --ci --coverage
+      - uses: actions/upload-artifact@v4
+        with: { name: coverage, path: coverage/ }
+
+  test-integration:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: syncuser
+          POSTGRES_PASSWORD: syncpass
+          POSTGRES_DB: syncboard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U syncuser" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        ports: ['5672:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics check_port_connectivity"
+          --health-interval 10s --health-timeout 10s --health-retries 10
+      mailhog:
+        image: mailhog/mailhog:v1.0.1
+        ports: ['1025:1025', '8025:8025']
+    env:
+      DATABASE_URL: postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: '6379'
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672
+      RABBITMQ_ENABLE: 'true'
+      ASYNC_MAIL: 'false'
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: syncboard-files
+      S3_ENDPOINT: http://localhost:9000
+      S3_FORCE_PATH_STYLE: 'true'
+      JWT_SECRET: ci-only-secret
+      GOOGLE_CLIENT_ID: ci-dummy
+      GOOGLE_CLIENT_SECRET: ci-dummy
+      MAILHOG_URL: http://localhost:8025
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npx prisma db push
+      - name: Apply activity partitions (monthly RANGE)
+        run: psql "$DATABASE_URL" -f prisma/activity-partitions.sql
+      - name: Apply custom indexes (partial + GIN)
+        run: psql "$DATABASE_URL" -f prisma/custom-indexes.sql
+      - name: Wait for MailHog API
+        run: for i in $(seq 1 30); do curl -sf "http://localhost:8025/api/v2/messages?limit=1" && break || sleep 2; done
+      - run: npm run test:e2e -- --ci
+        continue-on-error: false
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-integration]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      # 1. Log in to Docker Hub (Docker Registry) if secrets are configured
+      - name: Log in to Docker Hub
+        if: "${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 2. Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Compute image tags for both Docker Hub and GHCR
+      - name: Compute image tags
+        id: meta
+        run: |
+          IMAGE_REPO="${GITHUB_REPOSITORY,,}"
+          BACKEND_TAGS="ghcr.io/${IMAGE_REPO}:latest,ghcr.io/${IMAGE_REPO}:${{ github.sha }}"
+          FRONTEND_TAGS="ghcr.io/${IMAGE_REPO}-frontend:latest,ghcr.io/${IMAGE_REPO}-frontend:${{ github.sha }}"
+
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            DOCKER_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+            BACKEND_TAGS="${BACKEND_TAGS},${DOCKER_USER}/sync-board:latest,${DOCKER_USER}/sync-board:${{ github.sha }}"
+            FRONTEND_TAGS="${FRONTEND_TAGS},${DOCKER_USER}/sync-board-frontend:latest,${DOCKER_USER}/sync-board-frontend:${{ github.sha }}"
+          fi
+
+          echo "backend_tags=${BACKEND_TAGS}" >> $GITHUB_OUTPUT
+          echo "frontend_tags=${FRONTEND_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Backend Production Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.backend_tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Frontend Production Image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.frontend_tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
