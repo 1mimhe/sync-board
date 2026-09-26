@@ -30,19 +30,19 @@
 
 - [1. Overview & Core Architecture](#1-overview--core-architecture)
 - [2. Deep-Dive Architecture & Engineering Specifications](#2-deep-dive-architecture--engineering-specifications)
-  - [2.1 System Architecture & Modular Monolith Topology](#21-system-architecture--modular-monolith-topology-docs01)
-  - [2.2 Database Architecture, LexoRank & Table Partitioning](#22-database-architecture-lexorank--table-partitioning-docs02)
-  - [2.3 REST API Design, Response Envelopes & Pagination](#23-rest-api-design-response-envelopes--pagination-docs03)
-  - [2.4 Real-Time WebSocket Protocol & Event Matrix](#24-real-time-websocket-protocol--event-matrix-docs04)
-  - [2.5 Collaborative Document Engine & Yjs CRDT](#25-collaborative-document-engine--yjs-crdt-docs05)
-  - [2.6 Authentication, Session Security & Multi-Tenant RBAC](#26-authentication-session-security--multi-tenant-rbac-docs06)
-  - [2.7 Domain Modules & Sub-Feature Specifications](#27-domain-modules--sub-feature-specifications-docs07)
-  - [2.8 Message Queue, Asynchronous Processing & DLX Architecture](#28-message-queue-asynchronous-processing--dlx-architecture-docs08)
-  - [2.9 Infrastructure, Containerization & Object Storage](#29-infrastructure-containerization--object-storage-docs09)
-  - [2.10 Testing Strategy & Automated Test Coverage](#210-testing-strategy--automated-test-coverage-docs10)
-  - [2.11 Security Practices & Checklist](#211-security-practices--checklist-docs11)
-  - [2.12 Monorepo Project Structure & Placement Rules](#212-monorepo-project-structure--placement-rules-docs12)
-  - [2.13 Structured Logging, Error Envelopes & Observability](#213-structured-logging-error-envelopes--observability-docs13)
+  - [2.1 System Architecture & Modular Monolith Topology](docs/01-architecture-overview.md)
+  - [2.2 Database Architecture, LexoRank & Table Partitioning](docs/02-database-design.md)
+  - [2.3 REST API Design, Response Envelopes & Pagination](docs/03-api-design.md)
+  - [2.4 Real-Time WebSocket Protocol & Event Matrix](docs/04-websocket-events.md)
+  - [2.5 Collaborative Document Engine & Yjs CRDT](docs/05-realtime-engine.md)
+  - [2.6 Authentication, Session Security & Multi-Tenant RBAC](docs/06-auth-and-rbac.md)
+  - [2.7 Domain Modules & Sub-Feature Specifications](docs/07-module-specifications.md)
+  - [2.8 Message Queue, Asynchronous Processing & DLX Architecture](docs/08-message-queue-design.md)
+  - [2.9 Infrastructure, Containerization & Object Storage](docs/09-infrastructure-devops.md)
+  - [2.10 Testing Strategy & Automated Test Coverage](docs/10-testing-strategy.md)
+  - [2.11 Security Practices & Checklist](docs/11-security-checklist.md)
+  - [2.12 Monorepo Project Structure & Placement Rules](docs/12-project-structure.md)
+  - [2.13 Structured Logging, Error Envelopes & Observability](docs/13-error-handling-logging.md)
 - [3. Frontend Companion (MVP Web Client Overview)](#3-frontend-companion-mvp-web-client-overview)
 - [4. Getting Started & Quickstart Guide](#4-getting-started--quickstart-guide)
 
@@ -97,7 +97,7 @@ To showcase and test these backend capabilities end-to-end, the project includes
 
 ## 2. Deep-Dive Architecture & Engineering Specifications
 
-This section summarizes each engineering document in sequence. For exhaustive implementation specifications, follow the referenced documentation links.
+This section summarizes each engineering document in sequence. For full implementation details, open the linked doc for that section.
 
 ---
 
@@ -110,7 +110,7 @@ SyncBoard is structured as a **modular monolith** running within a single NestJS
 * **Decoupled Event Bus**: Side effects (audit logging, email dispatch, notification fan-out) are emitted as domain events via `EventEmitter2` locally and published to RabbitMQ asynchronously.
 * **Pipeline Lifecycle**: Incoming requests pass through an edge reverse proxy (Nginx with SSL termination and rate limiting) $\to$ `CorrelationIdInterceptor` (`X-Request-Id`) $\to$ `JwtAuthGuard` (RS256 & Redis token blacklist) $\to$ `WorkspaceMemberGuard` (tenant RBAC verification) $\to$ `ValidationPipe` (strict DTO parsing) $\to$ Domain Services $\to$ Prisma ORM $\to$ Standardized Envelope Response.
 
-> 📖 **Deep Dive**: Read the complete topology, request pipeline, and boundary rules in [docs/01-architecture-overview.md](file:///m:/Coding/Github/sync-board/docs/01-architecture-overview.md).
+→ [Architecture Overview](docs/01-architecture-overview.md) — topology, request pipeline, and module boundary rules.
 
 ---
 
@@ -124,7 +124,7 @@ The persistent storage tier is powered by **PostgreSQL 16** with schemas managed
 * **Time-Partitioned Audit Logs**: The `activities` table utilizes PostgreSQL monthly range partitioning (`PARTITION BY RANGE (created_at)`), ensuring high write throughput and zero-cost historical partition dropping for data retention compliance.
 * **Composite & Partial Indexes**: Targeted indexing for active records (`WHERE deleted_at IS NULL`), pending invitation email lookups, and fast card list ordering.
 
-> 📖 **Deep Dive**: Inspect the entity-relationship diagrams, SQL schemas, partition triggers, and indexing strategies in [docs/02-database-design.md](file:///m:/Coding/Github/sync-board/docs/02-database-design.md).
+→ [Database Design](docs/02-database-design.md) — ER diagrams, SQL schemas, partition triggers, and indexing strategies.
 
 ---
 
@@ -141,7 +141,7 @@ SyncBoard's REST API adheres to strict consistency and predictable contract enve
 * **Idempotency Controls**: Mutation operations accept an `Idempotency-Key` header cached in Redis to guard against duplicate transactions from network retries.
 * **Sliding-Window Rate Limiting**: Enforced globally and tuned per-route (stricter limits on `/api/auth/*` endpoints) using Redis sliding logs.
 
-> 📖 **Deep Dive**: Refer to [docs/03-api-design.md](file:///m:/Coding/Github/sync-board/docs/03-api-design.md) for error code dictionaries, header contracts, and pagination specifications. The interactive OpenAPI schema is available at `/api/docs`.
+→ [API Design](docs/03-api-design.md) — error codes, header contracts, and pagination specs. Interactive schema at `/api/docs`.
 
 ---
 
@@ -156,7 +156,7 @@ Real-time capabilities are orchestrated via **Socket.IO 4.8** backed by `@socket
   * Redis Sorted Set (`ZSET`) storing timestamps for deterministic viewer counting and ghost reaping (60s inactivity threshold).
 * **Event Relay Contracts**: Immediate client reflection for board modifications, card moves, list reorganizations, and viewer joining/leaving notifications.
 
-> 📖 **Deep Dive**: Review the complete WebSocket event taxonomy, payload schemas, and presence algorithms in [docs/04-websocket-events.md](file:///m:/Coding/Github/sync-board/docs/04-websocket-events.md).
+→ [WebSocket Events](docs/04-websocket-events.md) — full event list, payload schemas, and presence algorithms.
 
 ---
 
@@ -169,7 +169,7 @@ Collaborative document editing leverages **Yjs 13.6** Conflict-free Replicated D
 * **Real-Time Awareness**: Broadcasts peer cursor selections, remote carets, display names, and distinct avatar colors without database writes.
 * **Snapshot Versioning**: Periodic named snapshots allow workspace members to inspect historical revisions and restore documents to prior states.
 
-> 📖 **Deep Dive**: Explore the CRDT state vector lifecycle, debounce flush mechanisms, and awareness protocols in [docs/05-realtime-engine.md](file:///m:/Coding/Github/sync-board/docs/05-realtime-engine.md).
+→ [Realtime Engine](docs/05-realtime-engine.md) — CRDT state vector lifecycle, debounce flush, and awareness protocols.
 
 ---
 
@@ -183,7 +183,7 @@ The authentication and session architecture is designed for secure token handlin
 * **Redis JTI Blacklist**: Logout (`/api/auth/logout`) and global revocation (`/api/auth/logout-all`) record token JTIs in Redis with remaining TTLs to instantly revoke compromised access tokens.
 * **Hierarchical Workspace RBAC**: 4 distinct roles (`owner` > `admin` > `member` > `viewer`) verified per-request by `WorkspaceMemberGuard` to ensure tenant isolation.
 
-> 📖 **Deep Dive**: Review the cryptographic specifications, token family diagrams, and RBAC matrix in [docs/06-auth-and-rbac.md](file:///m:/Coding/Github/sync-board/docs/06-auth-and-rbac.md).
+→ [Auth & RBAC](docs/06-auth-and-rbac.md) — token flow diagrams, cryptographic specs, and RBAC matrix.
 
 ---
 
@@ -200,7 +200,7 @@ The core business logic is organized into clean domain modules supporting an ext
 * **Card Attachments & Dependencies**: S3 file metadata management and dependency linking (`blocks`, `is_blocked_by`, `relates_to`).
 * **Comments & `@mentions`**: Threaded discussion trees (depth $\le 1$), mention parsing regex (`/@([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi`), canonical email normalization, and asynchronous member notification fan-out.
 
-> 📖 **Deep Dive**: Examine the detailed entity schemas, validation rules, and business logic constraints in [docs/07-module-specifications.md](file:///m:/Coding/Github/sync-board/docs/07-module-specifications.md).
+→ [Module Specs](docs/07-module-specifications.md) — entity schemas, validation rules, and business logic per domain.
 
 ---
 
@@ -217,7 +217,7 @@ SyncBoard uses **RabbitMQ 3.13** via `@golevelup/nestjs-rabbitmq` for background
   * Exponential backoff delays retries up to 3 times before terminal dead-lettering.
 * **Idempotent Consumers**: Consumers implement `consumeOnce` leveraging Redis atomic keys (`msg:processed:<id>`) to guarantee exactly-once execution despite network duplicates.
 
-> 📖 **Deep Dive**: Check queue topology diagrams, retry policies, and routing key constants in [docs/08-message-queue-design.md](file:///m:/Coding/Github/sync-board/docs/08-message-queue-design.md).
+→ [Message Queue Design](docs/08-message-queue-design.md) — queue topology, retry policies, and routing key constants.
 
 ---
 
@@ -233,7 +233,7 @@ The repository provides automated Docker Compose definitions enabling one-comman
   3. Client uploads directly to MinIO/S3 (zero server RAM consumption).
   4. Client invokes `POST /confirm` to verify object size and activate attachment metadata.
 
-> 📖 **Deep Dive**: Inspect Docker Compose configurations, port allocation mappings, and S3 CORS policies in [docs/09-infrastructure-devops.md](file:///m:/Coding/Github/sync-board/docs/09-infrastructure-devops.md).
+→ [Infrastructure & DevOps](docs/09-infrastructure-devops.md) — Docker Compose configs, port mappings, and S3 CORS policies.
 
 ---
 
@@ -250,7 +250,7 @@ The codebase is thoroughly tested with an automated unit test suite:
 npm run test:cov
 ```
 
-> 📖 **Deep Dive**: Review the testing methodology, test categorization, and coverage thresholds in [docs/10-testing-strategy.md](file:///m:/Coding/Github/sync-board/docs/10-testing-strategy.md).
+→ [Testing Strategy](docs/10-testing-strategy.md) — methodology, test categories, and coverage thresholds.
 
 ---
 
@@ -264,7 +264,7 @@ SyncBoard implements layered security controls across the application:
 * **Password Hashing**: Salted cryptographic hashing powered by `bcrypt` (12 rounds).
 * **Upload Security**: Magic-byte MIME type inspection, file extension whitelisting, and strict size caps on S3 presigned URLs.
 
-> 📖 **Deep Dive**: Review the complete production security checklist in [docs/11-security-checklist.md](file:///m:/Coding/Github/sync-board/docs/11-security-checklist.md).
+→ [Security Checklist](docs/11-security-checklist.md) — full production security checklist.
 
 ---
 
@@ -276,7 +276,7 @@ The codebase maintains a clear modular structure and separation of concerns:
 * **Shared Infrastructure (`src/common/`)**: Reusable components (`database`, `redis`, `rabbitmq`, `guards`, `interceptors`, `filters`, `exceptions`, `utils`).
 * **Companion Frontend (`frontend/`)**: Modular React 19 SPA client organized by features, shared UI components, API clients, and state stores.
 
-> 📖 **Deep Dive**: Inspect directory maps, file naming conventions, and architectural import boundaries in [docs/12-project-structure.md](file:///m:/Coding/Github/sync-board/docs/12-project-structure.md).
+→ [Project Structure](docs/12-project-structure.md) — directory maps, naming conventions, and import boundaries.
 
 ---
 
@@ -289,7 +289,7 @@ Observability and structured logging are built directly into the application:
 * **Exception Hierarchy**: Unified application exceptions (`AppException`, `BusinessRuleException`, `EntityNotFoundException`) caught by `GlobalExceptionFilter` and formatted into standard error envelopes.
 * **Health Probes**: Terminus endpoints at `/api/health` report live health checks on PostgreSQL, Redis, RabbitMQ, and object storage.
 
-> 📖 **Deep Dive**: Explore error envelope structures, log levels, and health monitoring in [docs/13-error-handling-logging.md](file:///m:/Coding/Github/sync-board/docs/13-error-handling-logging.md).
+→ [Logging & Observability](docs/13-error-handling-logging.md) — error envelopes, log levels, and health monitoring.
 
 ---
 
