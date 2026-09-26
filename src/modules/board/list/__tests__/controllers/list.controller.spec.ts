@@ -9,6 +9,11 @@ describe('ListController', () => {
   const mockUser: JwtPayload = {
     sub: 'user-uuid-1',
     email: 'user@test.com',
+    displayName: 'Test User',
+    isEmailVerified: true,
+    iat: 1000,
+    exp: 2000,
+    iss: 'syncboard',
     jti: 'jti-1',
   };
 
@@ -20,6 +25,7 @@ describe('ListController', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     archivedAt: null,
+    deletedAt: null,
   };
 
   beforeEach(() => {
@@ -150,7 +156,7 @@ describe('ListController', () => {
       listService.listArchivedListsPaginated.mockResolvedValue({
         items: [mockList],
         pagination: { cursor: null, hasMore: false },
-      } as any);
+      });
 
       const result = await controller.listArchived('ws-1', 'board-1', {});
 

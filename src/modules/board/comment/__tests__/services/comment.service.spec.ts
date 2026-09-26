@@ -8,6 +8,7 @@ import { BoardRepository } from '../../../core/repositories/board.repository';
 import { EntityNotFoundException } from '../../../../../common/exceptions/app.exception';
 import { ForbiddenException } from '@nestjs/common';
 import { COMMENT_EVENTS } from '../../../comment/events/comment-events.constants';
+import type { UpdateCommentDto } from '../../dto';
 
 describe('CardCommentService', () => {
   let service: CardCommentService;
@@ -57,6 +58,7 @@ describe('CardCommentService', () => {
         cardId: 'card-uuid',
         authorId: 'user-1',
         content: 'Nice job',
+        parentCommentId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -91,6 +93,7 @@ describe('CardCommentService', () => {
       cardId: 'card-uuid',
       authorId: 'user-uuid',
       content: 'Looking good',
+      parentCommentId: null,
       author: { id: 'user-uuid', displayName: 'John', avatarUrl: null },
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -379,7 +382,7 @@ describe('CardCommentService', () => {
         'ws-uuid',
         'card-uuid',
         'comm-1',
-        {},
+        {} as unknown as UpdateCommentDto,
         'user-1',
       );
 

@@ -9,6 +9,11 @@ describe('BoardController', () => {
   const mockUser: JwtPayload = {
     sub: 'user-uuid-1',
     email: 'user@test.com',
+    displayName: 'Test User',
+    isEmailVerified: true,
+    iat: 1000,
+    exp: 2000,
+    iss: 'syncboard',
     jti: 'jti-1',
   };
 
@@ -22,6 +27,7 @@ describe('BoardController', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     archivedAt: null,
+    deletedAt: null,
   };
 
   const mockBoardWithContent = {

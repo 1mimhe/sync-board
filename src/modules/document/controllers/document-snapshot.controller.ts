@@ -28,7 +28,11 @@ import {
 import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
-import { WORKSPACE_ADMIN_ROLES, WORKSPACE_READ_ROLES, WORKSPACE_WRITE_ROLES } from '../../../common/guards/rbac.constants';
+import {
+  WORKSPACE_ADMIN_ROLES,
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing document snapshot endpoints: capture, history, restore.

@@ -33,8 +33,8 @@ describe('ResponseInterceptor', () => {
     interceptor.intercept(context, handler).subscribe((result) => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ id: '123', name: 'Test' });
-      expect(result.meta.requestId).toBe('test-correlation-id');
-      expect(typeof result.meta.timestamp).toBe('string');
+      expect(result.meta!.requestId).toBe('test-correlation-id');
+      expect(typeof result.meta!.timestamp).toBe('string');
       done();
     });
   });
@@ -68,7 +68,7 @@ describe('ResponseInterceptor', () => {
     const handler = createMockCallHandler('ok');
 
     interceptor.intercept(context, handler).subscribe((result) => {
-      expect(result.meta.requestId).toBe('header-req-id');
+      expect(result.meta!.requestId).toBe('header-req-id');
       done();
     });
   });
@@ -80,7 +80,7 @@ describe('ResponseInterceptor', () => {
     const handler = createMockCallHandler('ok');
 
     interceptor.intercept(context, handler).subscribe((result) => {
-      expect(result.meta.requestId).toBe('req-internal-id');
+      expect(result.meta!.requestId).toBe('req-internal-id');
       done();
     });
   });
@@ -105,7 +105,7 @@ describe('ResponseInterceptor', () => {
     const handler = createMockCallHandler('ok');
 
     interceptor.intercept(context, handler).subscribe((result) => {
-      expect(result.meta.requestId).toBe('');
+      expect(result.meta!.requestId).toBe('');
       done();
     });
   });

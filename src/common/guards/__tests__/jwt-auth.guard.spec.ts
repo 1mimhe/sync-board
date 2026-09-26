@@ -108,6 +108,11 @@ describe('JwtAuthGuard', () => {
       const mockPayload: JwtPayload = {
         sub: 'user-1',
         email: 'test@example.com',
+        displayName: 'Test User',
+        isEmailVerified: true,
+        iat: 1000,
+        exp: 2000,
+        iss: 'syncboard',
         jti: 'jti-123',
       };
       jwtTokenService.verifyAccessToken.mockReturnValue(mockPayload);
@@ -124,6 +129,11 @@ describe('JwtAuthGuard', () => {
       const mockPayload: JwtPayload = {
         sub: 'user-1',
         email: 'test@example.com',
+        displayName: 'Test User',
+        isEmailVerified: true,
+        iat: 1000,
+        exp: 2000,
+        iss: 'syncboard',
         jti: 'jti-123',
       };
       jwtTokenService.verifyAccessToken.mockReturnValue(mockPayload);

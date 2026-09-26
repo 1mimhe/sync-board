@@ -33,9 +33,9 @@ describe('buildCursorPagination', () => {
 
   it('should support custom cursorExtractor', () => {
     const items = [
-      { uuid: 'u1', rank: '0|a:' },
-      { uuid: 'u2', rank: '0|b:' },
-      { uuid: 'u3', rank: '0|c:' },
+      { id: 'u1', uuid: 'u1', rank: '0|a:' },
+      { id: 'u2', uuid: 'u2', rank: '0|b:' },
+      { id: 'u3', uuid: 'u3', rank: '0|c:' },
     ];
 
     const result = buildCursorPagination(items, 2, (item) => item.rank);

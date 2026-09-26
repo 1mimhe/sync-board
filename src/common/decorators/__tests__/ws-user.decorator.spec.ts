@@ -4,7 +4,7 @@ import { WsUser } from '../ws-user.decorator';
 import type { JwtPayload } from '../../../modules/auth/interfaces/jwt-payload.interface';
 
 function getParamDecoratorFactory(
-  decorator: (...args: unknown[]) => ParameterDecorator,
+  decorator: (...args: any[]) => ParameterDecorator,
   data?: any,
 ) {
   class TestTarget {
@@ -30,6 +30,11 @@ describe('WsUser Decorator', () => {
     const mockUser: JwtPayload = {
       sub: 'u-1',
       email: 'user@test.com',
+      displayName: 'Test User',
+      isEmailVerified: true,
+      iat: 1000,
+      exp: 2000,
+      iss: 'syncboard',
       jti: 'jti-1',
     };
     const context = createMockWsContext(mockUser);
@@ -44,6 +49,11 @@ describe('WsUser Decorator', () => {
     const mockUser: JwtPayload = {
       sub: 'u-1',
       email: 'user@test.com',
+      displayName: 'Test User',
+      isEmailVerified: true,
+      iat: 1000,
+      exp: 2000,
+      iss: 'syncboard',
       jti: 'jti-1',
     };
     const context = createMockWsContext(mockUser);

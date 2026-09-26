@@ -24,12 +24,11 @@ const USER = {
 };
 
 function mkSocket(data: Record<string, unknown> = {}): DeepMockProxy<Socket> {
-  const socket = mockDeep<Socket>();
-  socket.id = 'sock-1';
-  socket.join.mockResolvedValue(undefined);
+  const socket = mockDeep<Socket>({ id: 'sock-1' } as Partial<Socket>);
+  socket.join.mockReturnValue(Promise.resolve());
   const room = { emit: jest.fn() };
   socket.to.mockReturnValue(room as never);
-  socket.leave.mockResolvedValue(undefined);
+  socket.leave.mockReturnValue(Promise.resolve());
   (socket as any).data = data;
   (socket as any).__room = room;
   return socket;

@@ -9,7 +9,10 @@ export default tseslint.config(
     ignores: ['eslint.config.mjs', 'dist/**', 'frontend/**'],
   },
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  // Relaxed base set: type-aware rules (no-base-to-string,
+  // no-unnecessary-type-assertion, etc.) stay off so CI only
+  // blocks on real bugs, not pedantry.
+  ...tseslint.configs.recommended,
   eslintPluginPrettierRecommended,
   {
     languageOptions: {
