@@ -14,6 +14,7 @@ import { JwtTokenService } from './jwt-token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { RedisService } from '../../../common/redis/redis.service';
 import { hashToken } from '../../../common/utils/hash.util';
+import { resolveClientUrl } from '../../../common/utils/client-url.util';
 import { UserRepository } from '../repositories/user.repository';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
 import { RegisterDto } from '../dto/register.dto';
@@ -464,10 +465,14 @@ export class AuthService {
   }
 
   /**
-   * Retrieves configured frontend client URL.
+   * Retrieves configured frontend client URL (explicit value wins,
+   * otherwise resolved from NODE_ENV for dev vs prod topologies).
    */
   getClientUrl(): string {
-    return this.config.get<string>('CLIENT_URL') || 'http://localhost:5173';
+    return resolveClientUrl({
+      CLIENT_URL: this.config.get<string>('CLIENT_URL'),
+      NODE_ENV: this.config.get<string>('NODE_ENV'),
+    });
   }
 
   /**

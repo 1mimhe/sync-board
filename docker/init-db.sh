@@ -15,13 +15,14 @@ until pg_isready -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -q; do
 done
 
 echo "[init-db] Running prisma db push..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 echo "[init-db] Applying activity log partitions..."
-psql "$DATABASE_URL" -f /app/prisma/activity-partitions.sql
+# NOTE: psql cannot parse Prisma's `?schema=public` query param — strip it.
+psql "${DATABASE_URL%%\?*}" -f /app/prisma/activity-partitions.sql
 
 echo "[init-db] Applying custom indexes..."
-psql "$DATABASE_URL" -f /app/prisma/custom-indexes.sql
+psql "${DATABASE_URL%%\?*}" -f /app/prisma/custom-indexes.sql
 
 if [ "${RUN_SEED:-true}" = "true" ]; then
   echo "[init-db] Seeding demo data..."

@@ -830,9 +830,28 @@ async function main() {
     },
   });
 
+  const userAdmin = await prisma.user.upsert({
+    where: { email: 'admin@syncboard.dev' },
+    update: {
+      passwordHash,
+      displayName: 'Platform Admin',
+      isEmailVerified: true,
+      lastLoginAt: daysFromNow(-1),
+    },
+    create: {
+      email: 'admin@syncboard.dev',
+      passwordHash,
+      displayName: 'Platform Admin',
+      avatarUrl:
+        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      isEmailVerified: true,
+      lastLoginAt: daysFromNow(-1),
+    },
+  });
+
   log(
     'users',
-    'Alex, Sarah, Marcus, Elena, Priya (OAuth-only), Tom (unverified), Grace (viewer) — password: Password123!',
+    'Admin, Alex, Sarah, Marcus, Elena, Priya (OAuth-only), Tom (unverified), Grace (viewer) — password: Password123!',
   );
 
   // ---- 2. Workspaces: active + archived ------------------------------------
@@ -894,9 +913,26 @@ async function main() {
     },
   });
 
+  const workspacePlatform = await prisma.workspace.upsert({
+    where: { slug: 'platform-administration' },
+    update: {
+      name: 'Platform Administration',
+      description: 'Platform-wide administration and workspace settings.',
+      ownerId: userAdmin.id,
+      avatarUrl: null,
+      archivedAt: null,
+    },
+    create: {
+      name: 'Platform Administration',
+      slug: 'platform-administration',
+      description: 'Platform-wide administration and workspace settings.',
+      ownerId: userAdmin.id,
+    },
+  });
+
   log(
     'workspaces',
-    'acme-engineering, product-roadmap, legacy-archive (archived)',
+    'acme-engineering, product-roadmap, legacy-archive (archived), platform-administration',
   );
 
   // ---- 3. Memberships: all four roles --------------------------------------
@@ -915,7 +951,13 @@ async function main() {
   await ensureMember(workspaceLegacy.id, userAlex.id, WorkspaceRole.owner);
   await ensureMember(workspaceLegacy.id, userSarah.id, WorkspaceRole.admin);
 
-  log('members', 'owner/admin/member/viewer roles across 3 workspaces');
+  await ensureMember(
+    workspacePlatform.id,
+    userAdmin.id,
+    WorkspaceRole.owner,
+  );
+
+  log('members', 'owner/admin/member/viewer roles across 4 workspaces');
 
   // ---- 4. Invitations: pending / accepted / expired / revoked --------------
   await ensureInvitation({

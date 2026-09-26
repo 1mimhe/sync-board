@@ -157,7 +157,12 @@ services:
       RUN_SEED: ${RUN_SEED:-true}
 
   app:
+    # Prefer the CI-built image from GHCR; it is pulled automatically when
+    # missing locally. Build locally instead with: compose up -d --build
+    # Override the registry image with: APP_IMAGE=<registry>/sync-board:tag
+    image: ${APP_IMAGE:-ghcr.io/1mimhe/sync-board:latest}
     build: { context: ., target: production }
+    pull_policy: missing
     profiles: ['app', 'full']
     env_file: .env
     environment:
@@ -215,7 +220,11 @@ services:
   # Builds the React SPA and serves it via Nginx on :80 internally.
   # The edge Nginx proxy routes / to this service.
   frontend:
+    # Same pull-first flow as `app` (see above).
+    # Override with: FRONTEND_IMAGE=<registry>/sync-board-frontend:tag
+    image: ${FRONTEND_IMAGE:-ghcr.io/1mimhe/sync-board-frontend:latest}
     build: { context: ./frontend, target: production }
+    pull_policy: missing
     profiles: ['full']
     depends_on:
       - app
