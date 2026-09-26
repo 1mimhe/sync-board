@@ -1,208 +1,168 @@
 # 09 — Infrastructure & DevOps
 
-## 1. Container Infrastructure Topology
+## 1. Container Topology
 
-SyncBoard uses Docker Compose to orchestrate local backing services and production simulation environments:
-
-| Service | Container Name | Host Port | Role & Purpose | Health Check Probe |
+| Service | Container | Host Port | Role | Health Check |
 |---|---|---|---|---|
-| **App** | `syncboard-app` | `3000` / `9229` | NestJS application runtime & debugger | `GET /health` |
-| **PostgreSQL Primary** | `syncboard-pg-primary` | `5432` | Primary relational database (ACID writes) | `pg_isready -U syncboard` |
-| **PostgreSQL Replica** | `syncboard-pg-replica` | `5433` | Read-only streaming replica (`--profile full`) | `pg_isready` |
-| **PgBouncer** | `syncboard-pgbouncer` | `6432` | Transaction-mode connection pooler (`--profile full`) | Port check |
+| **PostgreSQL Primary** | `syncboard-postgres` | `5432` | Primary relational database (ACID writes) | `pg_isready -U syncuser -d syncboard` |
+| **PostgreSQL Replica** | *(full profile)* | `5433` | Read-only streaming replica | `pg_isready -U syncuser` |
+| **PgBouncer** | *(full profile)* | `6432` | Transaction-mode connection pooler | Port check |
 | **Redis** | `syncboard-redis` | `6379` | Cache, pub/sub, presence, token blacklisting | `redis-cli ping` |
-| **RabbitMQ** | `syncboard-rabbitmq` | `5672` / `15672` | AMQP message broker & management dashboard | `rabbitmq-diagnostics check_port_connectivity` |
-| **Nginx** | `syncboard-nginx` | `80` / `443` | Reverse proxy, SSL, and rate limiting (`--profile full`) | HTTP probe |
-| **MinIO** | `syncboard-minio` | `9000` / `9001` | S3-compatible object storage & management console | Port check |
-| **MailHog** | `syncboard-mailhog` | `1025` / `8025` | Local SMTP capture server & web inbox | HTTP probe |
+| **RabbitMQ** | `syncboard-rabbitmq` | `5672` / `15672` | AMQP message broker & management dashboard | `rabbitmq-diagnostics ping` |
+| **MinIO** | `syncboard-minio` | `9000` / `9001` | S3-compatible object storage & console | HTTP `/minio/health/live` |
+| **MailHog** | `syncboard-mailhog` | `1025` / `8025` | Local SMTP capture & web inbox | HTTP `/api/v2/messages` |
+| **db-init** | *(one-shot)* | — | Schema push, SQL files, optional seed | `service_completed_successfully` |
+| **minio-init** | *(one-shot)* | — | Creates `syncboard-files` bucket | `service_completed_successfully` |
+| **App** | *(app/full profile)* | `3000` | NestJS production runtime | `GET /api/health` |
+| **Frontend** | *(full profile)* | — | React SPA served by Nginx | — |
+| **Nginx** | *(full profile)* | `80` | Edge reverse proxy | HTTP probe |
 
 ### Compose Profiles
-* **Default (`docker compose up -d`)**: Launches core backing services (Primary Postgres, Redis, RabbitMQ, MinIO, MailHog) for lightweight local development.
-* **Full Stack (`docker compose --profile full up -d`)**: Boots the complete production topology including PgBouncer pooling, Postgres read replica, and Nginx edge proxy with sticky sessions.
+
+| Command | What starts |
+|---|---|
+| `docker compose up -d` | Backing services only (Postgres, Redis, RabbitMQ, MinIO, MailHog) |
+| `docker compose --profile app up -d` | + db-init, minio-init, app (NestJS production; seeds demo data by default) |
+| `docker compose --profile full up -d` | + frontend, nginx, postgres-replica, pgbouncer (seeds demo data by default) |
+| `RUN_SEED=false docker compose --profile app up -d` | Same as `app`, without demo data seeding |
+| `RUN_SEED=false docker compose --profile full up -d` | Same as `full`, without demo data seeding |
 
 ---
 
 ## 2. Container Build Pipeline (Multi-Stage)
 
-The `Dockerfile` employs a multi-stage build strategy designed for minimal production footprint and container security:
+The `Dockerfile` uses six stages:
 
 ```
-[1. Base Layer] ────────> Node.js 20 Alpine + dumb-init
+[1. base]         Node.js 20 Alpine + dumb-init + openssl + psql client
        │
-[2. Dependencies] ──────> npm ci + Prisma client generation (cached layer)
+[2. dependencies] npm ci + prisma generate  ← cached layer
        │
-       ├──> [3. Development Target] ──> Full sources + live reload watchers
+       ├──► [3. development]  Full sources + --watch reload
        │
-[4. Build Stage] ───────> tsc compilation + npm prune --production
+       ├──► [4. build]        tsc compilation + npm prune --production
+       │          │
+       │    [6. production]   Minimal ~150MB image
+       │                      ├── Non-root user nestjs (UID 1001)
+       │                      ├── dist/ + prod node_modules
+       │                      ├── entrypoint.sh (JWT key auto-generation)
+       │                      └── dumb-init PID 1
        │
-[5. Production Image] ──> Minimal ~150MB image
-                           ├── Non-root user: nestjs (UID 1001)
-                           ├── Production node_modules + compiled dist/
-                           └── dumb-init PID 1 signal forwarding
+       └──► [5. migration]    prisma + psql — used by db-init container only
 ```
 
-### Key Security & Optimization Controls
-* **Non-Root Execution**: Runs under a dedicated `nestjs` system user (UID 1001) rather than `root`.
-* **Signal Handling**: `dumb-init` runs as PID 1 to ensure POSIX signals (`SIGTERM`, `SIGINT`) are forwarded correctly to Node.js, enabling graceful teardown.
-* **Layer Caching**: Dependencies and Prisma generation run in isolated earlier layers, avoiding reinstallation when application source code changes.
-
-<details>
-<summary><strong>💡 Why multi-stage build?</strong></summary>
-
-| Stage | Purpose | Included in Final Image? |
-|---|---|:---:|
-| `base` | Alpine + dumb-init | ✅ (base layer) |
-| `dependencies` | npm install + prisma generate | ❌ |
-| `development` | Full source + dev deps | ❌ (separate target) |
-| `build` | TypeScript compilation | ❌ |
-| `production` | Only dist + prod deps | ✅ |
-
-**Result**: Production image is ~150MB instead of ~800MB (no TypeScript compiler, no development dependencies, no raw source code).
-
-</details>
+### Key Controls
+- **Non-root execution**: `nestjs` user (UID 1001)
+- **Signal handling**: `dumb-init` as PID 1 forwards `SIGTERM`/`SIGINT` to Node.js
+- **Layer caching**: dependencies isolated from source — only re-runs on `package-lock.json` changes
+- **JWT keys**: `docker/entrypoint.sh` generates an RSA-2048 pair into a named volume (`app_keys`) on first boot
 
 ---
 
-## 3. Reverse Proxy & Edge Routing Architecture
+## 3. Reverse Proxy & Edge Routing
 
-Nginx terminates TLS, provides edge rate limiting, and routes traffic between REST and WebSocket protocols:
+Nginx routes all traffic on `:80`:
 
-| Route Path | Target Upstream | Traffic Policies & Headers |
+| Route | Upstream | Notes |
 |---|---|---|
-| `/api/` | `app_servers:3000` | Rate limit: `100r/m` (burst: 20). Injects `X-Request-Id` and client IP headers. |
-| `/api/auth/` | `app_servers:3000` | Stricter rate limit: `10r/m` (burst: 5) to mitigate brute-force attacks. |
-| `/socket.io/` | `app_servers:3000` | WebSocket upgrade (`Upgrade: websocket`). Session pinned via `ip_hash` upstream. |
+| `/api/health` | `app:3000` | No access log, no rate limit |
+| `/api/auth/*` | `app:3000` | Rate limit: `10r/m` (burst 5) |
+| `~* /files/presigned-upload$` | `app:3000` | Rate limit: `10r/m` (burst 5) |
+| `/api/*` | `app:3000` | Rate limit: `100r/m` (burst 20) |
+| `/socket.io/*` | `app:3000` | HTTP/1.1 Upgrade, 24h timeout, `ip_hash` sticky |
+| `/*` | `frontend:80` | React SPA catch-all |
 
-### Edge Security Headers
-* **HSTS**: `Strict-Transport-Security: max-age=63072000; includeSubDomains`
-* **Clickjacking Protection**: `X-Frame-Options: SAMEORIGIN`
-* **MIME Sniffing Prevention**: `X-Content-Type-Options: nosniff`
-* **Cross-Site Scripting Filter**: `X-XSS-Protection: 1; mode=block`
-* **Body Size Restriction**: `client_max_body_size 25M`
+### Security Headers (all responses)
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
+- `X-XSS-Protection: 1; mode=block`
+- `Referrer-Policy: strict-origin-when-cross-origin`
 
 ---
 
-## 4. CI/CD Pipeline Architecture
-
-The automated continuous integration workflow enforces quality checks on every pull request:
+## 4. CI/CD Pipeline
 
 ```
 [Push / Pull Request]
         │
         ▼
-   [1. Lint & Types] ──────> ESLint + strict TypeScript compilation (tsc --noEmit)
+   [1. Lint & Types]    ESLint + tsc --noEmit + npm audit
         │
         ▼
-   [2. Unit Tests] ────────> Jest unit test suite with 100% coverage gate enforcement
+   [2. Unit Tests]      Jest (100% coverage gate)
         │
         ▼
-   [3. Integration Tests] ──> Testcontainers (ephemeral PostgreSQL & Redis instances)
+   [3. Integration]     Ephemeral Postgres + Redis + RabbitMQ + MailHog
+                        prisma db push → activity-partitions.sql → custom-indexes.sql → e2e
         │
         ▼
-   [4. Container Build] ───> Multi-stage Docker build with GitHub Actions layer caching
+   [4. Docker Build]    Build backend (target: production) & frontend SPA
         │
         ▼
-   [5. Package Registry] ──> Push signed production image to GHCR (main branch only)
+   [5. Registry Push]   Docker Hub: `<dockerhub_user>/sync-board:latest` + `-frontend:latest`
+                        GHCR:       `ghcr.io/<repo>:latest` + `-frontend:latest`
 ```
+
+> [!TIP]
+> Pushing to Docker Hub is triggered when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets are added to your repository settings. If not set, it pushes to GitHub Container Registry (`ghcr.io`) by default.
 
 ---
 
 ## 5. Environment Variables
 
 > [!NOTE]
-> Redis is configured via **`REDIS_HOST` / `REDIS_PORT`** (matching `RedisService`), not a
-> `REDIS_URL`. The application fails fast at boot if no JWT signing material is provided
-> (`JWT_PRIVATE_KEY_PATH`/`JWT_PUBLIC_KEY_PATH` for RS256, or `JWT_SECRET` for HS256 in dev
-> only — RS256 key files are **required** in production).
+> Redis is configured via `REDIS_HOST` / `REDIS_PORT`, not a `REDIS_URL`.
+> In production, RS256 key files are **required** (`JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH`).
+> The `docker/entrypoint.sh` generates them automatically from within Docker.
 
-```bash
-# .env.example
-
-# ---- Application ----
-NODE_ENV=development
-PORT=3000
-LOG_LEVEL=info
-CLIENT_URL=http://localhost:3001     # CORS origin(s); comma-separated for multiple
-
-# ---- Database ----
-DATABASE_URL=postgresql://syncuser:syncpass@localhost:5432/syncboard?schema=public
-DATABASE_REPLICA_URL=postgresql://syncuser:syncpass@localhost:5433/syncboard?schema=public
-
-# ---- Redis ----
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# ---- RabbitMQ ----
-RABBITMQ_URL=amqp://guest:guest@localhost:5672
-
-# ---- JWT ----
-JWT_PRIVATE_KEY_PATH=./keys/private.pem
-JWT_PUBLIC_KEY_PATH=./keys/public.pem
-# Dev-only symmetric fallback when key files are absent:
-JWT_SECRET=
-
-# ---- Google OAuth ----
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:3000/api/auth/google/callback
-
-# ---- AWS S3 ----
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_S3_BUCKET=syncboard-files
-AWS_REGION=us-east-1
-```
+See [`.env.example`](../.env.example) for the full reference with inline documentation.
 
 ---
 
-## 6. PostgreSQL Streaming Replication
+## 6. PostgreSQL Streaming Replication (full profile)
 
-SyncBoard configures high-availability physical replication between the primary and read replica nodes:
-
-* **WAL Streaming Protocol**: The primary PostgreSQL instance archives write-ahead logs (`wal_level = replica`) and streams changes over a dedicated replication connection (`replicator` role).
-* **Physical Replication Slot**: Uses `replica_slot_1` to ensure the primary retains WAL segments until acknowledged by the replica, preventing synchronization loss during network interruptions.
-* **Standby Promotion**: The replica initializes via `pg_basebackup` streaming mode and operates in `hot_standby` mode, allowing offloading of read-heavy queries via `DATABASE_REPLICA_URL`.
+- **WAL streaming**: Primary runs with `wal_level=replica`, streams changes over a dedicated `replicator` role connection.
+- **Physical replication slot** (`replica_slot_1`): Ensures primary retains WAL until the replica acknowledges, preventing sync loss during restarts.
+- **Hot standby**: Replica initialises via `pg_basebackup -R` and serves read queries via `DATABASE_REPLICA_URL`.
 
 ---
 
-## 7. System Health Monitoring
+## 7. Health Monitoring
 
-Live health probes are exposed at `/api/health` powered by `@nestjs/terminus`:
+Terminus probes at `GET /api/health`:
 
-| Indicator | Target Subsystem | Success Criteria |
+| Indicator | Target | Criteria |
 |---|---|---|
-| **Database** | PostgreSQL | Ping check via Prisma executes within threshold |
-| **Redis** | Redis 7 | Ping-pong response confirms cache/presence connectivity |
-| **RabbitMQ** | RabbitMQ 3.13 | Active channel verification confirms broker health |
-| **Storage** | Root Filesystem | Disk usage under 90% capacity |
-| **Memory** | Node.js Process | Heap memory footprint remains under 300MB |
+| Database | PostgreSQL | Prisma ping within threshold |
+| Redis | Redis 7 | Ping-pong response |
+| RabbitMQ | RabbitMQ 3.13 | Active channel check |
+| Disk | Root filesystem | Usage < 90% |
+| Memory | Node.js heap | < 300 MB |
 
 ---
 
-## 8. Useful Docker Commands
+## 8. Useful Commands
 
 ```bash
-# Start all services
-docker compose up -d
+# ── Local dev (infra only) ────────────────────────────────────────────────
+docker compose up -d                          # start backing services
+docker compose ps                             # check health status
+docker compose logs -f app                    # tail app logs
 
-# View logs
-docker compose logs -f app
+# ── Full stack (app + frontend + nginx) ──────────────────────────────────
+docker compose --profile full up -d
+RUN_SEED=false docker compose --profile full up -d  # skip demo data seeding
 
-# Enter PostgreSQL shell
-docker compose exec postgres-primary psql -U syncboard
+# ── Database ─────────────────────────────────────────────────────────────
+docker compose exec postgres-primary psql -U syncuser -d syncboard
+docker compose exec app npx prisma studio     # browser-based DB explorer
 
-# Enter Redis CLI
+# ── Redis ────────────────────────────────────────────────────────────────
 docker compose exec redis redis-cli
 
-# RabbitMQ Management UI
-open http://localhost:15672  # User: syncboard / Pass: syncboard_pass
+# ── Rebuild after Dockerfile changes ─────────────────────────────────────
+docker compose --profile full up -d --build
 
-# Run Prisma migrations
-docker compose exec app npx prisma migrate dev
-
-# Rebuild after Dockerfile changes
-docker compose up -d --build app
-
-# Full cleanup (removes volumes!)
-docker compose down -v
+# ── Teardown (WARNING: removes all data volumes) ─────────────────────────
+docker compose --profile full down -v
 ```

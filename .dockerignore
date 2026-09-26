@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.git
+.env*
+keys
+docs
+*.md
+.github
+test
+frontend

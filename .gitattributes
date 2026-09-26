@@ -1,0 +1,9 @@
+# Default: normalize line endings on checkout
+* text=auto
+
+# Shell scripts must always use LF (Linux containers require this)
+*.sh text eol=lf
+
+# Docker files
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
