@@ -6,7 +6,7 @@ let capturedOptions: any;
 const mockQuit = jest.fn().mockResolvedValue('OK');
 
 jest.mock('ioredis', () => {
-  return jest.fn().mockImplementation(function (options: any) {
+  return jest.fn().mockImplementation(function (this: any, options: any) {
     capturedOptions = options;
     const listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 

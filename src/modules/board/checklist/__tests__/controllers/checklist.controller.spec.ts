@@ -13,6 +13,11 @@ describe('ChecklistController', () => {
   const mockUser: JwtPayload = {
     sub: 'user-uuid-1',
     email: 'user@test.com',
+    displayName: 'Test User',
+    isEmailVerified: true,
+    iat: 1000,
+    exp: 2000,
+    iss: 'syncboard',
     jti: 'jti-1',
   };
 
@@ -262,7 +267,10 @@ describe('ChecklistController', () => {
       '$handler declares expected status code and member-level RBAC row',
       ({ handler, status }) => {
         const method = (
-          ChecklistController.prototype as Record<string, unknown>
+          ChecklistController.prototype as unknown as Record<
+            string,
+            (...args: any[]) => unknown
+          >
         )[handler as string];
 
         if (status) {

@@ -53,6 +53,7 @@ describe('ListService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         archivedAt: null,
+        deletedAt: null,
       };
 
       listRepo.create.mockResolvedValue(mockList);
@@ -89,6 +90,7 @@ describe('ListService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         archivedAt: null,
+        deletedAt: null,
       };
 
       listRepo.create.mockResolvedValue(mockList);
@@ -238,6 +240,7 @@ describe('ListService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         archivedAt: new Date(),
+        deletedAt: null,
       };
 
       listRepo.findByIdIncludingArchived.mockResolvedValue(mockList);

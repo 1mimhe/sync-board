@@ -45,6 +45,7 @@ describe('BoardService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         archivedAt: null,
+        deletedAt: null,
       };
 
       boardRepo.create.mockResolvedValue(mockBoard);

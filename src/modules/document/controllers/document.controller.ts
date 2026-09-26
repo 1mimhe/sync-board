@@ -38,7 +38,10 @@ import { WorkspaceAuth } from '../../workspace/decorators/workspace-auth.decorat
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 import type { PaginatedResult } from '../../../common/interfaces/pagination.interface';
-import { WORKSPACE_READ_ROLES, WORKSPACE_WRITE_ROLES } from '../../../common/guards/rbac.constants';
+import {
+  WORKSPACE_READ_ROLES,
+  WORKSPACE_WRITE_ROLES,
+} from '../../../common/guards/rbac.constants';
 
 /**
  * Controller exposing REST endpoints for workspace document CRUD and search.

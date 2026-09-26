@@ -9,6 +9,11 @@ describe('CardController', () => {
   const mockUser: JwtPayload = {
     sub: 'user-uuid-1',
     email: 'user@test.com',
+    displayName: 'Test User',
+    isEmailVerified: true,
+    iat: 1000,
+    exp: 2000,
+    iss: 'syncboard',
     jti: 'jti-1',
   };
 
@@ -21,10 +26,16 @@ describe('CardController', () => {
     dueDate: null,
     isComplete: false,
     coverImageUrl: null,
+    priority: 'medium' as const,
+    status: 'not_started' as const,
+    parentCardId: null,
+    estimateMinutes: null,
+    loggedMinutes: 0,
     createdBy: 'user-uuid-1',
     createdAt: new Date(),
     updatedAt: new Date(),
     archivedAt: null,
+    deletedAt: null,
   };
 
   const mockCardWithDetails = {
@@ -327,7 +338,7 @@ describe('CardController', () => {
 
   describe('createSubcard', () => {
     it('should create subcard and map details response', async () => {
-      cardService.createSubcard.mockResolvedValue(mockCardWithDetails as any);
+      cardService.createSubcard.mockResolvedValue(mockCardWithDetails);
 
       const result = await controller.createSubcard(
         'ws-1',
@@ -350,7 +361,7 @@ describe('CardController', () => {
 
   describe('attachSubcard', () => {
     it('should attach subcard and map response', async () => {
-      cardService.attachSubcard.mockResolvedValue(mockCard as any);
+      cardService.attachSubcard.mockResolvedValue(mockCard);
 
       const result = await controller.attachSubcard(
         'ws-1',
@@ -377,7 +388,7 @@ describe('CardController', () => {
         ...mockCardWithDetails,
         subcards: [mockCard],
         subcardRollup: { total: 1, done: 0, estimateSum: 0, loggedSum: 0 },
-      } as any);
+      });
 
       const result = await controller.getWithSubcards(
         'ws-1',
@@ -396,7 +407,7 @@ describe('CardController', () => {
 
   describe('detachSubcard', () => {
     it('should detach subcard and map response', async () => {
-      cardService.detachSubcard.mockResolvedValue(mockCard as any);
+      cardService.detachSubcard.mockResolvedValue(mockCard);
 
       const result = await controller.detachSubcard(
         'ws-1',

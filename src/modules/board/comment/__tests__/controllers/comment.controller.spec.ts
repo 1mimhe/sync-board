@@ -9,6 +9,11 @@ describe('CardCommentController', () => {
   const mockUser: JwtPayload = {
     sub: 'user-uuid-1',
     email: 'user@test.com',
+    displayName: 'Test User',
+    isEmailVerified: true,
+    iat: 1000,
+    exp: 2000,
+    iss: 'syncboard',
     jti: 'jti-1',
   };
 
@@ -34,7 +39,7 @@ describe('CardCommentController', () => {
       update: jest.fn(),
       delete: jest.fn(),
       listThread: jest.fn(),
-    };
+    } as unknown as jest.Mocked<CardCommentService>;
 
     controller = new CardCommentController(commentService);
   });

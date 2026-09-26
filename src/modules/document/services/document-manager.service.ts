@@ -223,7 +223,7 @@ export class DocumentManagerService implements OnModuleDestroy {
   async replaceState(documentId: string, bytes: Uint8Array): Promise<void> {
     const snapshotDoc = new Y.Doc();
     Y.applyUpdate(snapshotDoc, bytes);
-    const newContent = snapshotDoc.getText('content').toString();
+    const newContent = snapshotDoc.getText('content').toJSON();
 
     const liveDoc = await this.getOrLoad(documentId);
     const liveText = liveDoc.getText('content');

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
+import type { ChainableCommander } from 'ioredis';
 import { PresenceService } from '../../services/presence.service';
 import { RedisService } from '../../../../../common/redis/redis.service';
 import { COLLABORATOR_COLORS } from '../../../../../common/utils/collaborator-color.util';
@@ -378,18 +379,20 @@ describe('PresenceService', () => {
   });
 
   describe('cleanupStaleEntries', () => {
-    const makeCheckPipeline = (execResult: any[][]) => ({
-      zrangebyscore: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue(execResult),
-    });
+    const makeCheckPipeline = (execResult: any[][]) =>
+      ({
+        zrangebyscore: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(execResult),
+      }) as unknown as ChainableCommander;
 
-    const makePrunePipeline = (execResult: any[][]) => ({
-      hmget: jest.fn().mockReturnThis(),
-      zrem: jest.fn().mockReturnThis(),
-      hdel: jest.fn().mockReturnThis(),
-      zcard: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue(execResult),
-    });
+    const makePrunePipeline = (execResult: any[][]) =>
+      ({
+        hmget: jest.fn().mockReturnThis(),
+        zrem: jest.fn().mockReturnThis(),
+        hdel: jest.fn().mockReturnThis(),
+        zcard: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(execResult),
+      }) as unknown as ChainableCommander;
 
     it('should catch and log error if redis throws in cleanupStaleEntries', async () => {
       redisService.smembers.mockRejectedValue(

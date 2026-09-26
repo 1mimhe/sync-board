@@ -60,6 +60,7 @@ describe('BoardGateway', () => {
     sub: '123e4567-e89b-42d3-a456-426614174000',
     email: 'alice@example.com',
     displayName: 'Alice',
+    isEmailVerified: true,
     jti: 'token-jti-123',
     iat: 1234567,
     exp: 2345678,
@@ -142,7 +143,7 @@ describe('BoardGateway', () => {
     it('should run presence cleanup when the interval ticks', async () => {
       jest.useFakeTimers();
       try {
-        presenceService.cleanupStaleEntries.mockResolvedValue(new Map());
+        presenceService.cleanupStaleEntries.mockResolvedValue([]);
         gateway.afterInit();
         await jest.advanceTimersByTimeAsync(
           PRESENCE_CONFIG.CLEANUP_INTERVAL_MS,
