@@ -109,22 +109,17 @@ export function RegisterPage() {
         }}
       >
         <div style={{ display: 'grid', gap: 8, textAlign: 'center' }}>
-          <div
+          <img
+            src="/logo.png"
+            alt="SyncBoard Logo"
             style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff',
-              fontWeight: 900,
-              fontSize: 24,
+              width: 56,
+              height: 56,
+              objectFit: 'contain',
               margin: '0 auto',
+              filter: 'drop-shadow(0 8px 24px rgba(124, 58, 237, 0.45))',
             }}
-          >
-            ◈
-          </div>
+          />
           <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.6px' }}>
             Create an Account
           </h1>

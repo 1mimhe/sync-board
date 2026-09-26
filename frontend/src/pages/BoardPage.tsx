@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Socket } from 'socket.io-client'
-import type { BoardWithContent, PresenceViewer, WorkspaceMember, BoardViewMode } from '../types'
-import { boardApi, workspaceApi } from '../api/endpoints'
+import type { BoardWithContent, PresenceViewer, WorkspaceMember, BoardViewMode, Card } from '../types'
+import { boardApi, workspaceApi, cardApi } from '../api/endpoints'
 import { createAuthedSocket } from '../socket/socket'
 import { useAuth } from '../stores/auth.store'
 import { BoardHeader } from '../components/board/BoardHeader'
@@ -15,13 +15,19 @@ import { ActivityDrawer } from '../components/board/ActivityDrawer'
 import { ArchivedItemsModal } from '../components/board/ArchivedItemsModal'
 import { BoardLabelsModal } from '../components/board/BoardLabelsModal'
 import { BoardDocumentsModal } from '../components/board/BoardDocumentsModal'
+import { CardModal } from '../components/card/CardModal'
 
 export function BoardPage() {
   const { user } = useAuth()
-  const { wid, bid } = useParams<{ wid: string; bid: string }>()
+  const { wid, bid, cardId } = useParams<{ wid: string; bid: string; cardId?: string }>()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const commentId = searchParams.get('comment')
+
   const [board, setBoard] = useState<BoardWithContent | null>(null)
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [loading, setLoading] = useState(true)
+  const [deepLinkedCard, setDeepLinkedCard] = useState<Card | null>(null)
 
   const currentMember = members.find((m) => m.userId === user?.id)
   const isViewer = currentMember?.role === 'viewer'
@@ -31,8 +37,17 @@ export function BoardPage() {
   const [viewers, setViewers] = useState<PresenceViewer[]>([])
   const socketRef = useRef<Socket | null>(null)
 
-  // UI state
+  // View state & read-only "Updated — refresh" banner
   const [activeView, setActiveView] = useState<BoardViewMode>('board')
+  const [hasViewUpdates, setHasViewUpdates] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const activeViewRef = useRef(activeView)
+  useEffect(() => {
+    activeViewRef.current = activeView
+  }, [activeView])
+  const lastUpdatedAtRef = useRef<Record<string, string>>({})
+
+  // UI state
   const [showFilters, setShowFilters] = useState(false)
   const [filterQuery, setFilterQuery] = useState('')
   const [filterLabelIds, setFilterLabelIds] = useState<string[]>([])
@@ -42,13 +57,44 @@ export function BoardPage() {
   const [showLabelsModal, setShowLabelsModal] = useState(false)
   const [showDocsModal, setShowDocsModal] = useState(false)
 
-  const loadBoard = async () => {
+  const loadBoard = useCallback(async () => {
     if (!wid || !bid) return
     const res = await boardApi.getWithContent(wid, bid)
     if (res.success && res.data) {
       setBoard(res.data)
     }
     setLoading(false)
+  }, [wid, bid])
+
+  // Deep-link: load card details if cardId is present in URL
+  useEffect(() => {
+    if (!wid || !bid || !cardId) {
+      setDeepLinkedCard(null)
+      return
+    }
+    void cardApi.getDetails(wid, bid, cardId).then((res) => {
+      if (res.success && res.data) {
+        setDeepLinkedCard(res.data)
+      }
+    })
+  }, [wid, bid, cardId])
+
+  const handleCloseDeepLinkedCard = () => {
+    setDeepLinkedCard(null)
+    if (cardId) {
+      navigate(`/workspaces/${wid}/boards/${bid}`, { replace: true })
+    }
+  }
+
+  const handleViewChange = (mode: BoardViewMode) => {
+    setActiveView(mode)
+    setHasViewUpdates(false)
+  }
+
+  const handleRefreshView = () => {
+    setHasViewUpdates(false)
+    setRefreshKey((k) => k + 1)
+    void loadBoard()
   }
 
   useEffect(() => {
@@ -150,8 +196,26 @@ export function BoardPage() {
     ]
 
     entityEvents.forEach((evt) => {
-      socket.on(evt, () => {
-        loadBoard()
+      socket.on(evt, (payload?: unknown) => {
+        if (typeof payload === 'object' && payload !== null) {
+          const p = payload as Record<string, unknown>
+          const cId = (p['cardId'] || p['id']) as string | undefined
+          const changes = p['changes'] as Record<string, unknown> | undefined
+          const updatedAt = (p['updatedAt'] || changes?.['updatedAt']) as string | undefined
+          if (cId && updatedAt) {
+            const last = lastUpdatedAtRef.current[cId]
+            if (last && new Date(updatedAt).getTime() <= new Date(last).getTime()) {
+              return
+            }
+            lastUpdatedAtRef.current[cId] = updatedAt
+          }
+        }
+
+        if (activeViewRef.current === 'board') {
+          void loadBoard()
+        } else {
+          setHasViewUpdates(true)
+        }
       })
     })
 
@@ -167,7 +231,7 @@ export function BoardPage() {
       socket.emit('board:leave', { boardId: bid })
       socket.disconnect()
     }
-  }, [wid, bid])
+  }, [wid, bid, loadBoard])
 
   if (loading && !board) {
     return <div style={{ color: 'var(--muted)', padding: 32 }}>Loading board…</div>
@@ -190,7 +254,7 @@ export function BoardPage() {
         isConnected={isConnected}
         viewers={viewers}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleViewChange}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters((prev) => !prev)}
         onToggleActivity={() => setShowActivity((prev) => !prev)}
@@ -241,28 +305,56 @@ export function BoardPage() {
 
       {activeView === 'table' && (
         <TableView
+          key={`table-${refreshKey}`}
           workspaceId={wid}
           boardId={bid}
           members={members}
           onBoardUpdated={loadBoard}
+          hasUpdates={hasViewUpdates}
+          onRefresh={handleRefreshView}
         />
       )}
 
       {activeView === 'calendar' && (
         <CalendarView
+          key={`calendar-${refreshKey}`}
           workspaceId={wid}
           boardId={bid}
           members={members}
           onBoardUpdated={loadBoard}
+          hasUpdates={hasViewUpdates}
+          onRefresh={handleRefreshView}
         />
       )}
 
       {activeView === 'timeline' && (
         <TimelineView
+          key={`timeline-${refreshKey}`}
           workspaceId={wid}
           boardId={bid}
           members={members}
           onBoardUpdated={loadBoard}
+          hasUpdates={hasViewUpdates}
+          onRefresh={handleRefreshView}
+        />
+      )}
+
+      {/* Deep-linked Card Modal */}
+      {deepLinkedCard && (
+        <CardModal
+          card={deepLinkedCard}
+          workspaceId={wid}
+          boardId={bid}
+          members={members}
+          isOpen={!!deepLinkedCard}
+          onClose={handleCloseDeepLinkedCard}
+          onCardUpdated={() => {
+            void loadBoard()
+            if (cardId) {
+              void cardApi.getDetails(wid, bid, cardId).then((r) => r.success && r.data && setDeepLinkedCard(r.data))
+            }
+          }}
+          initialTab={commentId ? 'comments' : 'overview'}
         />
       )}
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/auth.store'
 import { authApi } from '../../api/endpoints'
 import { useToast } from '../../stores/toast.store'
+import { useUiStore } from '../../stores/ui.store'
 import { Avatar } from './Avatar'
 import { ProfileModal } from '../auth/ProfileModal'
 import { NotificationBell } from '../notifications/NotificationBell'
@@ -11,12 +12,14 @@ import {
   IconLogout,
   IconActivity,
   IconSettings,
+  IconMenu,
 } from './Icons'
 
 export function Header() {
   const navigate = useNavigate()
   const { user, setUser, clearAuth } = useAuth()
   const { addToast } = useToast()
+  const { toggleMobileSidebar } = useUiStore()
   const [showProfileModal, setShowProfileModal] = useState(false)
 
   useEffect(() => {
@@ -44,20 +47,31 @@ export function Header() {
   return (
     <>
       <header
-        className="glass"
+        className="glass app-header"
         style={{
           height: 60,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 20px',
+          padding: '0 16px',
           borderBottom: '1px solid var(--border)',
           position: 'relative',
           zIndex: 100,
         }}
       >
-        {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Brand Logo & Mobile Sidebar Trigger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            className="mobile-only-btn btn btn-ghost btn-sm"
+            onClick={toggleMobileSidebar}
+            title="Toggle Navigation Menu"
+            aria-label="Toggle Navigation Menu"
+            style={{ padding: '6px 8px' }}
+          >
+            <IconMenu size={18} />
+          </button>
+
           <Link
             to="/workspaces"
             style={{
@@ -70,31 +84,28 @@ export function Header() {
               color: '#ffffff',
             }}
           >
-            <div
+            <img
+              src="/logo.png"
+              alt="SyncBoard Logo"
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 9,
-                background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: '0 0 16px rgba(124, 58, 237, 0.4)',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 10px rgba(124, 58, 237, 0.45))',
+                flexShrink: 0,
               }}
-            >
-              <span style={{ fontSize: 16, color: '#fff' }}>◈</span>
-            </div>
-            <span>SyncBoard</span>
+            />
+            <span className="logo-text">SyncBoard</span>
           </Link>
         </div>
 
         {/* Right Nav & User Profile Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <NotificationBell />
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link
             to="/health"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-sm nav-link-text"
             title="System Diagnostics & Health Status"
+            style={{ padding: '6px 10px' }}
           >
             <IconActivity size={15} />
             <span>Health</span>
@@ -102,21 +113,25 @@ export function Header() {
 
           <Link
             to="/workspaces"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-sm nav-link-text"
             title="All Workspaces"
+            style={{ padding: '6px 10px' }}
           >
             <IconWorkspace size={15} />
             <span>Workspaces</span>
           </Link>
 
           <div
+            className="nav-divider"
             style={{
-              height: 24,
+              height: 20,
               width: 1,
               backgroundColor: 'var(--border)',
-              margin: '0 4px',
+              margin: '0 2px',
             }}
           />
+
+          <NotificationBell />
 
           {/* User Profile Trigger */}
           <button
@@ -124,10 +139,10 @@ export function Header() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
+              gap: 8,
               background: 'transparent',
               border: 'none',
-              padding: '4px 8px',
+              padding: '4px 6px',
               borderRadius: 10,
               cursor: 'pointer',
               color: 'var(--text)',
@@ -139,9 +154,19 @@ export function Header() {
               name={user?.displayName}
               email={user?.email}
               avatarUrl={user?.avatarUrl}
-              size={30}
+              size={28}
             />
-            <span style={{ fontWeight: 600, fontSize: 13, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span
+              className="user-name-text"
+              style={{
+                fontWeight: 600,
+                fontSize: 13,
+                maxWidth: 120,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {user?.displayName || user?.email || 'Account'}
             </span>
             <IconSettings size={14} style={{ color: 'var(--muted)' }} />
@@ -151,7 +176,7 @@ export function Header() {
             onClick={handleLogout}
             className="btn btn-ghost btn-sm"
             title="Sign Out"
-            style={{ color: '#f87171' }}
+            style={{ color: '#f87171', padding: '6px 8px' }}
           >
             <IconLogout size={16} />
           </button>

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import type { ActivityLog } from '../../types'
-import { boardApi } from '../../api/endpoints'
+import { useEffect, useState, useCallback } from 'react'
+import type { ActivityEventItem } from '../../types'
+import { activityApi } from '../../api/endpoints'
+import { createAuthedSocket } from '../../socket/socket'
 import { Modal } from '../common/Modal'
 import { Avatar } from '../common/Avatar'
 import { IconActivity } from '../common/Icons'
@@ -12,8 +13,8 @@ export interface ActivityDrawerProps {
   boardId: string
 }
 
-function activityTitle(a: ActivityLog): string {
-  const title = a.payload?.entityTitle
+function activityTitle(a: ActivityEventItem): string {
+  const title = a.payload?.['entityTitle']
   return typeof title === 'string' && title.length > 0 ? title : ''
 }
 
@@ -23,43 +24,90 @@ export function ActivityDrawer({
   workspaceId,
   boardId,
 }: ActivityDrawerProps) {
-  const [activities, setActivities] = useState<ActivityLog[]>([])
+  const [activities, setActivities] = useState<ActivityEventItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const loadActivities = async (nextCursor?: string | null) => {
-    setLoading(true)
-    const res = await boardApi.getActivities(workspaceId, boardId, {
-      cursor: nextCursor || undefined,
-      limit: 25,
-    })
-    setLoading(false)
+  const loadActivities = useCallback(
+    async (nextCursor?: string | null) => {
+      setLoading(true)
+      const res = await activityApi.boardFeed(workspaceId, boardId, {
+        cursor: nextCursor || undefined,
+        limit: 25,
+      })
+      setLoading(false)
 
-    if (res.success && res.data) {
-      if (nextCursor) {
-        setActivities((prev) => [...prev, ...res.data!.items])
-      } else {
-        setActivities(res.data.items)
+      if (res.success && res.data) {
+        if (nextCursor) {
+          setActivities((prev) => [...prev, ...res.data!.items])
+        } else {
+          setActivities(res.data.items)
+        }
+        setCursor(res.data.pagination.cursor || null)
+        setHasMore(!!res.data.pagination.hasMore)
       }
-      setCursor(res.data.pagination.cursor || null)
-      setHasMore(!!res.data.pagination.hasMore)
-    }
-  }
+    },
+    [workspaceId, boardId],
+  )
 
   useEffect(() => {
     if (isOpen) {
-      loadActivities(null)
+      void loadActivities(null)
     }
-  }, [isOpen, workspaceId, boardId])
+  }, [isOpen, loadActivities])
+
+  // 2s debounced refresh after mutations while drawer is open
+  useEffect(() => {
+    if (!isOpen) return
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    const socket = createAuthedSocket()
+
+    const handleMutation = () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        void loadActivities(null)
+      }, 2000)
+    }
+
+    const mutationEvents = [
+      'card:created',
+      'card:updated',
+      'card:moved',
+      'card:archived',
+      'card:comment-added',
+      'card:attachment-added',
+      'list:created',
+      'list:moved',
+      'list:updated',
+    ]
+    mutationEvents.forEach((evt) => socket.on(evt, handleMutation))
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      socket.disconnect()
+    }
+  }, [isOpen, loadActivities])
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <IconActivity size={18} /> Board Activity & Audit Log
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconActivity size={18} /> Board Activity & Audit Log
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => void loadActivities(null)}
+            disabled={loading}
+            aria-label="Refresh activity feed"
+          >
+            Refresh
+          </button>
         </div>
       }
       maxWidth={580}
@@ -110,9 +158,10 @@ export function ActivityDrawer({
         {hasMore && (
           <button
             className="btn btn-ghost btn-sm"
-            onClick={() => loadActivities(cursor)}
+            onClick={() => void loadActivities(cursor)}
             disabled={loading}
             style={{ justifySelf: 'center', marginTop: 8 }}
+            aria-label="Load more activity"
           >
             {loading ? 'Loading…' : 'Load More Activity'}
           </button>

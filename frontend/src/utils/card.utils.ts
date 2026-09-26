@@ -19,10 +19,13 @@ export function isOverdue(dueDate: string | null | undefined, now: Date = new Da
  * @returns True when complete or status is 'done'/'closed'
  */
 export function isCardComplete(
-  target?: { isComplete?: boolean; isCompleted?: boolean } | CardStatus | null,
+  target?: { isComplete?: boolean; isCompleted?: boolean; status?: CardStatus } | CardStatus | null,
 ): boolean {
   if (typeof target === 'string') {
     return target === 'done' || target === 'closed'
+  }
+  if (target?.status) {
+    return target.status === 'done' || target.status === 'closed'
   }
   return target?.isComplete ?? target?.isCompleted ?? false
 }

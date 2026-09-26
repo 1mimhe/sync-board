@@ -78,16 +78,25 @@ export function WorkspacesPage() {
           </p>
         </div>
 
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 8 }}>
+        <form
+          onSubmit={handleCreate}
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            width: '100%',
+            maxWidth: 460,
+          }}
+        >
           <input
             value={newWsName}
             onChange={(e) => setNewWsName(e.target.value)}
             placeholder="New workspace name…"
-            style={{ minWidth: 240, fontSize: 13 }}
+            style={{ flex: '1 1 200px', minWidth: 0, fontSize: 13 }}
             required
             minLength={2}
           />
-          <button className="btn btn-primary" type="submit" disabled={isCreating}>
+          <button className="btn btn-primary" type="submit" disabled={isCreating} style={{ flexShrink: 0 }}>
             <IconPlus size={16} /> {isCreating ? 'Creating…' : 'Create Workspace'}
           </button>
         </form>
@@ -97,7 +106,7 @@ export function WorkspacesPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))',
           gap: 16,
         }}
       >

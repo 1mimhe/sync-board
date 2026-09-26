@@ -42,14 +42,15 @@ export function ArchivedBoardsModal({
     })
     if (res.success && res.data) {
       // Handle both array and paginated response for backward compat
-      const raw: any = res.data
+      const raw: unknown = res.data
       if (Array.isArray(raw)) {
-        setArchivedBoards(raw)
+        setArchivedBoards(raw as Board[])
         setCursor(null)
         setHasMore(false)
-      } else if (raw.items && raw.pagination) {
-        const items: Board[] = raw.items
-        const pagination = raw.pagination
+      } else if (typeof raw === 'object' && raw !== null && 'items' in raw && 'pagination' in raw) {
+        const paginated = raw as { items: Board[]; pagination: { cursor?: string | null; hasMore?: boolean } }
+        const items = paginated.items
+        const pagination = paginated.pagination
         if (append) {
           setArchivedBoards((prev) => [...prev, ...items])
         } else {
@@ -58,8 +59,7 @@ export function ArchivedBoardsModal({
         setCursor(pagination.cursor ?? null)
         setHasMore(!!pagination.hasMore)
       } else {
-        // Fallback: treat as array
-        setArchivedBoards(Array.isArray(raw) ? raw : [])
+        setArchivedBoards([])
         setHasMore(false)
       }
     }

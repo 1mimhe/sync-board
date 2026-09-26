@@ -11,6 +11,7 @@ import { WorkspaceFieldDefsTab } from '../components/workspace/WorkspaceFieldDef
 import { WorkspaceSettingsModal } from '../components/workspace/WorkspaceSettingsModal'
 import { ArchivedBoardsModal } from '../components/workspace/ArchivedBoardsModal'
 import { createAuthedSocket } from '../socket/socket'
+import { ActivityFeed } from '../components/activity/ActivityFeed'
 import {
   IconBoard,
   IconDocument,
@@ -23,9 +24,10 @@ import {
   IconArchive,
   IconTag,
   IconTable,
+  IconActivity,
 } from '../components/common/Icons'
 
-type TabKey = 'boards' | 'docs' | 'labels' | 'fields' | 'members' | 'invitations'
+type TabKey = 'boards' | 'docs' | 'labels' | 'fields' | 'members' | 'invitations' | 'activity'
 
 export function WorkspaceDetailPage() {
   const { wid } = useParams()
@@ -238,49 +240,65 @@ export function WorkspaceDetailPage() {
 
       {/* Main Tab Navigation */}
       <div
+        className="scroll"
         style={{
           display: 'flex',
           gap: 8,
           borderBottom: '1px solid var(--border)',
           paddingBottom: 8,
-          flexWrap: 'wrap',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          maxWidth: '100%',
         }}
       >
         <button
           className={`btn ${tab === 'boards' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('boards')}
+          style={{ flexShrink: 0 }}
         >
           <IconBoard size={16} /> Boards ({boards.length})
         </button>
         <button
           className={`btn ${tab === 'docs' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('docs')}
+          style={{ flexShrink: 0 }}
         >
           <IconDocument size={16} /> Collaborative Docs ({docs.length})
         </button>
         <button
           className={`btn ${tab === 'labels' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('labels')}
+          style={{ flexShrink: 0 }}
         >
           <IconTag size={16} /> Labels ({labelsCount})
         </button>
         <button
           className={`btn ${tab === 'fields' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('fields')}
+          style={{ flexShrink: 0 }}
         >
           <IconTable size={16} /> Custom Fields
         </button>
         <button
           className={`btn ${tab === 'members' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('members')}
+          style={{ flexShrink: 0 }}
         >
           <IconUsers size={16} /> Members ({members.length})
         </button>
         <button
           className={`btn ${tab === 'invitations' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setTab('invitations')}
+          style={{ flexShrink: 0 }}
         >
           <IconMail size={16} /> Invitations
+        </button>
+        <button
+          className={`btn ${tab === 'activity' ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setTab('activity')}
+          style={{ flexShrink: 0 }}
+        >
+          <IconActivity size={16} /> Activity
         </button>
       </div>
 
@@ -288,13 +306,30 @@ export function WorkspaceDetailPage() {
       {tab === 'boards' && (
         <div style={{ display: 'grid', gap: 16 }}>
           {/* Create Board & Search Controls */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <form onSubmit={handleCreateBoard} style={{ display: 'flex', gap: 8, flex: 1, minWidth: 280 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <form
+              onSubmit={handleCreateBoard}
+              style={{
+                display: 'flex',
+                gap: 8,
+                flex: '1 1 320px',
+                minWidth: 0,
+                alignItems: 'center',
+              }}
+            >
               <input
                 value={newBoardTitle}
                 onChange={(e) => setNewBoardTitle(e.target.value)}
                 placeholder="New board title (e.g. Sprint 24, Roadmaps)…"
-                style={{ flex: 1, fontSize: 13 }}
+                style={{ flex: 1, minWidth: 0, fontSize: 13 }}
                 required
               />
               <input
@@ -304,6 +339,8 @@ export function WorkspaceDetailPage() {
                 style={{
                   width: 38,
                   height: 38,
+                  minWidth: 38,
+                  flexShrink: 0,
                   padding: 2,
                   borderRadius: 8,
                   border: '1px solid var(--border)',
@@ -312,13 +349,26 @@ export function WorkspaceDetailPage() {
                 }}
                 title="Board accent color"
               />
-              <button className="btn btn-primary" type="submit" disabled={isCreatingBoard}>
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={isCreatingBoard}
+                style={{ flexShrink: 0 }}
+              >
                 <IconPlus size={16} /> Create Board
               </button>
             </form>
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: 220 }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flex: '0 1 auto',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ position: 'relative', width: 220, minWidth: 160, flex: '1 1 auto' }}>
                 <input
                   value={boardSearch}
                   onChange={(e) => setBoardSearch(e.target.value)}
@@ -343,6 +393,7 @@ export function WorkspaceDetailPage() {
                   className="btn btn-ghost btn-sm"
                   onClick={() => setShowArchivedBoards(true)}
                   title="View & restore archived boards"
+                  style={{ flexShrink: 0 }}
                 >
                   <IconArchive size={14} /> Archived
                 </button>
@@ -354,7 +405,7 @@ export function WorkspaceDetailPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
               gap: 16,
             }}
           >
@@ -415,15 +466,23 @@ export function WorkspaceDetailPage() {
       {tab === 'docs' && (
         <div style={{ display: 'grid', gap: 16 }}>
           {/* Create Document Form */}
-          <form onSubmit={handleCreateDoc} style={{ display: 'flex', gap: 8 }}>
+          <form
+            onSubmit={handleCreateDoc}
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
             <input
               value={newDocTitle}
               onChange={(e) => setNewDocTitle(e.target.value)}
               placeholder="New collaborative document title…"
-              style={{ flex: 1, fontSize: 13 }}
+              style={{ flex: 1, minWidth: 200, fontSize: 13 }}
               required
             />
-            <button className="btn btn-primary" type="submit" disabled={isCreatingDoc}>
+            <button className="btn btn-primary" type="submit" disabled={isCreatingDoc} style={{ flexShrink: 0 }}>
               <IconPlus size={16} /> Create Document
             </button>
           </form>
@@ -522,6 +581,13 @@ export function WorkspaceDetailPage() {
       {/* Tab 5: Invitations */}
       {tab === 'invitations' && (
         <InvitationsTab workspace={workspace} />
+      )}
+
+      {/* Tab 6: Activity Feed */}
+      {tab === 'activity' && (
+        <div style={{ display: 'grid', gap: 16 }}>
+          <ActivityFeed workspaceId={workspace.id} />
+        </div>
       )}
 
       {/* Settings Modal */}
