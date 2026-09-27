@@ -54,6 +54,14 @@ describe('Notifications module (e2e)', () => {
       'Notif Card',
     );
     cardId = card.id;
+
+    // Ensure the initial workspace invitation notification settles before tests start
+    const notifDeadline = Date.now() + 5000;
+    while (Date.now() < notifDeadline) {
+      const probe = await req(server()).get(notifUrl()).set(auth(recipient));
+      if (probe.status === 200 && probe.body?.data?.items?.length >= 1) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
   });
 
   afterAll(async () => {
@@ -63,6 +71,15 @@ describe('Notifications module (e2e)', () => {
   // =========================================================================
   describe('REST API', () => {
     it('3.1 GET /notifications ? cursor walk: 30 seeded ? page 20 hasMore; page 2 completes', async () => {
+      // Baseline notifications before seeding card assignments (e.g. workspace invitation)
+      const baseline = expectData<{ items: unknown[] }>(
+        await req(server())
+          .get(notifUrl())
+          .query({ limit: 50 })
+          .set(auth(recipient)),
+        200,
+      ).items.length;
+
       // Seed notifications by assigning recipient to cards 30 times
       for (let i = 0; i < 30; i++) {
         const c = await createCard(
@@ -80,9 +97,11 @@ describe('Notifications module (e2e)', () => {
           .set(auth(actor));
       }
 
-      // Assignment fan-out is queued (RabbitMQ → consumer → DB):
-      // poll until all 30 notifications land before walking pages.
+      // Assignment fan-out is queued (RabbitMQ → consumer → DB + Redis):
+      // poll until all 30 card notifications land and Redis unread counter settles
+      // before walking pages, ensuring no in-flight messages leak into later tests.
       let total = 0;
+      const expectedTotal = baseline + 30;
       const deadline = Date.now() + 20_000;
       while (Date.now() < deadline) {
         const probe = expectData<{ items: unknown[] }>(
@@ -93,10 +112,18 @@ describe('Notifications module (e2e)', () => {
           200,
         );
         total = probe.items.length;
-        if (total >= 30) break;
-        await new Promise((r) => setTimeout(r, 500));
+        if (total >= expectedTotal) {
+          const countRes = expectData<{ count: number }>(
+            await req(server())
+              .get(`${notifUrl()}/unread-count`)
+              .set(auth(recipient)),
+            200,
+          );
+          if (countRes.count >= expectedTotal) break;
+        }
+        await new Promise((r) => setTimeout(r, 200));
       }
-      expect(total).toBeGreaterThanOrEqual(30);
+      expect(total).toBeGreaterThanOrEqual(expectedTotal);
 
       const p1 = expectData<{
         items: Array<{ id: string; isRead: boolean }>;
